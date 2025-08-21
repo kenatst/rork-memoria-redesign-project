@@ -138,7 +138,7 @@ export default function HomeScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       
       <Animated.View style={[styles.animatedContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <ScrollView
@@ -369,6 +369,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    paddingTop: 0,
   },
   animatedContainer: {
     flex: 1,

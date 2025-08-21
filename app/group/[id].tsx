@@ -229,7 +229,7 @@ export default function GroupDetailScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         
         {/* Header */}
         <View style={styles.header}>
@@ -572,7 +572,7 @@ export default function GroupDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, paddingTop: 0 },
   errorText: { color: '#fff', textAlign: 'center', marginTop: 50 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 },
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },

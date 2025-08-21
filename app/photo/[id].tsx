@@ -121,7 +121,7 @@ export default function PhotoDetailScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#000000', '#1a1a1a']} style={StyleSheet.absoluteFillObject} />
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <Stack.Screen options={{ headerShown: false }} />
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>Photo introuvable</Text>
@@ -137,7 +137,7 @@ export default function PhotoDetailScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#1a1a1a']} style={StyleSheet.absoluteFillObject} />
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
         
         {/* Header */}
@@ -349,6 +349,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    paddingTop: 0,
   },
   header: {
     position: 'absolute',

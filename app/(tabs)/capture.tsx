@@ -271,7 +271,8 @@ export default function CaptureScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.cameraWrapper, ratioBoxStyle]}>
+      <View style={styles.cameraWrapper}>
+        <View style={ratioBoxStyle}>
           <CameraView
             ref={cameraRef}
             style={StyleSheet.absoluteFillObject}
@@ -346,7 +347,7 @@ export default function CaptureScreen() {
               {Platform.OS !== 'web' ? (
                 <BlurView intensity={30} style={styles.bottomBlur}>
                   <View style={styles.bottomContent}>
-                    <Pressable style={styles.sideButton} onPress={() => setShowCameraFilters(true)} testID="filter-btn">
+                    <Pressable style={styles.sideButton} onPress={cycleFilter} testID="filter-btn">
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
 
@@ -377,7 +378,7 @@ export default function CaptureScreen() {
               ) : (
                 <View style={[styles.bottomBlur, styles.webBlur]}>
                   <View style={styles.bottomContent}>
-                    <Pressable style={styles.sideButton} onPress={() => setShowCameraFilters(true)}>
+                    <Pressable style={styles.sideButton} onPress={cycleFilter}>
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
                     <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
@@ -416,6 +417,7 @@ export default function CaptureScreen() {
               </Pressable>
             )}
           </CameraView>
+        </View>
       </View>
       
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -527,42 +529,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
   safeArea: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 },
   cameraWrapper: { 
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%', 
-    height: '100%',
-    alignSelf: 'center', 
-    overflow: 'hidden'
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   ratioFull: { 
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0
+    width: '100%',
+    height: '100%'
   },
   ratio34: { 
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    aspectRatio: 3/4, 
     width: '100%',
-    transform: [{ translateY: -200 }],
-    alignSelf: 'center'
+    aspectRatio: 3/4,
+    maxHeight: '100%'
   },
   ratio169: { 
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    aspectRatio: 16/9, 
     width: '100%',
-    transform: [{ translateY: -100 }],
-    alignSelf: 'center'
+    aspectRatio: 16/9,
+    maxHeight: '100%'
   },
   loadingText: { color: '#FFFFFF', fontSize: 18, textAlign: 'center', marginTop: screenHeight / 2 },
   permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 24 },

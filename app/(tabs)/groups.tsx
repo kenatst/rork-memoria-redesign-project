@@ -46,7 +46,7 @@ export default function GroupsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
 
       <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         {Platform.OS !== 'web' ? (
@@ -155,7 +155,7 @@ export default function GroupsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, paddingTop: 0 },
   header: { paddingHorizontal: 20, paddingTop: 8 },
   headerBlur: { borderRadius: 16, overflow: 'hidden' },
   webBlur: { backgroundColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px)' as any },

@@ -46,7 +46,7 @@ export default function ProfileScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
             
@@ -229,6 +229,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    paddingTop: 0,
   },
   keyboardView: {
     flex: 1,

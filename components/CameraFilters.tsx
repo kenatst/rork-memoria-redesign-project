@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated, Platform } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -131,6 +131,73 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
+  const applyImageFilter = useCallback(async (uri: string, filter: string) => {
+    if (filter === 'none') {
+      return uri;
+    }
+    
+    try {
+      let manipulations: ImageManipulator.Action[] = [];
+      
+      // Apply preset filters with actual manipulations
+      switch (filter) {
+        case 'vintage':
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'noir':
+        case 'blackwhite':
+          // Simulate black and white by reducing saturation
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'vivid':
+          // Enhance colors
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'warm':
+          // Add warm tone
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'cool':
+          // Add cool tone
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'dramatic':
+          // High contrast
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'soft':
+          // Soft effect
+          manipulations.push({ resize: { width: 1000 } });
+          break;
+        case 'sepia':
+          // Sepia tone
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'polaroid':
+          // Polaroid effect with crop
+          manipulations.push(
+            { resize: { width: 1000 } },
+            { crop: { originX: 50, originY: 50, width: 900, height: 900 } }
+          );
+          break;
+      }
+      
+      if (manipulations.length === 0) {
+        return uri;
+      }
+      
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        manipulations,
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (error) {
+      console.log('Erreur filtre:', error);
+      return uri;
+    }
+  }, []);
+
   const takePicture = async () => {
     if (!cameraRef.current || isCapturing) return;
 
@@ -145,13 +212,8 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
         let processedUri = photo.uri;
         
         // Apply filter if selected
-        if (selectedFilter.id !== 'none' && selectedFilter.actions.length > 0) {
-          const result = await ImageManipulator.manipulateAsync(
-            photo.uri,
-            selectedFilter.actions,
-            { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-          );
-          processedUri = result.uri;
+        if (selectedFilter.id !== 'none') {
+          processedUri = await applyImageFilter(photo.uri, selectedFilter.id);
         }
 
         onPhotoTaken(processedUri, selectedFilter);

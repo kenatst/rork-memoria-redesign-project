@@ -171,7 +171,7 @@ export default function AlbumsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>        
         <Animated.View style={[styles.header, { transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.userRow}>
@@ -403,7 +403,7 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate }: Ca
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, paddingTop: 0 },
   content: { flex: 1, paddingTop: 12 },
   header: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, gap: 12 },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
