@@ -218,19 +218,19 @@ export default function HomeScreen() {
               style={[styles.card, styles.secondaryCard]}
               onPress={() => {
                 handleHapticFeedback();
-                router.push("/ephemeral-events");
+                router.push("/(tabs)/albums");
               }}
-              testID="ephemeral-events"
+              testID="open-albums"
             >
               <LinearGradient
                 colors={['#131417', '#2A2D34']}
                 style={styles.cardGradient}
               >
                 <View style={styles.cardIcon}>
-                  <Calendar color={Colors.palette.taupeDeep} size={28} />
+                  <ImagesIcon color={Colors.palette.taupeDeep} size={28} />
                 </View>
-                <Text style={styles.cardTitle}>Événements</Text>
-                <Text style={styles.cardSub}>QR éphémères + analytics</Text>
+                <Text style={styles.cardTitle}>Albums</Text>
+                <Text style={styles.cardSub}>Vos collections photos</Text>
               </LinearGradient>
             </Pressable>
 
@@ -292,9 +292,9 @@ export default function HomeScreen() {
                   style={styles.actionButton}
                   onPress={() => {
                     handleHapticFeedback();
-                    router.push('/statistics');
+                    router.push('/(tabs)/profile');
                   }}
-                  testID="view-statistics"
+                  testID="view-profile"
                 >
                   <BarChart3 color={Colors.palette.taupe} size={20} />
                 </Pressable>

@@ -35,8 +35,8 @@ export default function ProfileScreen() {
     setIsEditing(false);
   }, [displayName, profileAvatar, handleHapticFeedback]);
 
-  const totalPhotos = albums.reduce((sum, album) => sum + album.photos.length, 0);
-  const totalLikes = albums.reduce((sum, album) => sum + album.likes.length, 0);
+  const totalPhotos = albums?.reduce((sum, album) => sum + (album.photos?.length || 0), 0) || 0;
+  const totalLikes = albums?.reduce((sum, album) => sum + (album.likes?.length || 0), 0) || 0;
 
   return (
     <View style={styles.container}>

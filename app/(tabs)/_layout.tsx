@@ -15,35 +15,35 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(home)"
         options={{
-          title: "Accueil",
+          title: "",
           tabBarIcon: ({ color }) => <Home color={color} />,
         }}
       />
       <Tabs.Screen
         name="albums"
         options={{
-          title: "Albums",
+          title: "",
           tabBarIcon: ({ color }) => <FolderOpen color={color} />,
         }}
       />
       <Tabs.Screen
         name="capture"
         options={{
-          title: "Caméra",
+          title: "",
           tabBarIcon: ({ color }) => <Camera color={color} />,
         }}
       />
       <Tabs.Screen
         name="groups"
         options={{
-          title: "Groupes",
+          title: "",
           tabBarIcon: ({ color }) => <Users2 color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profil",
+          title: "",
           tabBarIcon: ({ color }) => <User2 color={color} />,
         }}
       />

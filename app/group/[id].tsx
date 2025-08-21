@@ -377,8 +377,9 @@ export default function GroupDetailScreen() {
 
         {/* Create Album Modal */}
         <Modal visible={showCreateAlbum} transparent animationType="slide" onRequestClose={() => setShowCreateAlbum(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
+          <View style={styles.modalBackdrop}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+              <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Créer un album</Text>
               <TextInput
                 style={styles.input}
@@ -408,8 +409,9 @@ export default function GroupDetailScreen() {
                   <Text style={styles.createText}>Créer</Text>
                 </Pressable>
               </View>
-            </View>
-          </KeyboardAvoidingView>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
         </Modal>
 
         {/* Members Management Modal */}
@@ -567,8 +569,9 @@ const styles = StyleSheet.create({
   memberCard: { alignItems: 'center', gap: 4, width: 60 },
   memberAvatar: { width: 48, height: 48, borderRadius: 24 },
   memberName: { color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0B0B0D', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 16 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)' },
+  keyboardView: { flex: 1, justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#0B0B0D', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 16, maxHeight: '80%' },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
   modalSubtitle: { color: '#A9AFBC', fontSize: 14, textAlign: 'center', marginBottom: 8 },
   inviteOptions: { gap: 12 },

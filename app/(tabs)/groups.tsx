@@ -103,8 +103,9 @@ export default function GroupsScreen() {
       </ScrollView>
 
       <Modal visible={showCreate} transparent animationType="slide" onRequestClose={() => setShowCreate(false)}>
-        <KeyboardAvoidingView style={styles.modalBackdrop} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={styles.modalCard}>
+        <View style={styles.modalBackdrop}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+            <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Nouveau groupe</Text>
             <TextInput
               style={styles.input}
@@ -143,8 +144,9 @@ export default function GroupsScreen() {
                 <Text style={styles.createConfirmText}>Créer</Text>
               </Pressable>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
       </SafeAreaView>
     </View>
@@ -174,8 +176,9 @@ const styles = StyleSheet.create({
   meta: { color: '#E8EAF0', fontSize: 12 },
   noteBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFD700', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 },
   noteText: { color: '#000', fontSize: 12, fontWeight: '800' },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0B0B0D', padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 12 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  keyboardView: { flex: 1, justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#0B0B0D', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 16, maxHeight: '80%' },
   modalTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', textAlign: 'center' },
   input: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#FFFFFF' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },

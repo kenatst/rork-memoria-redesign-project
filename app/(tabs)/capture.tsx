@@ -507,27 +507,42 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
   safeArea: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 },
   cameraWrapper: { 
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%', 
     height: '100%',
     alignSelf: 'center', 
-    overflow: 'hidden',
-    marginBottom: 0
+    overflow: 'hidden'
   },
-  ratioFull: { flex: 1 },
+  ratioFull: { 
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0
+  },
   ratio34: { 
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
     aspectRatio: 3/4, 
     width: '100%',
-    alignSelf: 'center',
-    marginTop: 'auto',
-    marginBottom: 'auto'
+    transform: [{ translateY: -200 }],
+    alignSelf: 'center'
   },
   ratio169: { 
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
     aspectRatio: 16/9, 
     width: '100%',
-    alignSelf: 'center',
-    marginTop: 'auto',
-    marginBottom: 'auto'
+    transform: [{ translateY: -100 }],
+    alignSelf: 'center'
   },
   loadingText: { color: '#FFFFFF', fontSize: 18, textAlign: 'center', marginTop: screenHeight / 2 },
   permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 24 },
@@ -555,7 +570,7 @@ const styles = StyleSheet.create({
   filterIndicator: { position: 'absolute', top: 120, right: 20, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, zIndex: 20 },
   filterText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
 
-  bottomControls: { position: 'absolute', bottom: 100, left: 20, right: 20, zIndex: 20 },
+  bottomControls: { position: 'absolute', bottom: 120, left: 20, right: 20, zIndex: 20 },
   bottomBlur: { borderRadius: 30, overflow: 'hidden' },
   bottomContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 24 },
   sideButton: { padding: 16, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)' },
@@ -568,14 +583,14 @@ const styles = StyleSheet.create({
   zoomTextSmall: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
   zoomValue: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)' },
 
-  galleryContainer: { position: 'absolute', bottom: 200, left: 20, right: 20, height: 80, zIndex: 15 },
+  galleryContainer: { position: 'absolute', bottom: 220, left: 20, right: 20, height: 80, zIndex: 15 },
   galleryBlur: { borderRadius: 16, overflow: 'hidden', paddingVertical: 8 },
   galleryScroll: { paddingHorizontal: 12 },
   galleryItem: { width: 60, height: 60, borderRadius: 12, marginRight: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
   galleryImage: { width: '100%', height: '100%' },
-  galleryToggle: { position: 'absolute', bottom: 40, left: 30, width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', zIndex: 25 },
+  galleryToggle: { position: 'absolute', bottom: 140, left: 30, width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', zIndex: 25 },
 
-  lastThumb: { position: 'absolute', bottom: 36, right: 30, width: 54, height: 54, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', zIndex: 26 },
+  lastThumb: { position: 'absolute', bottom: 136, right: 30, width: 54, height: 54, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', zIndex: 26 },
   lastThumbImage: { width: '100%', height: '100%' },
 
   modalBackdropCenter: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
