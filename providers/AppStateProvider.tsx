@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { trpcClient } from "@/lib/trpc";
+import { Platform } from 'react-native';
 
 interface Photo {
   id: string;
@@ -71,12 +72,39 @@ interface AppState {
   likeAlbum: (albumId: string) => void;
   unlikeAlbum: (albumId: string) => void;
   updateGroupCover: (groupId: string, coverImage: string) => void;
-  joinGroupByCode: (inviteCode: string) => boolean;
+  joinGroupByCode: (inviteCode: string) => Promise<boolean>;
   updateProfile: (name: string, avatar?: string) => void;
   searchPhotos: (query: string) => Photo[];
   searchAlbums: (query: string) => Album[];
   exportAlbum: (albumId: string) => Promise<void>;
   profileAvatar?: string;
+  // New advanced features
+  syncData: () => Promise<void>;
+  isOnline: boolean;
+  lastSync?: string;
+  pendingUploads: string[];
+  batchSelectPhotos: (photoIds: string[]) => void;
+  selectedPhotos: string[];
+  clearSelection: () => void;
+  batchDeletePhotos: (photoIds: string[]) => void;
+  batchMovePhotos: (photoIds: string[], targetAlbumId: string) => void;
+  favoriteAlbums: string[];
+  toggleFavoriteAlbum: (albumId: string) => void;
+  updateAlbumCover: (albumId: string, coverImage: string) => void;
+  getSmartAlbums: () => { byDate: Album[]; byLocation: Album[]; favorites: Album[] };
+  notifications: Notification[];
+  markNotificationRead: (notificationId: string) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void;
+}
+
+interface Notification {
+  id: string;
+  type: 'comment' | 'like' | 'photo_added' | 'group_invite';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  data?: any;
 }
 
 const KEY = "memoria_app_state_v2";
@@ -90,6 +118,14 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const [comments, setComments] = useState<Comment[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+  
+  // New state for advanced features
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [lastSync, setLastSync] = useState<string | undefined>();
+  const [pendingUploads, setPendingUploads] = useState<string[]>([]);
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+  const [favoriteAlbums, setFavoriteAlbums] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -318,18 +354,58 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     persist({ groups: updatedGroups });
   }, [groups, persist]);
 
-  const joinGroupByCode = useCallback((inviteCode: string) => {
-    const group = groups.find(g => g.inviteCode === inviteCode);
-    if (group && !group.members.includes(displayName)) {
-      const updatedGroups = groups.map(g => 
-        g.id === group.id ? { ...g, members: [...g.members, displayName] } : g
-      );
-      setGroups(updatedGroups);
-      persist({ groups: updatedGroups });
-      return true;
+  // Notifications
+  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'createdAt'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+  }, []);
+
+  const markNotificationRead = useCallback((notificationId: string) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === notificationId ? { ...notif, read: true } : notif
+      )
+    );
+  }, []);
+
+  // Enhanced joinGroupByCode with tRPC
+  const joinGroupByCodeAsync = useCallback(async (inviteCode: string): Promise<boolean> => {
+    try {
+      const result = await trpcClient.groups.join.mutate({ inviteCode });
+      
+      if (result.success) {
+        // Update local state
+        const group = groups.find(g => g.inviteCode === inviteCode);
+        if (group && !group.members.includes(displayName)) {
+          const updatedGroups = groups.map(g => 
+            g.id === group.id ? { ...g, members: [...g.members, displayName] } : g
+          );
+          setGroups(updatedGroups);
+          persist({ groups: updatedGroups });
+        }
+        
+        addNotification({
+          type: 'group_invite',
+          title: 'Groupe rejoint',
+          message: 'Vous avez rejoint un nouveau groupe avec succès',
+          read: false,
+          data: { groupId: result.groupId }
+        });
+        
+        return true;
+      }
+    } catch (error) {
+      console.error('Failed to join group:', error);
     }
     return false;
-  }, [groups, displayName, persist]);
+  }, [groups, displayName, persist, addNotification]);
+
+  // Keep legacy sync version for compatibility
+  const joinGroupByCode = joinGroupByCodeAsync;
 
   // Profile functions
   const updateProfile = useCallback((name: string, avatar?: string) => {
@@ -359,13 +435,162 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     if (!album) return;
     
     try {
-      // In a real app, this would save all photos to the device's photo library
-      console.log(`Exporting album: ${album.name} with ${album.photos.length} photos`);
-      // For now, just log the action
+      // Use tRPC to export album
+      const result = await trpcClient.albums.export.mutate({ albumId, format: 'zip' });
+      console.log(`Exporting album: ${album.name} with ${album.photos.length} photos`, result);
+      
+      // Add notification
+      addNotification({
+        type: 'photo_added',
+        title: 'Export terminé',
+        message: `L'album "${album.name}" a été exporté avec succès`,
+        read: false,
+        data: { albumId, downloadUrl: result.downloadUrl }
+      });
     } catch (error) {
       console.error('Failed to export album:', error);
     }
-  }, [albums]);
+  }, [albums, addNotification]);
+
+  // Advanced sync function
+  const syncData = useCallback(async () => {
+    try {
+      setIsOnline(true);
+      const result = await trpcClient.photos.sync.mutate({
+        photos,
+        comments,
+        albums,
+        groups,
+        lastSync
+      });
+      
+      setLastSync(result.syncedAt);
+      console.log('Data synced successfully:', result);
+    } catch (error) {
+      console.error('Sync failed:', error);
+      setIsOnline(false);
+    }
+  }, [photos, comments, albums, groups, lastSync]);
+
+  // Batch photo operations
+  const batchSelectPhotos = useCallback((photoIds: string[]) => {
+    setSelectedPhotos(prev => {
+      const newSelection = [...prev];
+      photoIds.forEach(id => {
+        if (!newSelection.includes(id)) {
+          newSelection.push(id);
+        }
+      });
+      return newSelection;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedPhotos([]);
+  }, []);
+
+  const batchDeletePhotos = useCallback((photoIds: string[]) => {
+    const updatedPhotos = photos.filter(photo => !photoIds.includes(photo.id));
+    setPhotos(updatedPhotos);
+    
+    // Update albums to remove deleted photos
+    const updatedAlbums = albums.map(album => ({
+      ...album,
+      photos: album.photos.filter(photoUri => {
+        const photo = photos.find(p => p.uri === photoUri);
+        return !photo || !photoIds.includes(photo.id);
+      })
+    }));
+    setAlbums(updatedAlbums);
+    persist({ albums: updatedAlbums });
+    
+    clearSelection();
+  }, [photos, albums, persist, clearSelection]);
+
+  const batchMovePhotos = useCallback((photoIds: string[], targetAlbumId: string) => {
+    const photosToMove = photos.filter(photo => photoIds.includes(photo.id));
+    
+    // Update photos with new album ID
+    const updatedPhotos = photos.map(photo => 
+      photoIds.includes(photo.id) ? { ...photo, albumId: targetAlbumId } : photo
+    );
+    setPhotos(updatedPhotos);
+    
+    // Update albums
+    const updatedAlbums = albums.map(album => {
+      if (album.id === targetAlbumId) {
+        // Add photos to target album
+        const newPhotos = photosToMove.map(p => p.uri).filter(uri => !album.photos.includes(uri));
+        return { ...album, photos: [...album.photos, ...newPhotos] };
+      } else {
+        // Remove photos from other albums
+        return {
+          ...album,
+          photos: album.photos.filter(photoUri => {
+            const photo = photos.find(p => p.uri === photoUri);
+            return !photo || !photoIds.includes(photo.id);
+          })
+        };
+      }
+    });
+    setAlbums(updatedAlbums);
+    persist({ albums: updatedAlbums });
+    
+    clearSelection();
+  }, [photos, albums, persist, clearSelection]);
+
+  // Favorites management
+  const toggleFavoriteAlbum = useCallback((albumId: string) => {
+    setFavoriteAlbums(prev => {
+      const isFavorite = prev.includes(albumId);
+      return isFavorite 
+        ? prev.filter(id => id !== albumId)
+        : [...prev, albumId];
+    });
+  }, []);
+
+  // Album cover update
+  const updateAlbumCover = useCallback(async (albumId: string, coverImage: string) => {
+    try {
+      await trpcClient.albums.updateCover.mutate({ albumId, coverImage });
+      
+      const updatedAlbums = albums.map(album => 
+        album.id === albumId ? { ...album, coverImage } : album
+      );
+      setAlbums(updatedAlbums);
+      persist({ albums: updatedAlbums });
+    } catch (error) {
+      console.error('Failed to update album cover:', error);
+      // Fallback to local update
+      const updatedAlbums = albums.map(album => 
+        album.id === albumId ? { ...album, coverImage } : album
+      );
+      setAlbums(updatedAlbums);
+      persist({ albums: updatedAlbums });
+    }
+  }, [albums, persist]);
+
+  // Smart albums
+  const getSmartAlbums = useCallback(() => {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    const byDate = albums.filter(album => {
+      const albumDate = new Date(album.createdAt);
+      return albumDate >= oneWeekAgo;
+    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    const byLocation = albums.filter(album => {
+      return album.photos.some(photoUri => {
+        const photo = photos.find(p => p.uri === photoUri);
+        return photo?.metadata?.location;
+      });
+    });
+    
+    const favorites = albums.filter(album => favoriteAlbums.includes(album.id));
+    
+    return { byDate, byLocation, favorites };
+  }, [albums, photos, favoriteAlbums]);
 
   return useMemo(
     () => ({ 
@@ -396,7 +621,24 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       searchPhotos,
       searchAlbums,
       exportAlbum,
-      profileAvatar
+      profileAvatar,
+      // New advanced features
+      syncData,
+      isOnline,
+      lastSync,
+      pendingUploads,
+      batchSelectPhotos,
+      selectedPhotos,
+      clearSelection,
+      batchDeletePhotos,
+      batchMovePhotos,
+      favoriteAlbums,
+      toggleFavoriteAlbum,
+      updateAlbumCover,
+      getSmartAlbums,
+      notifications,
+      markNotificationRead,
+      addNotification
     }),
     [
       onboardingComplete, 
@@ -426,7 +668,24 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       searchPhotos,
       searchAlbums,
       exportAlbum,
-      profileAvatar
+      profileAvatar,
+      // New advanced features
+      syncData,
+      isOnline,
+      lastSync,
+      pendingUploads,
+      batchSelectPhotos,
+      selectedPhotos,
+      clearSelection,
+      batchDeletePhotos,
+      batchMovePhotos,
+      favoriteAlbums,
+      toggleFavoriteAlbum,
+      updateAlbumCover,
+      getSmartAlbums,
+      notifications,
+      markNotificationRead,
+      addNotification
     ]
   );
 });
