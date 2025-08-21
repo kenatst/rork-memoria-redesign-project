@@ -25,7 +25,8 @@ const CAMERA_FILTERS: CameraFilter[] = [
     name: 'Vintage',
     preview: '📸',
     actions: [
-      { resize: { width: 800 } }
+      { resize: { width: 1200 } },
+      { crop: { originX: 0, originY: 0, width: 1200, height: 1200 } }
     ]
   },
   {
@@ -33,7 +34,7 @@ const CAMERA_FILTERS: CameraFilter[] = [
     name: 'N&B',
     preview: '⚫',
     actions: [
-      { resize: { width: 800 } }
+      { resize: { width: 1200 } }
     ]
   },
   {
@@ -41,7 +42,7 @@ const CAMERA_FILTERS: CameraFilter[] = [
     name: 'Chaleureux',
     preview: '🔥',
     actions: [
-      { resize: { width: 800 } }
+      { resize: { width: 1200 } }
     ]
   },
   {
@@ -49,7 +50,7 @@ const CAMERA_FILTERS: CameraFilter[] = [
     name: 'Froid',
     preview: '❄️',
     actions: [
-      { resize: { width: 800 } }
+      { resize: { width: 1200 } }
     ]
   },
   {
@@ -57,7 +58,7 @@ const CAMERA_FILTERS: CameraFilter[] = [
     name: 'Dramatique',
     preview: '🎭',
     actions: [
-      { resize: { width: 800 } }
+      { resize: { width: 1200 } }
     ]
   },
   {
@@ -65,7 +66,7 @@ const CAMERA_FILTERS: CameraFilter[] = [
     name: 'Doux',
     preview: '☁️',
     actions: [
-      { resize: { width: 800 } }
+      { resize: { width: 1200 } }
     ]
   },
   {
@@ -73,7 +74,24 @@ const CAMERA_FILTERS: CameraFilter[] = [
     name: 'Vif',
     preview: '🌺',
     actions: [
-      { resize: { width: 800 } }
+      { resize: { width: 1200 } }
+    ]
+  },
+  {
+    id: 'sepia',
+    name: 'Sépia',
+    preview: '🟤',
+    actions: [
+      { resize: { width: 1200 } }
+    ]
+  },
+  {
+    id: 'polaroid',
+    name: 'Polaroid',
+    preview: '📷',
+    actions: [
+      { resize: { width: 1000 } },
+      { crop: { originX: 50, originY: 50, width: 900, height: 900 } }
     ]
   }
 ];
