@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
+import { protectedProcedure, type Context } from '../../../create-context';
 
 export const createGroupProcedure = protectedProcedure
   .input(z.object({
@@ -7,7 +7,7 @@ export const createGroupProcedure = protectedProcedure
     description: z.string().optional(),
     coverImage: z.string().optional()
   }))
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: { name: string; description?: string; coverImage?: string }; ctx: Context }) => {
     const group = {
       id: Date.now().toString(),
       name: input.name,
@@ -33,7 +33,7 @@ export const joinGroupProcedure = protectedProcedure
   .input(z.object({
     inviteCode: z.string()
   }))
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: { inviteCode: string }; ctx: Context }) => {
     console.log('Joining group with code:', input.inviteCode, 'for user:', ctx.user.name);
     
     // Simulate finding and joining group
@@ -49,7 +49,7 @@ export const updateGroupCoverProcedure = protectedProcedure
     groupId: z.string(),
     coverImage: z.string()
   }))
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: { groupId: string; coverImage: string }; ctx: Context }) => {
     console.log('Updating group cover:', input.groupId, 'by user:', ctx.user.name);
     
     return {
@@ -63,7 +63,7 @@ export const getGroupMembersProcedure = protectedProcedure
   .input(z.object({
     groupId: z.string()
   }))
-  .query(async ({ input }) => {
+  .query(async ({ input }: { input: { groupId: string } }) => {
     console.log('Getting members for group:', input.groupId);
     
     return {

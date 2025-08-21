@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
-import type { Context } from '../../create-context';
+import { protectedProcedure } from '../../../create-context';
 
 const PhotoSchema = z.object({
   id: z.string(),
@@ -67,7 +66,7 @@ export const syncDataProcedure = protectedProcedure
     groups: z.array(GroupSchema),
     lastSync: z.string().optional()
   }))
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input }: { input: { photos: any[]; comments: any[]; albums: any[]; groups: any[]; lastSync?: string } }) => {
     // Simulate server sync - in real app, this would sync with database
     console.log('Syncing data:', {
       photos: input.photos.length,
@@ -94,7 +93,7 @@ export const getDataProcedure = protectedProcedure
   .input(z.object({
     lastSync: z.string().optional()
   }))
-  .query(async ({ input }) => {
+  .query(async ({ input }: { input: { lastSync?: string } }) => {
     // Simulate fetching server data
     console.log('Fetching data since:', input.lastSync);
     
