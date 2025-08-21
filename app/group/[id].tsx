@@ -11,6 +11,7 @@ import * as MediaLibrary from 'expo-media-library';
 
 import { useAppState } from '@/providers/AppStateProvider';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
+import ImagePickerComponent from '@/components/ImagePicker';
 
 
 interface Member {
@@ -35,7 +36,7 @@ interface Photo {
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { groups, albums, createAlbum } = useAppState();
+  const { groups, albums, createAlbum, updateGroupCover } = useAppState();
   
   const [group, setGroup] = useState<any>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -47,6 +48,7 @@ export default function GroupDetailScreen() {
   const [newAlbumName, setNewAlbumName] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [newComment, setNewComment] = useState('');
+  const [showChangeCover, setShowChangeCover] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -270,6 +272,10 @@ export default function GroupDetailScreen() {
               <Plus color="#FFD700" size={20} />
               <Text style={styles.actionText}>Album</Text>
             </Pressable>
+            <Pressable style={styles.actionBtn} onPress={() => setShowChangeCover(true)} testID="change-cover-btn">
+              <Camera color="#FFD700" size={20} />
+              <Text style={styles.actionText}>Couverture</Text>
+            </Pressable>
             <Pressable style={styles.actionBtn} onPress={handleExportAlbum} testID="export-btn">
               <Download color="#FFD700" size={20} />
               <Text style={styles.actionText}>Exporter</Text>
@@ -453,6 +459,35 @@ export default function GroupDetailScreen() {
           </View>
         </Modal>
 
+        {/* Change Cover Modal */}
+        <Modal visible={showChangeCover} transparent animationType="slide" onRequestClose={() => setShowChangeCover(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Changer la couverture</Text>
+              <Text style={styles.modalSubtitle}>Sélectionnez une nouvelle image de couverture pour le groupe</Text>
+              
+              <View style={styles.coverPickerContainer}>
+                <ImagePickerComponent
+                  currentImage={group?.coverImage}
+                  onImageSelected={(uri) => {
+                    if (group) {
+                      updateGroupCover(group.id, uri);
+                      setShowChangeCover(false);
+                      handleHaptic('medium');
+                    }
+                  }}
+                  size={200}
+                  placeholder="Sélectionner une couverture"
+                />
+              </View>
+              
+              <Pressable style={styles.modalCloseBtn} onPress={() => setShowChangeCover(false)} testID="close-change-cover">
+                <Text style={styles.modalCloseText}>Annuler</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
         {/* Photo Detail Modal */}
         <Modal visible={!!selectedPhoto} transparent animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>
           {selectedPhoto && (
@@ -619,4 +654,5 @@ const styles = StyleSheet.create({
   commentInput: { flex: 1, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, color: '#fff' },
   sendCommentBtn: { backgroundColor: '#FFD700', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   sendCommentText: { color: '#000', fontWeight: '700' },
+  coverPickerContainer: { alignItems: 'center', marginVertical: 16 },
 });

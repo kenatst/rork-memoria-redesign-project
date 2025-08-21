@@ -8,23 +8,29 @@ import { X, Zap, MapPin, Shield, Wifi, WifiOff } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import { useAppState } from '@/providers/AppStateProvider';
 
 
 
 interface QRData {
-  eventId: string;
-  eventName: string;
-  location: {
+  type: 'group_invite' | 'event';
+  groupId?: string;
+  groupName?: string;
+  inviteCode?: string;
+  eventId?: string;
+  eventName?: string;
+  location?: {
     latitude: number;
     longitude: number;
     radius: number;
   };
   timestamp: number;
-  requiresGeofencing: boolean;
+  requiresGeofencing?: boolean;
 }
 
 export default function QRScanScreen() {
   const router = useRouter();
+  const { joinGroupByCode, addNotification } = useAppState();
   const [permission, requestPermission] = useCameraPermissions();
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
   const [scanned, setScanned] = useState<boolean>(false);
@@ -105,7 +111,7 @@ export default function QRScanScreen() {
   };
 
   const validateGeofencing = async (qrData: QRData): Promise<boolean> => {
-    if (!qrData.requiresGeofencing || !currentLocation) {
+    if (!qrData.requiresGeofencing || !qrData.location || !currentLocation) {
       return true;
     }
 
@@ -155,8 +161,66 @@ export default function QRScanScreen() {
     }
 
     try {
-      const qrData: QRData = JSON.parse(data);
+      // Try to parse as JSON first (new format)
+      let qrData: QRData;
+      try {
+        qrData = JSON.parse(data);
+      } catch {
+        // Fallback: check if it's a group invite URL
+        const urlMatch = data.match(/memoria:\/\/invite\?code=([A-Z0-9]+)|https:\/\/memoria\.app\/join\/([A-Z0-9]+)/);
+        if (urlMatch) {
+          const inviteCode = urlMatch[1] || urlMatch[2];
+          qrData = {
+            type: 'group_invite',
+            inviteCode,
+            timestamp: Date.now()
+          };
+        } else {
+          throw new Error('Invalid QR format');
+        }
+      }
       
+      if (qrData.type === 'group_invite') {
+        // Handle group invitation
+        if (!qrData.inviteCode) {
+          Alert.alert(
+            'Code d\'invitation manquant',
+            'Ce QR code ne contient pas de code d\'invitation valide.',
+            [{ text: 'OK', onPress: () => setScanned(false) }]
+          );
+          return;
+        }
+
+        Alert.alert(
+          'Invitation au groupe',
+          `Voulez-vous rejoindre ce groupe Memoria ?\n\nCode: ${qrData.inviteCode}`,
+          [
+            { text: 'Annuler', onPress: () => setScanned(false) },
+            { 
+              text: 'Rejoindre', 
+              onPress: async () => {
+                const success = await joinGroupByCode(qrData.inviteCode!);
+                if (success) {
+                  Alert.alert(
+                    'Succès !',
+                    'Vous avez rejoint le groupe avec succès.',
+                    [{ text: 'OK', onPress: () => router.back() }]
+                  );
+                } else {
+                  Alert.alert(
+                    'Erreur',
+                    'Impossible de rejoindre le groupe. Vérifiez le code d\'invitation.',
+                    [{ text: 'OK', onPress: () => setScanned(false) }]
+                  );
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
+      
+      // Handle event QR codes (existing logic)
       // AI Moderation
       const isContentSafe = await moderateContent(qrData);
       if (!isContentSafe) {
@@ -194,9 +258,10 @@ export default function QRScanScreen() {
         ]
       );
     } catch (error) {
+      console.error('QR scan error:', error);
       Alert.alert(
         'QR Code Invalide',
-        'Ce QR code n&apos;est pas reconnu par Memoria.',
+        'Ce QR code n\'est pas reconnu par Memoria.',
         [{ text: 'OK', onPress: () => setScanned(false) }]
       );
     }
@@ -385,16 +450,16 @@ export default function QRScanScreen() {
         <View style={styles.instructionsContainer}>
           {Platform.OS !== 'web' ? (
             <BlurView intensity={20} style={styles.instructionsBlur}>
-              <Text style={styles.instructionsTitle}>Scanner QR avec AR</Text>
+              <Text style={styles.instructionsTitle}>Scanner QR Memoria</Text>
               <Text style={styles.instructionsText}>
-                Pointez votre caméra vers un QR code Memoria pour accéder aux événements avec géofencing et modération IA.
+                Scannez un QR code pour rejoindre un groupe ou accéder à un événement Memoria.
               </Text>
             </BlurView>
           ) : (
             <View style={[styles.instructionsBlur, styles.webBlur]}>
-              <Text style={styles.instructionsTitle}>Scanner QR avec AR</Text>
+              <Text style={styles.instructionsTitle}>Scanner QR Memoria</Text>
               <Text style={styles.instructionsText}>
-                Pointez votre caméra vers un QR code Memoria pour accéder aux événements avec géofencing et modération IA.
+                Scannez un QR code pour rejoindre un groupe ou accéder à un événement Memoria.
               </Text>
             </View>
           )}

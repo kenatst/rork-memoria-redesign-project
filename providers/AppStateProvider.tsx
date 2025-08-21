@@ -139,6 +139,10 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
             albums?: Album[];
             groups?: Group[];
             comments?: Comment[];
+            photos?: Photo[];
+            favoriteAlbums?: string[];
+            lastSync?: string;
+            profileAvatar?: string;
           };
           setOnboardingCompleteState(Boolean(data.onboardingComplete));
           setDisplayNameState(data.displayName ?? "Memoria");
@@ -146,7 +150,16 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
           setAlbums(data.albums ?? []);
           setGroups(data.groups ?? []);
           setComments(data.comments ?? []);
+          setPhotos(data.photos ?? []);
+          setFavoriteAlbums(data.favoriteAlbums ?? []);
+          setLastSync(data.lastSync);
+          setProfileAvatar(data.profileAvatar);
         }
+        
+        // Auto-sync on app start
+        setTimeout(() => {
+          syncData();
+        }, 1000);
       } catch (e) {
         console.log("Load AppState error", e);
       }
@@ -161,16 +174,31 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       albums?: Album[];
       groups?: Group[];
       comments?: Comment[];
+      photos?: Photo[];
+      favoriteAlbums?: string[];
+      lastSync?: string;
+      profileAvatar?: string;
     }) => {
       try {
-        const current = { onboardingComplete, displayName, points, albums, groups, comments };
+        const current = { 
+          onboardingComplete, 
+          displayName, 
+          points, 
+          albums, 
+          groups, 
+          comments, 
+          photos, 
+          favoriteAlbums, 
+          lastSync, 
+          profileAvatar 
+        };
         const merged = { ...current, ...next };
         await AsyncStorage.setItem(KEY, JSON.stringify(merged));
       } catch (e) {
         console.log("Persist AppState error", e);
       }
     },
-    [onboardingComplete, displayName, points, albums, groups, comments]
+    [onboardingComplete, displayName, points, albums, groups, comments, photos, favoriteAlbums, lastSync, profileAvatar]
   );
 
   const setOnboardingComplete = useCallback(
@@ -314,7 +342,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         : photo
     );
     setPhotos(updatedPhotos);
-  }, [photos, displayName]);
+    persist({ photos: updatedPhotos });
+  }, [photos, displayName, persist]);
 
   const unlikePhoto = useCallback((photoId: string) => {
     const updatedPhotos = photos.map(photo => 
@@ -323,7 +352,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         : photo
     );
     setPhotos(updatedPhotos);
-  }, [photos, displayName]);
+    persist({ photos: updatedPhotos });
+  }, [photos, displayName, persist]);
 
   const likeAlbum = useCallback((albumId: string) => {
     const updatedAlbums = albums.map(album => 
@@ -413,7 +443,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     if (avatar) {
       setProfileAvatar(avatar);
     }
-    persist({ displayName: name });
+    persist({ displayName: name, profileAvatar: avatar });
   }, [persist]);
 
   // Search functions
@@ -452,10 +482,12 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     }
   }, [albums, addNotification]);
 
-  // Advanced sync function
-  const syncData = useCallback(async () => {
+  // Advanced sync function with retry logic
+  const syncData = useCallback(async (retryCount = 0) => {
     try {
       setIsOnline(true);
+      console.log('Starting sync...', { photosCount: photos.length, albumsCount: albums.length });
+      
       const result = await trpcClient.photos.sync.mutate({
         photos,
         comments,
@@ -464,13 +496,43 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         lastSync
       });
       
-      setLastSync(result.syncedAt);
+      const newLastSync = result.syncedAt;
+      setLastSync(newLastSync);
+      persist({ lastSync: newLastSync });
+      
+      // Handle server conflicts (server wins strategy)
+      if (result.conflicts && result.conflicts.length > 0) {
+        console.log('Resolving conflicts:', result.conflicts);
+        // Update local data with server data
+        if (result.serverData) {
+          setPhotos(result.serverData.photos as Photo[]);
+          setAlbums(result.serverData.albums as Album[]);
+          setGroups(result.serverData.groups as Group[]);
+          setComments(result.serverData.comments as Comment[]);
+          persist({
+            photos: result.serverData.photos as Photo[],
+            albums: result.serverData.albums as Album[],
+            groups: result.serverData.groups as Group[],
+            comments: result.serverData.comments as Comment[]
+          });
+        }
+      }
+      
       console.log('Data synced successfully:', result);
     } catch (error) {
       console.error('Sync failed:', error);
       setIsOnline(false);
+      
+      // Retry logic with exponential backoff
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        console.log(`Retrying sync in ${delay}ms...`);
+        setTimeout(() => {
+          syncData(retryCount + 1);
+        }, delay);
+      }
     }
-  }, [photos, comments, albums, groups, lastSync]);
+  }, [photos, comments, albums, groups, lastSync, persist]);
 
   // Batch photo operations
   const batchSelectPhotos = useCallback((photoIds: string[]) => {
@@ -543,11 +605,13 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const toggleFavoriteAlbum = useCallback((albumId: string) => {
     setFavoriteAlbums(prev => {
       const isFavorite = prev.includes(albumId);
-      return isFavorite 
+      const updated = isFavorite 
         ? prev.filter(id => id !== albumId)
         : [...prev, albumId];
+      persist({ favoriteAlbums: updated });
+      return updated;
     });
-  }, []);
+  }, [persist]);
 
   // Album cover update
   const updateAlbumCover = useCallback(async (albumId: string, coverImage: string) => {
