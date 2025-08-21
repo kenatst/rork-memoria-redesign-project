@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, type Context } from '../../create-context';
+import { protectedProcedure } from '../../../create-context';
 
 const CreateAlbumInput = z.object({
   name: z.string(),
@@ -10,7 +10,7 @@ const CreateAlbumInput = z.object({
 
 export const createAlbumProcedure = protectedProcedure
   .input(CreateAlbumInput)
-  .mutation(async ({ input, ctx }: { input: z.infer<typeof CreateAlbumInput>; ctx: Context }) => {
+  .mutation(async ({ input, ctx }) => {
     const album = {
       id: Date.now().toString(),
       name: input.name,
@@ -35,7 +35,7 @@ const UpdateAlbumCoverInput = z.object({
 
 export const updateAlbumCoverProcedure = protectedProcedure
   .input(UpdateAlbumCoverInput)
-  .mutation(async ({ input, ctx }: { input: z.infer<typeof UpdateAlbumCoverInput>; ctx: Context }) => {
+  .mutation(async ({ input, ctx }) => {
     console.log('Updating album cover:', input.albumId, 'by user:', ctx.user.name);
 
     return {
@@ -52,7 +52,7 @@ const ExportAlbumInput = z.object({
 
 export const exportAlbumProcedure = protectedProcedure
   .input(ExportAlbumInput)
-  .mutation(async ({ input, ctx }: { input: z.infer<typeof ExportAlbumInput>; ctx: Context }) => {
+  .mutation(async ({ input, ctx }) => {
     console.log('Exporting album:', input.albumId, 'in format:', input.format, 'for user:', ctx.user.name);
 
     return {
@@ -80,7 +80,7 @@ const SearchAlbumsInput = z.object({
 
 export const searchAlbumsProcedure = protectedProcedure
   .input(SearchAlbumsInput)
-  .query(async ({ input, ctx }: { input: z.infer<typeof SearchAlbumsInput>; ctx: Context }) => {
+  .query(async ({ input, ctx }) => {
     console.log('Searching albums:', input.query, 'with filters:', input.filters, 'for user:', ctx.user.name);
 
     return {

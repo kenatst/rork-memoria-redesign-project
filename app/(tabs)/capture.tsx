@@ -20,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
+import { CameraFilters } from '@/components/CameraFilters';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -43,6 +44,7 @@ export default function CaptureScreen() {
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [showPhotoActions, setShowPhotoActions] = useState<boolean>(false);
+  const [showCameraFilters, setShowCameraFilters] = useState<boolean>(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -344,7 +346,7 @@ export default function CaptureScreen() {
               {Platform.OS !== 'web' ? (
                 <BlurView intensity={30} style={styles.bottomBlur}>
                   <View style={styles.bottomContent}>
-                    <Pressable style={styles.sideButton} onPress={cycleFilter} testID="filter-btn">
+                    <Pressable style={styles.sideButton} onPress={() => setShowCameraFilters(true)} testID="filter-btn">
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
 
@@ -375,7 +377,7 @@ export default function CaptureScreen() {
               ) : (
                 <View style={[styles.bottomBlur, styles.webBlur]}>
                   <View style={styles.bottomContent}>
-                    <Pressable style={styles.sideButton} onPress={cycleFilter}>
+                    <Pressable style={styles.sideButton} onPress={() => setShowCameraFilters(true)}>
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
                     <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
@@ -498,6 +500,24 @@ export default function CaptureScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Camera Filters Modal */}
+        <CameraFilters 
+          isVisible={showCameraFilters}
+          onClose={() => setShowCameraFilters(false)}
+          onPhotoTaken={(uri, filter) => {
+            if (mediaPermission?.granted) {
+              MediaLibrary.saveToLibraryAsync(uri);
+            }
+            setRecentPhotos(prev => [uri, ...prev.slice(0, 9)]);
+            setCapturedPhoto(uri);
+            setShowAlbumSelector(true);
+            setShowPhotoActions(true);
+            if (filter) {
+              setFilterMode(filter.id);
+            }
+          }}
+        />
       </SafeAreaView>
     </View>
   );
