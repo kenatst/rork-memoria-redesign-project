@@ -9,7 +9,7 @@ const CreateGroupInput = z.object({
 
 export const createGroupProcedure = protectedProcedure
   .input(CreateGroupInput)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: z.infer<typeof CreateGroupInput>; ctx: Context }) => {
     const group = {
       id: Date.now().toString(),
       name: input.name,
@@ -37,7 +37,7 @@ const JoinGroupInput = z.object({
 
 export const joinGroupProcedure = protectedProcedure
   .input(JoinGroupInput)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: z.infer<typeof JoinGroupInput>; ctx: Context }) => {
     console.log('Joining group with code:', input.inviteCode, 'for user:', ctx.user.name);
 
     return {
@@ -54,7 +54,7 @@ const UpdateGroupCoverInput = z.object({
 
 export const updateGroupCoverProcedure = protectedProcedure
   .input(UpdateGroupCoverInput)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: z.infer<typeof UpdateGroupCoverInput>; ctx: Context }) => {
     console.log('Updating group cover:', input.groupId, 'by user:', ctx.user.name);
 
     return {
@@ -70,7 +70,7 @@ const GetGroupMembersInput = z.object({
 
 export const getGroupMembersProcedure = protectedProcedure
   .input(GetGroupMembersInput)
-  .query(async ({ input }) => {
+  .query(async ({ input }: { input: z.infer<typeof GetGroupMembersInput> }) => {
     console.log('Getting members for group:', input.groupId);
 
     return {
