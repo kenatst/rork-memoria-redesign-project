@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, type Context } from '../../create-context';
+import { protectedProcedure, type Context } from '../../../create-context';
 
 const PhotoSchema = z.object({
   id: z.string(),
@@ -68,7 +68,7 @@ const SyncDataInput = z.object({
 
 export const syncDataProcedure = protectedProcedure
   .input(SyncDataInput)
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }: { input: z.infer<typeof SyncDataInput>; ctx: Context }) => {
     console.log('Syncing data:', {
       photos: input.photos.length,
       comments: input.comments.length,
@@ -97,7 +97,7 @@ const GetDataInput = z.object({
 
 export const getDataProcedure = protectedProcedure
   .input(GetDataInput)
-  .query(async ({ input, ctx }) => {
+  .query(async ({ input, ctx }: { input: z.infer<typeof GetDataInput>; ctx: Context }) => {
     console.log('Fetching data since:', input.lastSync, 'for user:', ctx.user.name);
 
     return {
