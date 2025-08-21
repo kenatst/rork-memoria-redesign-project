@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure } from '../../create-context';
+import { protectedProcedure, type Context } from '../../../create-context';
 
 const PhotoSchema = z.object({
   id: z.string(),
@@ -58,50 +58,53 @@ const GroupSchema = z.object({
   }).optional()
 });
 
+const SyncDataInput = z.object({
+  photos: z.array(PhotoSchema),
+  comments: z.array(CommentSchema),
+  albums: z.array(AlbumSchema),
+  groups: z.array(GroupSchema),
+  lastSync: z.string().optional(),
+});
+
 export const syncDataProcedure = protectedProcedure
-  .input(z.object({
-    photos: z.array(PhotoSchema),
-    comments: z.array(CommentSchema),
-    albums: z.array(AlbumSchema),
-    groups: z.array(GroupSchema),
-    lastSync: z.string().optional()
-  }))
-  .mutation(async ({ input }) => {
-    // Simulate server sync - in real app, this would sync with database
+  .input(SyncDataInput)
+  .mutation(async ({ input, ctx }: { input: z.infer<typeof SyncDataInput>; ctx: Context }) => {
     console.log('Syncing data:', {
       photos: input.photos.length,
       comments: input.comments.length,
       albums: input.albums.length,
       groups: input.groups.length,
-      lastSync: input.lastSync
+      lastSync: input.lastSync,
+      user: ctx.user.name,
     });
-    
+
     return {
       success: true,
       syncedAt: new Date().toISOString(),
-      conflicts: [], // In real app, return any sync conflicts
+      conflicts: [] as Array<unknown>,
       serverData: {
         photos: input.photos,
         comments: input.comments,
         albums: input.albums,
-        groups: input.groups
-      }
+        groups: input.groups,
+      },
     };
   });
 
+const GetDataInput = z.object({
+  lastSync: z.string().optional(),
+});
+
 export const getDataProcedure = protectedProcedure
-  .input(z.object({
-    lastSync: z.string().optional()
-  }))
-  .query(async ({ input }) => {
-    // Simulate fetching server data
-    console.log('Fetching data since:', input.lastSync);
-    
+  .input(GetDataInput)
+  .query(async ({ input, ctx }: { input: z.infer<typeof GetDataInput>; ctx: Context }) => {
+    console.log('Fetching data since:', input.lastSync, 'for user:', ctx.user.name);
+
     return {
-      photos: [],
-      comments: [],
-      albums: [],
-      groups: [],
-      lastSync: new Date().toISOString()
+      photos: [] as unknown[],
+      comments: [] as unknown[],
+      albums: [] as unknown[],
+      groups: [] as unknown[],
+      lastSync: new Date().toISOString(),
     };
   });
