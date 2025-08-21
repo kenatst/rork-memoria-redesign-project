@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, type Context } from '../../../create-context';
+import { protectedProcedure, type Context } from '../../create-context';
 
 export const createAlbumProcedure = protectedProcedure
   .input(z.object({
@@ -8,7 +8,7 @@ export const createAlbumProcedure = protectedProcedure
     description: z.string().optional(),
     isPublic: z.boolean().default(false)
   }))
-  .mutation(async ({ input, ctx }: { input: { name: string; groupId?: string; description?: string; isPublic: boolean }; ctx: Context }) => {
+  .mutation(async ({ input, ctx }) => {
     const album = {
       id: Date.now().toString(),
       name: input.name,
@@ -31,7 +31,7 @@ export const updateAlbumCoverProcedure = protectedProcedure
     albumId: z.string(),
     coverImage: z.string()
   }))
-  .mutation(async ({ input, ctx }: { input: { albumId: string; coverImage: string }; ctx: Context }) => {
+  .mutation(async ({ input, ctx }) => {
     console.log('Updating album cover:', input.albumId, 'by user:', ctx.user.name);
     
     return {
@@ -46,7 +46,7 @@ export const exportAlbumProcedure = protectedProcedure
     albumId: z.string(),
     format: z.enum(['zip', 'pdf', 'slideshow']).default('zip')
   }))
-  .mutation(async ({ input, ctx }: { input: { albumId: string; format: 'zip' | 'pdf' | 'slideshow' }; ctx: Context }) => {
+  .mutation(async ({ input, ctx }) => {
     console.log('Exporting album:', input.albumId, 'in format:', input.format, 'for user:', ctx.user.name);
     
     // Simulate export process
@@ -69,7 +69,7 @@ export const searchAlbumsProcedure = protectedProcedure
       groupId: z.string().optional()
     }).optional()
   }))
-  .query(async ({ input, ctx }: { input: { query: string; filters?: { tags?: string[]; dateRange?: { start: string; end: string }; groupId?: string } }; ctx: Context }) => {
+  .query(async ({ input, ctx }) => {
     console.log('Searching albums:', input.query, 'with filters:', input.filters, 'for user:', ctx.user.name);
     
     // Simulate search results
