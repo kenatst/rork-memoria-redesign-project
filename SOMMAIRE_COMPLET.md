@@ -149,8 +149,6 @@ Memoria est une application mobile React Native de pointe pour la gestion collab
 - ❌ Export en différentes résolutions
 
 ### 🤖 IA Avancée
-- ❌ Reconnaissance faciale pour organisation
-- ❌ Détection d'objets et scènes
 - ❌ Suggestions automatiques d'albums
 - ❌ Amélioration automatique des photos
 
@@ -159,12 +157,6 @@ Memoria est une application mobile React Native de pointe pour la gestion collab
 - ❌ API TikTok pour export
 - ❌ Partage WhatsApp natif
 - ❌ Stories automatiques
-
-### 📊 Analytics Avancées
-- ❌ Heatmaps d'utilisation
-- ❌ Prédictions de comportement
-- ❌ Recommandations personnalisées
-- ❌ Export de données
 
 ### 🔐 Sécurité & Confidentialité
 - ❌ Chiffrement end-to-end
