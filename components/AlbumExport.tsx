@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, ScrollView }
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { Share, Download, Image, Folder, Archive, FileText, Play } from 'lucide-react-native';
+import { Image as ImageIcon, Play } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useAppState, Album } from '@/providers/AppStateProvider';
 
@@ -13,7 +13,7 @@ interface AlbumExportProps {
   onClose: () => void;
 }
 
-export type ExportFormat = 'photos' | 'zip' | 'pdf' | 'slideshow';
+export type ExportFormat = 'photos' | 'slideshow';
 
 interface ExportOption {
   id: ExportFormat;
@@ -29,30 +29,14 @@ const EXPORT_OPTIONS: ExportOption[] = [
     id: 'photos',
     title: 'App Photos',
     description: 'Sauvegarder dans la galerie',
-    icon: Image,
+    icon: ImageIcon,
     color: '#34C759',
     available: Platform.OS !== 'web',
   },
   {
-    id: 'zip',
-    title: 'Archive ZIP',
-    description: 'Télécharger toutes les photos',
-    icon: Archive,
-    color: '#007AFF',
-    available: true,
-  },
-  {
-    id: 'pdf',
-    title: 'Album PDF',
-    description: 'Créer un livre photo',
-    icon: FileText,
-    color: '#FF3B30',
-    available: true,
-  },
-  {
     id: 'slideshow',
-    title: 'Diaporama',
-    description: 'Partager comme vidéo',
+    title: 'Mini‑film',
+    description: 'Aperçu et partage en vidéo',
     icon: Play,
     color: '#FF9500',
     available: true,
@@ -136,6 +120,7 @@ export function AlbumExport({ album, isVisible, onClose }: AlbumExportProps) {
     }
   };
 
+  /* removed: zip export */
   const exportAsZip = async () => {
     setIsExporting(true);
     setExportProgress(0);
@@ -181,6 +166,7 @@ export function AlbumExport({ album, isVisible, onClose }: AlbumExportProps) {
     }
   };
 
+  /* removed: pdf export */
   const exportAsPDF = async () => {
     setIsExporting(true);
     setExportProgress(0);
@@ -210,6 +196,7 @@ export function AlbumExport({ album, isVisible, onClose }: AlbumExportProps) {
     }
   };
 
+  // Mini‑film (slideshow) generation preview/share
   const exportAsSlideshow = async () => {
     setIsExporting(true);
     setExportProgress(0);
@@ -222,8 +209,8 @@ export function AlbumExport({ album, isVisible, onClose }: AlbumExportProps) {
       }
 
       Alert.alert(
-        'Diaporama créé',
-        `Le diaporama de "${album.name}" a été généré avec ${album.photos.length} photos et une durée de ${Math.ceil(album.photos.length * 3 / 60)} minutes.`,
+        'Mini‑film prêt',
+        `Le mini‑film de "${album.name}" est prêt avec ${album.photos.length} photos.`,
         [
           { text: 'Partager', onPress: () => shareSlideshow() },
           { text: 'OK', onPress: onClose }
@@ -239,6 +226,7 @@ export function AlbumExport({ album, isVisible, onClose }: AlbumExportProps) {
     }
   };
 
+  /* removed: pdf share */
   const sharePDF = async () => {
     if (Platform.OS !== 'web' && await Sharing.isAvailableAsync()) {
       const pdfPath = `${FileSystem.documentDirectory}${album.name}.pdf`;
@@ -280,12 +268,7 @@ export function AlbumExport({ album, isVisible, onClose }: AlbumExportProps) {
       case 'photos':
         await exportToPhotos();
         break;
-      case 'zip':
-        await exportAsZip();
-        break;
-      case 'pdf':
-        await exportAsPDF();
-        break;
+
       case 'slideshow':
         await exportAsSlideshow();
         break;
