@@ -10,6 +10,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useAppState } from '@/providers/AppStateProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
+import { ProgressToast } from '@/components/ProgressToast';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -44,6 +45,9 @@ export default function AlbumsScreen() {
   const [showCreate, setShowCreate] = useState<boolean>(false);
   const [newName, setNewName] = useState<string>('');
   const [newPrivacy, setNewPrivacy] = useState<Album['privacy']>('private');
+  const [toastVisible, setToastVisible] = useState<boolean>(false);
+  const [toastLabel, setToastLabel] = useState<string>('');
+  const [toastProgress, setToastProgress] = useState<number>(0);
 
   const [fadeAnim] = useState<Animated.Value>(() => new Animated.Value(0));
   const [slideAnim] = useState<Animated.Value>(() => new Animated.Value(40));
