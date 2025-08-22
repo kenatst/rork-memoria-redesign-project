@@ -48,6 +48,248 @@ export default function AlbumsScreen() {
   const [selectedGroup, setSelectedGroup] = useState<string | 'all'>('all');
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showCreate, setShowCreate] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'photos' | 'activity'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [newAlbumName, setNewAlbumName] = useState<string>('');
+  const [newAlbumType, setNewAlbumType] = useState<'personal' | 'shared' | 'event'>('personal');
+  const [newAlbumPrivacy, setNewAlbumPrivacy] = useState<'public' | 'private' | 'friends'>('private');
+  const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handleCreateAlbum = async () => {
+    if (!newAlbumName.trim()) {
+      showError('Nom requis', 'Veuillez saisir un nom pour l\'album');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      await createAlbum({
+        name: newAlbumName.trim(),
+        type: newAlbumType,
+        privacy: newAlbumPrivacy,
+        coverImage: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=400&auto=format&fit=crop',
+      });
+      
+      showSuccess('Album créé', `L'album "${newAlbumName}" a été créé avec succès`);
+      setShowCreate(false);
+      setNewAlbumName('');
+      setNewAlbumType('personal');
+      setNewAlbumPrivacy('private');
+      
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error('Error creating album:', error);
+      showError('Erreur', 'Impossible de créer l\'album. Veuillez réessayer.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const filteredAndSortedAlbums = useMemo(() => {
+    let filtered = albums;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(album => 
+        album.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply type filter
+    if (filterType !== 'all') {
+      switch (filterType) {
+        case 'recent':
+          filtered = filtered.filter(album => {
+            const daysDiff = (Date.now() - album.lastUpdated.getTime()) / (1000 * 60 * 60 * 24);
+            return daysDiff <= 7;
+          });
+          break;
+        case 'shared':
+          filtered = filtered.filter(album => album.type === 'shared' || album.type === 'event');
+          break;
+        case 'favorites':
+          filtered = filtered.filter(album => favoriteAlbumIds.includes(album.id));
+          break;
+        case 'mostViewed':
+          filtered = filtered.sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 10);
+          break;
+        case 'lastActivity':
+          filtered = filtered.sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime()).slice(0, 10);
+          break;
+      }
+    }
+
+    // Apply group filter
+    if (selectedGroup !== 'all') {
+      filtered = filtered.filter(album => album.groupId === selectedGroup);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'date':
+          comparison = a.createdAt.getTime() - b.createdAt.getTime();
+          break;
+        case 'photos':
+          comparison = a.photoCount - b.photoCount;
+          break;
+        case 'activity':
+          comparison = a.lastUpdated.getTime() - b.lastUpdated.getTime();
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [albums, searchQuery, filterType, selectedGroup, sortBy, sortOrder, favoriteAlbumIds]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Simulate refresh
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      showSuccess('Synchronisé', 'Albums mis à jour');
+    } catch (error) {
+      showError('Erreur', 'Impossible de synchroniser les albums');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [showSuccess, showError]);
+
+  const renderAlbumItem = useCallback(({ item: album, index }: { item: Album; index: number }) => {
+    const isFavorite = favoriteAlbumIds.includes(album.id);
+    const accessibleLabel = getAccessibleLabel(
+      `Album ${album.name}, ${album.photoCount} photos`,
+      `Appuyez pour ouvrir l'album`
+    );
+
+    return (
+      <Animated.View
+        style={[
+          viewMode === 'grid' ? styles.gridItem : styles.listItem,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <Pressable
+          style={[styles.albumCard, viewMode === 'list' && styles.albumCardList]}
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            router.push(`/album/${album.id}`);
+          }}
+          accessibilityLabel={accessibleLabel}
+          accessibilityRole="button"
+          accessibilityHint="Ouvre les détails de l'album"
+        >
+          <View style={styles.albumImageContainer}>
+            <Image
+              source={{ uri: album.coverImage }}
+              style={[styles.albumCover, viewMode === 'list' && styles.albumCoverList]}
+              contentFit="cover"
+              transition={300}
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              style={styles.albumOverlay}
+            />
+            
+            {/* Status badges */}
+            {album.isActive && (
+              <View style={[styles.statusBadge, styles.liveBadge]}>
+                <Text style={styles.statusText}>LIVE</Text>
+              </View>
+            )}
+            
+            {album.privacy === 'private' && (
+              <View style={[styles.statusBadge, styles.privateBadge]}>
+                <Lock size={12} color="#FFFFFF" />
+              </View>
+            )}
+            
+            {album.privacy === 'public' && (
+              <View style={[styles.statusBadge, styles.publicBadge]}>
+                <Globe size={12} color="#FFFFFF" />
+              </View>
+            )}
+            
+            {/* Favorite button */}
+            <Pressable
+              style={[styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                toggleFavoriteAlbum(album.id);
+                announceForAccessibility(isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris');
+              }}
+              accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              accessibilityRole="button"
+            >
+              <Heart
+                size={16}
+                color={isFavorite ? '#FF4444' : '#FFFFFF'}
+                fill={isFavorite ? '#FF4444' : 'transparent'}
+              />
+            </Pressable>
+          </View>
+          
+          <View style={[styles.albumInfo, viewMode === 'list' && styles.albumInfoList]}>
+            <Text style={styles.albumTitle} numberOfLines={viewMode === 'list' ? 2 : 1}>
+              {album.name}
+            </Text>
+            <Text style={styles.albumMeta}>
+              {album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}
+              {album.views && ` • ${album.views} vues`}
+            </Text>
+            <Text style={styles.albumDate}>
+              {album.lastUpdated.toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'short',
+                year: album.lastUpdated.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+              })}
+            </Text>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  }, [viewMode, favoriteAlbumIds, fadeAnim, slideAnim, router, toggleFavoriteAlbum, getAccessibleLabel, announceForAccessibility]);
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Utilisateur non connecté</Text>
+      </View>
+    );
+  }
   const [newName, setNewName] = useState<string>('');
   const [newPrivacy, setNewPrivacy] = useState<Album['privacy']>('private');
   const [toastVisible, setToastVisible] = useState<boolean>(false);

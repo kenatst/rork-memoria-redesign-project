@@ -79,7 +79,6 @@ export const [AIProvider, useAI] = createContextHook<AIContextValue>(() => {
         await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
       }
 
-      // Simulate video generation
       const result: MiniFilmResult = {
         id: `minifilm_${Date.now()}`,
         videoUri: `https://example.com/minifilm_${Date.now()}.mp4`,
@@ -113,14 +112,13 @@ export const [AIProvider, useAI] = createContextHook<AIContextValue>(() => {
       for (let i = 0; i < photos.length; i++) {
         setProgress((i + 1) / photos.length);
         
-        // Simulate AI analysis
         await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
         
         const analysis: PhotoAnalysis = {
           faces: Math.floor(Math.random() * 5),
           objects: ['person', 'building', 'nature', 'vehicle', 'food'].slice(0, Math.floor(Math.random() * 3) + 1),
-          quality: Math.random() * 0.4 + 0.6, // 0.6 to 1.0
-          brightness: Math.random() * 0.6 + 0.2, // 0.2 to 0.8
+          quality: Math.random() * 0.4 + 0.6,
+          brightness: Math.random() * 0.6 + 0.2,
           composition: Math.random() > 0.7 ? 'good' : Math.random() > 0.4 ? 'average' : 'poor',
           timestamp: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
         };
@@ -149,7 +147,6 @@ export const [AIProvider, useAI] = createContextHook<AIContextValue>(() => {
     try {
       console.log('Organizing photos by', criteria);
       
-      // Simulate AI organization
       await new Promise(resolve => setTimeout(resolve, 2000));
       setProgress(0.5);
       

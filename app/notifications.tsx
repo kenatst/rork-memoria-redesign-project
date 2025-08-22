@@ -311,7 +311,12 @@ export default function NotificationsScreen() {
             <Pressable style={styles.testButton} onPress={sendTestNotification}>
               <Text style={styles.testButtonText}>Test</Text>
             </Pressable>
-            <Pressable style={styles.settingsButton} onPress={() => router.push('/notification-settings')}>
+            <Pressable style={styles.settingsButton} onPress={() => {
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              router.push('/notification-settings');
+            }}>
               <Text style={styles.settingsButtonText}>⚙️</Text>
             </Pressable>
             <Pressable style={styles.closeButton} onPress={() => router.back()}>

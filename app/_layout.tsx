@@ -9,6 +9,11 @@ import { AppStateProvider } from "@/providers/AppStateProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
+import { ToastProvider } from "@/providers/ToastProvider";
+import { OfflineQueueProvider } from "@/providers/OfflineQueueProvider";
+import { ImageCompressionProvider } from "@/providers/ImageCompressionProvider";
+import { AIProvider } from "@/providers/AIProvider";
+import { AccessibilityProvider } from "@/components/AccessibilityProvider";
 import Toast from 'react-native-toast-message';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -54,6 +59,18 @@ function RootLayoutNav() {
       <Stack.Screen name="album/[id]/mini-film" options={{ headerShown: false }} />
       <Stack.Screen name="event/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="photo/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="create-event" options={{ 
+        title: "Créer un événement",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
+      <Stack.Screen name="notification-settings" options={{ 
+        title: "Paramètres notifications",
+        presentation: "modal",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
     </Stack>
   );
 }
@@ -66,19 +83,29 @@ export default function RootLayout() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <AppStateProvider>
-            <NotificationsProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <StatusBar style="light" backgroundColor="#000000" />
-                <ErrorBoundary>
-                  <RootLayoutNav />
-                </ErrorBoundary>
-                <Toast />
-              </GestureHandlerRootView>
-            </NotificationsProvider>
-          </AppStateProvider>
-        </AuthProvider>
+        <AccessibilityProvider>
+          <AuthProvider>
+            <AppStateProvider>
+              <NotificationsProvider>
+                <ToastProvider>
+                  <OfflineQueueProvider>
+                    <ImageCompressionProvider>
+                      <AIProvider>
+                        <GestureHandlerRootView style={{ flex: 1 }}>
+                          <StatusBar style="light" backgroundColor="#000000" />
+                          <ErrorBoundary>
+                            <RootLayoutNav />
+                          </ErrorBoundary>
+                          <Toast />
+                        </GestureHandlerRootView>
+                      </AIProvider>
+                    </ImageCompressionProvider>
+                  </OfflineQueueProvider>
+                </ToastProvider>
+              </NotificationsProvider>
+            </AppStateProvider>
+          </AuthProvider>
+        </AccessibilityProvider>
       </QueryClientProvider>
     </trpc.Provider>
   );
