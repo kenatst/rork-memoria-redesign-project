@@ -33,7 +33,8 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
     batchDeletePhotos, 
     batchMovePhotos, 
     clearSelection,
-    addNotification 
+    addNotification,
+    batchArchivePhotos 
   } = useAppState();
   
   const [showMoveModal, setShowMoveModal] = useState<boolean>(false);
@@ -178,23 +179,25 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
           text: 'Archiver',
           onPress: () => {
             setIsProcessing(true);
-            
-            // TODO: Implement actual archiving logic
-            // For now, just show notification
-            addNotification({
-              type: 'photo_added',
-              title: 'Photos archivées',
-              message: `${selectedPhotos.length} photo(s) ont été archivées`,
-              read: false
-            });
-            
+            try {
+              batchArchivePhotos(selectedPhotos);
+              addNotification({
+                type: 'photo_added',
+                title: 'Photos archivées',
+                message: `${selectedPhotos.length} photo(s) ont été archivées`,
+                read: false
+              });
+            } catch (e) {
+              console.log('Archive error', e);
+              Alert.alert('Erreur', 'Impossible d\'archiver les photos');
+            }
             setIsProcessing(false);
             onClose();
           }
         }
       ]
     );
-  }, [selectedPhotos, addNotification, onClose]);
+  }, [selectedPhotos, batchArchivePhotos, addNotification, onClose]);
 
   return (
     <>
@@ -242,6 +245,7 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
                   style={[styles.actionButton, styles.primaryAction]}
                   onPress={() => setShowMoveModal(true)}
                   disabled={isProcessing}
+                  testID="action-move"
                 >
                   <LinearGradient colors={['#4CAF50', '#45a049']} style={styles.actionGradient}>
                     <Move color="#FFFFFF" size={20} />
@@ -254,6 +258,7 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
                   style={[styles.actionButton, styles.secondaryAction]}
                   onPress={handleShare}
                   disabled={isProcessing}
+                  testID="action-share"
                 >
                   <LinearGradient colors={['#2196F3', '#1976D2']} style={styles.actionGradient}>
                     <Share2 color="#FFFFFF" size={20} />
@@ -266,6 +271,7 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
                   style={[styles.actionButton, styles.tertiaryAction]}
                   onPress={handleDownload}
                   disabled={isProcessing}
+                  testID="action-download"
                 >
                   <LinearGradient colors={['#FF9800', '#F57C00']} style={styles.actionGradient}>
                     <Download color="#FFFFFF" size={20} />
@@ -278,6 +284,7 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
                   style={[styles.actionButton, styles.quaternaryAction]}
                   onPress={handleArchive}
                   disabled={isProcessing}
+                  testID="action-archive"
                 >
                   <LinearGradient colors={['#9C27B0', '#7B1FA2']} style={styles.actionGradient}>
                     <Archive color="#FFFFFF" size={20} />
@@ -290,6 +297,7 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
                   style={[styles.actionButton, styles.dangerAction]}
                   onPress={handleDelete}
                   disabled={isProcessing}
+                  testID="action-delete"
                 >
                   <LinearGradient colors={['#F44336', '#D32F2F']} style={styles.actionGradient}>
                     <Trash2 color="#FFFFFF" size={20} />

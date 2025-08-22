@@ -3,24 +3,25 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Animated, Moda
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
-import { Users2, Plus, Shield, Crown, StickyNote } from 'lucide-react-native';
+import { Users2, Plus, Shield, Crown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppState } from '@/providers/AppStateProvider';
 import Colors from '@/constants/colors';
+import type { Group as PersistedGroup } from '@/providers/AppStateProvider';
 
-interface Group {
+type UIGroup = {
   id: string;
   name: string;
   members: number;
   cover: string;
   role: 'owner' | 'admin' | 'member';
-}
+};
 
 export default function GroupsScreen() {
   const router = useRouter();
-  const { groups: persistedGroups, createGroup, favoriteGroups, toggleFavoriteGroup } = useAppState() as any;
-  const [groups, setGroups] = useState<Group[]>([]);
+  const { groups: persistedGroups, createGroup, favoriteGroups, toggleFavoriteGroup } = useAppState();
+  const [groups, setGroups] = useState<UIGroup[]>([]);
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(40));
   const [showCreate, setShowCreate] = useState<boolean>(false);
@@ -28,12 +29,12 @@ export default function GroupsScreen() {
   const [newDescription, setNewDescription] = useState<string>('');
 
   useEffect(() => {
-    // Charger les groupes depuis le provider
-    const mockGroups = persistedGroups.map((group: any) => ({
-      ...group,
-      members: group.members.length,
+    const mockGroups: UIGroup[] = (persistedGroups as PersistedGroup[]).map((group: PersistedGroup) => ({
+      id: group.id,
+      name: group.name,
+      members: group.members?.length ?? 0,
       cover: group.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop',
-      role: 'owner' as const
+      role: 'owner'
     }));
     setGroups(mockGroups);
     
@@ -75,7 +76,7 @@ export default function GroupsScreen() {
       </Animated.View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {groups.map((g) => (
+        {groups.map((g: UIGroup) => (
           <Pressable key={g.id} style={styles.card} onPress={() => router.push(`/group/${g.id}`)} testID={`group-${g.id}`}>
             <Image source={{ uri: g.cover }} style={styles.cover} contentFit="cover" />
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.overlay} />

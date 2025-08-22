@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Sharing from 'expo-sharing';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { 
   Camera, 
@@ -26,6 +26,7 @@ const { height: screenHeight } = Dimensions.get('window');
 
 export default function CaptureScreen() {
   const { albums, addPhotoToAlbum } = useAppState();
+  const insets = useSafeAreaInsets();
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
   const [grid, setGrid] = useState<boolean>(false);
@@ -375,7 +376,7 @@ export default function CaptureScreen() {
               </Animated.View>
             )}
 
-            <View style={styles.topControls}>
+            <View style={[styles.topControls, { top: Math.max(12, insets.top + 8) }]}>
               {Platform.OS !== 'web' ? (
                 <BlurView intensity={20} style={styles.controlsBlur}>
                   <View style={styles.controlsContent}>
@@ -430,11 +431,11 @@ export default function CaptureScreen() {
             </View>
             
             {/* Camera Mode Indicator */}
-            <View style={styles.modeIndicator}>
+            <View style={[styles.modeIndicator, { top: Math.max(60, insets.top + 50) }]}>
               <Text style={styles.modeText}>{cameraMode.toUpperCase()}</Text>
             </View>
 
-            <View style={styles.bottomControls}>
+            <View style={[styles.bottomControls, { bottom: Math.max(100, insets.bottom + 80) }]}>
               {Platform.OS !== 'web' ? (
                 <BlurView intensity={30} style={styles.bottomBlur}>
                   <View style={styles.bottomContent}>
@@ -537,7 +538,7 @@ export default function CaptureScreen() {
 
             {lastPhoto && (
               <Pressable
-                style={styles.lastThumb}
+                style={[styles.lastThumb, { bottom: Math.max(116, insets.bottom + 56) }]}
                 onPress={() => { setCapturedPhoto(lastPhoto); setShowAlbumSelector(true); }}
                 testID="last-photo-thumb"
               >
@@ -550,7 +551,7 @@ export default function CaptureScreen() {
       
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {showGallery && recentPhotos.length > 0 && (
-          <View style={styles.galleryContainer}>
+          <View style={[styles.galleryContainer, { bottom: Math.max(200, insets.bottom + 100) }]}>
             {Platform.OS !== 'web' ? (
               <BlurView intensity={30} style={styles.galleryBlur}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
@@ -576,7 +577,7 @@ export default function CaptureScreen() {
         )}
 
         <Pressable 
-          style={styles.galleryToggle} 
+          style={[styles.galleryToggle, { bottom: Math.max(120, insets.bottom + 60) }]} 
           onPress={() => { setShowGallery(!showGallery); }}
           testID="toggle-gallery"
         >

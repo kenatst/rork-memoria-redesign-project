@@ -90,11 +90,14 @@ interface AppState {
   batchMovePhotos: (photoIds: string[], targetAlbumId: string) => void;
   favoriteAlbums: string[];
   toggleFavoriteAlbum: (albumId: string) => void;
+  favoriteGroups: string[];
+  toggleFavoriteGroup: (groupId: string) => void;
   updateAlbumCover: (albumId: string, coverImage: string) => void;
   getSmartAlbums: () => { byDate: Album[]; byLocation: Album[]; favorites: Album[] };
   notifications: Notification[];
   markNotificationRead: (notificationId: string) => void;
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void;
+  batchArchivePhotos: (photoIds: string[]) => void;
 }
 
 interface Notification {
@@ -127,6 +130,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const [favoriteAlbums, setFavoriteAlbums] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [favoriteGroups, setFavoriteGroups] = useState<string[]>([]);
+  const ARCHIVE_ALBUM_NAME = 'Archives';
 
   useEffect(() => {
     (async () => {
@@ -582,20 +586,16 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const batchMovePhotos = useCallback((photoIds: string[], targetAlbumId: string) => {
     const photosToMove = photos.filter(photo => photoIds.includes(photo.id));
     
-    // Update photos with new album ID
     const updatedPhotos = photos.map(photo => 
       photoIds.includes(photo.id) ? { ...photo, albumId: targetAlbumId } : photo
     );
     setPhotos(updatedPhotos);
     
-    // Update albums
     const updatedAlbums = albums.map(album => {
       if (album.id === targetAlbumId) {
-        // Add photos to target album
         const newPhotos = photosToMove.map(p => p.uri).filter(uri => !album.photos.includes(uri));
         return { ...album, photos: [...album.photos, ...newPhotos] };
       } else {
-        // Remove photos from other albums
         return {
           ...album,
           photos: album.photos.filter(photoUri => {
@@ -610,6 +610,15 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     
     clearSelection();
   }, [photos, albums, persist, clearSelection]);
+
+  const batchArchivePhotos = useCallback((photoIds: string[]) => {
+    let archiveAlbum = albums.find(a => a.name === ARCHIVE_ALBUM_NAME);
+    if (!archiveAlbum) {
+      archiveAlbum = createAlbum(ARCHIVE_ALBUM_NAME);
+    }
+    const targetAlbumId = archiveAlbum.id;
+    batchMovePhotos(photoIds, targetAlbumId);
+  }, [albums, createAlbum, batchMovePhotos]);
 
   // Favorites management
   const toggleFavoriteAlbum = useCallback((albumId: string) => {
@@ -723,7 +732,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       getSmartAlbums,
       notifications,
       markNotificationRead,
-      addNotification
+      addNotification,
+      batchArchivePhotos
     }),
     [
       onboardingComplete, 
@@ -772,7 +782,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       getSmartAlbums,
       notifications,
       markNotificationRead,
-      addNotification
+      addNotification,
+      batchArchivePhotos
     ]
   );
 });
