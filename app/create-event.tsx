@@ -12,20 +12,8 @@ import {
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Calendar, Save, Loader2 } from 'lucide-react-native';
-// Conditional import for react-native-maps to avoid web errors
-let MapView: any = null;
-let Marker: any = null;
-
-if (Platform.OS !== 'web') {
-  try {
-    const maps = require('react-native-maps');
-    MapView = maps.default;
-    Marker = maps.Marker;
-  } catch (error) {
-    console.warn('react-native-maps not available:', error);
-  }
-}
+import { MapPin, Calendar, Save, Loader2, ExternalLink } from 'lucide-react-native';
+import { Linking } from 'react-native';
 import { useAppState } from '@/providers/AppStateProvider';
 import { getCurrentLocation, requestLocationPermission, LocationCoords, GeolocationError } from '@/utils/geolocation';
 
@@ -161,52 +149,39 @@ export default function CreateEventScreen() {
   };
 
   const MapComponent = () => {
-    if (Platform.OS === 'web') {
-      // Web fallback - simple location display
-      return (
-        <View style={styles.webMapFallback}>
-          <MapPin size={24} color="#007AFF" />
-          <Text style={styles.webMapText}>
-            {location ? `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` : 'Position non disponible'}
-          </Text>
-          {address && (
-            <Text style={styles.webMapAddress}>{address}</Text>
-          )}
-        </View>
-      );
-    }
-
-    // Native map
-    if (!location) {
-      return (
-        <View style={styles.mapPlaceholder}>
-          <MapPin size={48} color="#ccc" />
-          <Text style={styles.mapPlaceholderText}>Position non disponible</Text>
-        </View>
-      );
-    }
+    const handleOpenMaps = useCallback(() => {
+      if (!location) return;
+      const lat = location.latitude;
+      const lng = location.longitude;
+      const query = address ? encodeURIComponent(address) : `${lat},${lng}`;
+      const url = Platform.select({
+        ios: `http://maps.apple.com/?q=${query}&ll=${lat},${lng}`,
+        android: `geo:${lat},${lng}?q=${query}`,
+        default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+      });
+      if (url) Linking.openURL(url).catch((e) => console.error('Failed to open maps', e));
+    }, [address, location]);
 
     return (
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
-      >
-        <Marker
-          coordinate={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-          }}
-          title="Emplacement de l&apos;événement"
-          description={address || 'Position actuelle'}
-        />
-      </MapView>
+      <View style={styles.webMapFallback}>
+        <MapPin size={24} color="#007AFF" />
+        <Text style={styles.webMapText}>
+          {location ? `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` : 'Position non disponible'}
+        </Text>
+        {address ? (
+          <Text style={styles.webMapAddress}>{address}</Text>
+        ) : null}
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={handleOpenMaps}
+          disabled={!location}
+          style={[styles.openMapsButton, !location && styles.openMapsButtonDisabled]}
+          testID="open-maps-button"
+        >
+          <ExternalLink size={16} color="#fff" />
+          <Text style={styles.openMapsText}>Ouvrir dans Maps</Text>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -411,6 +386,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f0f8ff',
     padding: 20,
+    gap: 8,
   },
   webMapText: {
     fontSize: 16,
@@ -446,6 +422,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
+  },
+  openMapsButton: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  openMapsButtonDisabled: {
+    backgroundColor: '#a0a0a0',
+  },
+  openMapsText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   infoText: {
     fontSize: 14,
