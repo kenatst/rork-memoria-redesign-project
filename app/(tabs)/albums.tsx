@@ -291,8 +291,6 @@ export default function AlbumsScreen() {
   const [toastLabel, setToastLabel] = useState<string>('');
   const [toastProgress, setToastProgress] = useState<number>(0);
 
-  const [contentFadeAnim] = useState<Animated.Value>(() => new Animated.Value(0));
-  const [contentSlideAnim] = useState<Animated.Value>(() => new Animated.Value(40));
   const [glowAnim] = useState<Animated.Value>(() => new Animated.Value(0));
   const [albumAnimations] = useState<{ scale: Animated.Value; opacity: Animated.Value; translateY: Animated.Value; }[]>(() =>
     Array.from({ length: 20 }, () => ({
@@ -323,17 +321,13 @@ export default function AlbumsScreen() {
     }));
     setAlbums(normalized);
 
-    Animated.parallel([
-      Animated.timing(contentFadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
-      Animated.spring(contentSlideAnim, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
-    ]).start();
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
         Animated.timing(glowAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
-  }, [persistedAlbums, contentFadeAnim, contentSlideAnim, glowAnim]);
+  }, [persistedAlbums, glowAnim]);
 
   const loadAlbums = async () => {
     const mock: Album[] = [
@@ -433,8 +427,8 @@ export default function AlbumsScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <Animated.View style={[styles.content, { opacity: contentFadeAnim }]}>        
-        <Animated.View style={[styles.header, { transform: [{ translateY: contentSlideAnim }] }]}>
+      <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>        
+        <Animated.View style={[styles.header, { transform: [{ translateY: mainSlideAnim }] }]}>
           {!useAppState().isOnline && (
             <View style={styles.offlineBadge}>
               <Text style={styles.offlineText}>Hors‑ligne</Text>
@@ -469,7 +463,7 @@ export default function AlbumsScreen() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View style={[styles.filtersBar, { transform: [{ translateY: contentSlideAnim }] }]}>
+        <Animated.View style={[styles.filtersBar, { transform: [{ translateY: mainSlideAnim }] }]}>
           {(['all', 'recent', 'shared', 'favorites', 'mostViewed', 'lastActivity'] as const).map((key) => {
             const active = filterType === key;
             return (
