@@ -339,6 +339,7 @@ export default function AlbumsScreen() {
         </Modal>
       </Animated.View>
       </SafeAreaView>
+      <ProgressToast visible={toastVisible} label={toastLabel} progress={toastProgress} />
     </View>
   );
 }
