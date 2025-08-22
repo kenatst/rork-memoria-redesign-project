@@ -29,7 +29,7 @@ interface Album {
   likes: string[];
   views?: number;
   lastActivity?: string;
-  coverTransform?: { scale: number; offsetX: number; offsetY: number };
+  coverTransform?: { scale: number; offsetX: number; offsetY: number; rotation?: number };
   shareLink?: { url: string; expiresAt: string } | null;
 }
 
@@ -105,7 +105,7 @@ interface AppState {
   addTagToPhoto: (photoId: string, tag: string) => void;
   removeTagFromPhoto: (photoId: string, tag: string) => void;
   searchByTag: (tag: string) => Photo[];
-  setAlbumCoverTransform: (albumId: string, transform: { scale: number; offsetX: number; offsetY: number }) => void;
+  setAlbumCoverTransform: (albumId: string, transform: { scale: number; offsetX: number; offsetY: number; rotation?: number }) => void;
   incrementAlbumView: (albumId: string) => void;
   createTemporaryShareLink: (albumId: string, hours: number) => { url: string; expiresAt: string } | null;
   revokeShareLink: (albumId: string) => void;
@@ -652,7 +652,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     return photos.filter(p => (p.tags ?? []).includes(t));
   }, [photos]);
 
-  const setAlbumCoverTransform = useCallback((albumId: string, transform: { scale: number; offsetX: number; offsetY: number }) => {
+  const setAlbumCoverTransform = useCallback((albumId: string, transform: { scale: number; offsetX: number; offsetY: number; rotation?: number }) => {
     const updated = albums.map(a => a.id === albumId ? { ...a, coverTransform: transform } : a);
     setAlbums(updated);
     persist({ albums: updated });

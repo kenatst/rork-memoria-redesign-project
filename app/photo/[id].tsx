@@ -645,7 +645,7 @@ export default function PhotoDetailScreen() {
                     <Text style={styles.cancelTagText}>Annuler</Text>
                   </Pressable>
                 </View>
-              </BlurView>
+              </View>
             )}
           </View>
         )}
