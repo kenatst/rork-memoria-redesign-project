@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, Pressable, Animated, Platform, Dimensions, RefreshControl, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -257,28 +258,38 @@ export default function AlbumsScreen() {
             ))}
           </ScrollView>
 
-          <View style={viewMode === 'grid' ? styles.albumsGrid : styles.albumsList}>
-            {filteredAlbums.map((album, index) => {
-              const Icon = AlbumIcon(album.type);
-              const PIcon = PrivacyIcon(album.privacy);
-              const anim = albumAnimations[index % albumAnimations.length];
-              const color = (typeColor as any)[album.type] as string;
-              return (
-                <Animated.View key={album.id} style={[viewMode === 'grid' ? styles.albumCard : styles.albumListItem, { opacity: anim.opacity, transform: [{ scale: anim.scale }, { translateY: anim.translateY }] }]}>
-                  <Pressable style={styles.albumPressable} onPress={() => { handleHaptic('medium'); router.push(`/album/${album.id}`); }} testID={`album-${album.id}`}>
-                    {Platform.OS !== 'web' ? (
-                      <BlurView intensity={12} style={styles.albumBlur}>
-                        <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
-                      </BlurView>
-                    ) : (
-                      <View style={[styles.albumBlur, styles.webBlur]}>
-                        <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
-                      </View>
-                    )}
-                  </Pressable>
-                </Animated.View>
-              );
-            })}
+          <View style={styles.flashListContainer}>
+            <FlashList
+              data={filteredAlbums}
+              renderItem={({ item: album, index }) => {
+                const Icon = AlbumIcon(album.type);
+                const PIcon = PrivacyIcon(album.privacy);
+                const anim = albumAnimations[index % albumAnimations.length];
+                const color = (typeColor as any)[album.type] as string;
+                return (
+                  <Animated.View style={[viewMode === 'grid' ? styles.albumCard : styles.albumListItem, { opacity: anim.opacity, transform: [{ scale: anim.scale }, { translateY: anim.translateY }] }]}>
+                    <Pressable style={styles.albumPressable} onPress={() => { handleHaptic('medium'); router.push(`/album/${album.id}`); }} testID={`album-${album.id}`}>
+                      {Platform.OS !== 'web' ? (
+                        <BlurView intensity={12} style={styles.albumBlur}>
+                          <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
+                        </BlurView>
+                      ) : (
+                        <View style={[styles.albumBlur, styles.webBlur]}>
+                          <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
+                        </View>
+                      )}
+                    </Pressable>
+                  </Animated.View>
+                );
+              }}
+              keyExtractor={(item) => item.id}
+              numColumns={viewMode === 'grid' ? 2 : 1}
+              key={viewMode} // Force re-render when view mode changes
+              estimatedItemSize={viewMode === 'grid' ? 200 : 100}
+              contentContainerStyle={styles.flashListContent}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={{ height: viewMode === 'grid' ? 16 : 12 }} />}
+            />
           </View>
         </ScrollView>
 
@@ -468,6 +479,8 @@ const styles = StyleSheet.create({
   albumsContainer: { flex: 1, paddingHorizontal: 20 },
   albumsContent: { paddingBottom: 140 },
   webBlur: { backgroundColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' as any },
+  flashListContainer: { flex: 1, minHeight: 400 },
+  flashListContent: { paddingBottom: 20 },
   albumsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   albumsList: { gap: 12 },
   albumCard: { width: (screenWidth - 56) / 2, borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },

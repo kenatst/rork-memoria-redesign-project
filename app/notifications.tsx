@@ -216,6 +216,25 @@ export default function NotificationsScreen() {
     );
   };
 
+  const sendTestNotification = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    
+    const testNotification: Notification = {
+      id: Date.now().toString(),
+      type: 'system',
+      title: 'Test de notification',
+      message: 'Ceci est une notification de test pour vérifier le bon fonctionnement du système.',
+      timestamp: new Date(),
+      isRead: false,
+      priority: 'medium',
+      data: { test: true }
+    };
+    
+    setNotifications(prev => [testNotification, ...prev]);
+  };
+
   const formatTimeAgo = (timestamp: Date): string => {
     const now = new Date();
     const diff = now.getTime() - timestamp.getTime();
@@ -289,6 +308,12 @@ export default function NotificationsScreen() {
                 <Text style={styles.markAllText}>Tout lire</Text>
               </Pressable>
             )}
+            <Pressable style={styles.testButton} onPress={sendTestNotification}>
+              <Text style={styles.testButtonText}>Test</Text>
+            </Pressable>
+            <Pressable style={styles.settingsButton} onPress={() => router.push('/notification-settings')}>
+              <Text style={styles.settingsButtonText}>⚙️</Text>
+            </Pressable>
             <Pressable style={styles.closeButton} onPress={() => router.back()}>
               {Platform.OS !== 'web' ? (
                 <BlurView intensity={20} style={styles.closeBlur}>
@@ -436,6 +461,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.palette.taupeDeep,
+  },
+  testButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(46, 204, 113, 0.3)',
+  },
+  testButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2ECC71',
+  },
+  settingsButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  settingsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   closeButton: {},
   closeBlur: {
