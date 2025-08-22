@@ -54,6 +54,23 @@ interface Comment {
   albumId?: string;
 }
 
+interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
+  date: string;
+  createdAt: string;
+  createdBy: string;
+  attendees: string[];
+  albumId?: string;
+  coverImage?: string;
+}
+
 interface AppState {
   onboardingComplete: boolean;
   setOnboardingComplete: (v: boolean) => void;
@@ -65,6 +82,7 @@ interface AppState {
   groups: Group[];
   comments: Comment[];
   photos: Photo[];
+  events: Event[];
   createAlbum: (name: string, groupId?: string) => Album;
   deleteAlbum: (albumId: string) => void;
   addPhotoToAlbum: (albumId: string, photoUri: string) => void;
@@ -109,6 +127,11 @@ interface AppState {
   incrementAlbumView: (albumId: string) => void;
   createTemporaryShareLink: (albumId: string, hours: number) => { url: string; expiresAt: string } | null;
   revokeShareLink: (albumId: string) => void;
+  createEvent: (title: string, description: string, location: { latitude: number; longitude: number; address?: string }, date: string) => Event;
+  deleteEvent: (eventId: string) => void;
+  joinEvent: (eventId: string) => void;
+  leaveEvent: (eventId: string) => void;
+  searchEvents: (query: string) => Event[];
 }
 
 interface Notification {
@@ -131,6 +154,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const [groups, setGroups] = useState<Group[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [lastSync, setLastSync] = useState<string | undefined>();
@@ -709,6 +733,58 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     return { byDate, byLocation, favorites };
   }, [albums, photos, favoriteAlbums]);
 
+  const createEvent = useCallback((title: string, description: string, location: { latitude: number; longitude: number; address?: string }, date: string) => {
+    const newEvent: Event = {
+      id: Date.now().toString(),
+      title,
+      description,
+      location,
+      date,
+      createdAt: new Date().toISOString(),
+      createdBy: displayName,
+      attendees: [displayName]
+    };
+    const updatedEvents = [...events, newEvent];
+    setEvents(updatedEvents);
+    persist({ events: updatedEvents } as any);
+    return newEvent;
+  }, [events, displayName, persist]);
+
+  const deleteEvent = useCallback((eventId: string) => {
+    const updatedEvents = events.filter(event => event.id !== eventId);
+    setEvents(updatedEvents);
+    persist({ events: updatedEvents } as any);
+  }, [events, persist]);
+
+  const joinEvent = useCallback((eventId: string) => {
+    const updatedEvents = events.map(event => 
+      event.id === eventId && !event.attendees.includes(displayName)
+        ? { ...event, attendees: [...event.attendees, displayName] }
+        : event
+    );
+    setEvents(updatedEvents);
+    persist({ events: updatedEvents } as any);
+  }, [events, displayName, persist]);
+
+  const leaveEvent = useCallback((eventId: string) => {
+    const updatedEvents = events.map(event => 
+      event.id === eventId
+        ? { ...event, attendees: event.attendees.filter(user => user !== displayName) }
+        : event
+    );
+    setEvents(updatedEvents);
+    persist({ events: updatedEvents } as any);
+  }, [events, displayName, persist]);
+
+  const searchEvents = useCallback((query: string) => {
+    const q = query.toLowerCase();
+    return events.filter(event => 
+      event.title.toLowerCase().includes(q) || 
+      (event.description ?? '').toLowerCase().includes(q) ||
+      (event.location.address ?? '').toLowerCase().includes(q)
+    );
+  }, [events]);
+
   return useMemo(
     () => ({ 
       onboardingComplete, 
@@ -721,6 +797,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       groups,
       comments,
       photos,
+      events,
       createAlbum,
       deleteAlbum,
       addPhotoToAlbum,
@@ -764,7 +841,12 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       setAlbumCoverTransform,
       incrementAlbumView,
       createTemporaryShareLink,
-      revokeShareLink
+      revokeShareLink,
+      createEvent,
+      deleteEvent,
+      joinEvent,
+      leaveEvent,
+      searchEvents
     }),
     [
       onboardingComplete, 
@@ -777,6 +859,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       groups,
       comments,
       photos,
+      events,
       createAlbum,
       deleteAlbum,
       addPhotoToAlbum,
@@ -820,9 +903,14 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       setAlbumCoverTransform,
       incrementAlbumView,
       createTemporaryShareLink,
-      revokeShareLink
+      revokeShareLink,
+      createEvent,
+      deleteEvent,
+      joinEvent,
+      leaveEvent,
+      searchEvents
     ]
   );
 });
 
-export type { Album, Group, Comment, Photo };
+export type { Album, Group, Comment, Photo, Event };

@@ -299,6 +299,26 @@ export default function HomeScreen() {
               </LinearGradient>
             </Pressable>
 
+            <Pressable
+              style={[styles.card, styles.eventCard]}
+              onPress={() => {
+                handleHapticFeedback();
+                router.push("/create-event");
+              }}
+              testID="create-event"
+            >
+              <LinearGradient
+                colors={['#1a1a2e', '#16213e']}
+                style={styles.cardGradient}
+              >
+                <View style={styles.cardIcon}>
+                  <Calendar color={Colors.palette.accentGold} size={28} />
+                </View>
+                <Text style={styles.cardTitle}>Événement</Text>
+                <Text style={styles.cardSub}>Créer avec localisation</Text>
+              </LinearGradient>
+            </Pressable>
+
 
           </View>
 
@@ -424,6 +444,7 @@ const styles = StyleSheet.create({
   secondaryCard: {},
   tertiaryCard: {},
   quaternaryCard: {},
+  eventCard: {},
   cardGradient: {
     padding: 20,
     minHeight: 120,
