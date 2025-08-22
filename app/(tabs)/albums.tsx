@@ -55,17 +55,17 @@ export default function AlbumsScreen() {
   const [newAlbumType, setNewAlbumType] = useState<'personal' | 'shared' | 'event'>('personal');
   const [newAlbumPrivacy, setNewAlbumPrivacy] = useState<'public' | 'private' | 'friends'>('private');
   const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [slideAnim] = useState(new Animated.Value(50));
+  const [mainFadeAnim] = useState(new Animated.Value(0));
+  const [mainSlideAnim] = useState(new Animated.Value(50));
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
+      Animated.timing(mainFadeAnim, {
         toValue: 1,
         duration: 800,
         useNativeDriver: true,
       }),
-      Animated.spring(slideAnim, {
+      Animated.spring(mainSlideAnim, {
         toValue: 0,
         tension: 50,
         friction: 8,
@@ -82,12 +82,7 @@ export default function AlbumsScreen() {
 
     setIsCreating(true);
     try {
-      await createAlbum({
-        name: newAlbumName.trim(),
-        type: newAlbumType,
-        privacy: newAlbumPrivacy,
-        coverImage: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=400&auto=format&fit=crop',
-      });
+      await createAlbum(newAlbumName.trim());
       
       showSuccess('Album créé', `L'album "${newAlbumName}" a été créé avec succès`);
       setShowCreate(false);
@@ -191,15 +186,15 @@ export default function AlbumsScreen() {
     return (
       <Animated.View
         style={[
-          viewMode === 'grid' ? styles.gridItem : styles.listItem,
+          styles.albumCard,
           {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
+            opacity: mainFadeAnim,
+            transform: [{ translateY: mainSlideAnim }],
           },
         ]}
       >
         <Pressable
-          style={[styles.albumCard, viewMode === 'list' && styles.albumCardList]}
+          style={[styles.albumCard, viewMode === 'list' && styles.albumListItem]}
           onPress={() => {
             if (Platform.OS !== 'web') {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -213,7 +208,7 @@ export default function AlbumsScreen() {
           <View style={styles.albumImageContainer}>
             <Image
               source={{ uri: album.coverImage }}
-              style={[styles.albumCover, viewMode === 'list' && styles.albumCoverList]}
+              style={[styles.albumCover, viewMode === 'list' && styles.albumListCover]}
               contentFit="cover"
               transition={300}
             />
@@ -224,26 +219,26 @@ export default function AlbumsScreen() {
             
             {/* Status badges */}
             {album.isActive && (
-              <View style={[styles.statusBadge, styles.liveBadge]}>
-                <Text style={styles.statusText}>LIVE</Text>
+              <View style={[styles.liveBadge]}>
+                <Text style={styles.liveText}>LIVE</Text>
               </View>
             )}
             
             {album.privacy === 'private' && (
-              <View style={[styles.statusBadge, styles.privateBadge]}>
+              <View style={[styles.privacyBadge]}>
                 <Lock size={12} color="#FFFFFF" />
               </View>
             )}
             
             {album.privacy === 'public' && (
-              <View style={[styles.statusBadge, styles.publicBadge]}>
+              <View style={[styles.privacyBadge]}>
                 <Globe size={12} color="#FFFFFF" />
               </View>
             )}
             
             {/* Favorite button */}
             <Pressable
-              style={[styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
+              style={[styles.favoriteBadge, isFavorite && styles.favoriteBadgeActive]}
               onPress={() => {
                 if (Platform.OS !== 'web') {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -262,11 +257,11 @@ export default function AlbumsScreen() {
             </Pressable>
           </View>
           
-          <View style={[styles.albumInfo, viewMode === 'list' && styles.albumInfoList]}>
-            <Text style={styles.albumTitle} numberOfLines={viewMode === 'list' ? 2 : 1}>
+          <View style={[styles.albumInfo, viewMode === 'list' && styles.albumListInfo]}>
+            <Text style={styles.albumName} numberOfLines={viewMode === 'list' ? 2 : 1}>
               {album.name}
             </Text>
-            <Text style={styles.albumMeta}>
+            <Text style={styles.albumStats}>
               {album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}
               {album.views && ` • ${album.views} vues`}
             </Text>
@@ -281,12 +276,12 @@ export default function AlbumsScreen() {
         </Pressable>
       </Animated.View>
     );
-  }, [viewMode, favoriteAlbumIds, fadeAnim, slideAnim, router, toggleFavoriteAlbum, getAccessibleLabel, announceForAccessibility]);
+  }, [viewMode, favoriteAlbumIds, mainFadeAnim, mainSlideAnim, router, toggleFavoriteAlbum, getAccessibleLabel, announceForAccessibility]);
 
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Utilisateur non connecté</Text>
+        <Text style={styles.userName}>Utilisateur non connecté</Text>
       </View>
     );
   }
@@ -295,6 +290,7 @@ export default function AlbumsScreen() {
   const [toastVisible, setToastVisible] = useState<boolean>(false);
   const [toastLabel, setToastLabel] = useState<string>('');
   const [toastProgress, setToastProgress] = useState<number>(0);
+
 
   const [fadeAnim] = useState<Animated.Value>(() => new Animated.Value(0));
   const [slideAnim] = useState<Animated.Value>(() => new Animated.Value(40));
@@ -338,7 +334,7 @@ export default function AlbumsScreen() {
         Animated.timing(glowAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
-  }, [persistedAlbums]);
+  }, [persistedAlbums, fadeAnim, slideAnim, glowAnim]);
 
   const loadAlbums = async () => {
     const mock: Album[] = [
@@ -370,7 +366,7 @@ export default function AlbumsScreen() {
     }
   }, []);
 
-  const handleRefresh = async () => {
+  const handleRefreshAlbums = async () => {
     handleHaptic('light');
     setRefreshing(true);
     try {
@@ -514,7 +510,7 @@ export default function AlbumsScreen() {
           style={styles.albumsContainer}
           contentContainerStyle={styles.albumsContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.palette.accentGold} colors={[Colors.palette.accentGold]} progressBackgroundColor="#1a1a1a" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefreshAlbums} tintColor={Colors.palette.accentGold} colors={[Colors.palette.accentGold]} progressBackgroundColor="#1a1a1a" />}
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
             {filteredAlbums.slice(0, 6).map((a) => (
@@ -805,4 +801,6 @@ const styles = StyleSheet.create({
   createBtn: { backgroundColor: '#FFD700' },
   cancelText: { color: Colors.palette.taupe, fontWeight: '700' },
   createText: { color: '#000000', fontWeight: '800' },
+  gridItem: { width: (screenWidth - 56) / 2, marginBottom: 16 },
+  listItem: { marginBottom: 12 },
 });
