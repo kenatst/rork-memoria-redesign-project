@@ -183,7 +183,7 @@ export default function AlbumsScreen() {
         ]}
       >
         <Pressable
-          style={[styles.albumCard, viewMode === 'list' && styles.listItem]}
+          style={[styles.albumCard, viewMode === 'list' && styles.albumCardList]}
           onPress={() => {
             if (Platform.OS !== 'web') {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -274,8 +274,6 @@ export default function AlbumsScreen() {
       </View>
     );
   }
-  const [newName, setNewName] = useState<string>('');
-  const [newPrivacy, setNewPrivacy] = useState<Album['privacy']>('private');
   const [toastVisible, setToastVisible] = useState<boolean>(false);
   const [toastLabel, setToastLabel] = useState<string>('');
   const [toastProgress, setToastProgress] = useState<number>(0);
@@ -546,19 +544,19 @@ export default function AlbumsScreen() {
                 style={styles.input}
                 placeholder="Nom de l'album"
                 placeholderTextColor="#7A6F63"
-                value={newName}
-                onChangeText={setNewName}
+                value={newAlbumName}
+                onChangeText={setNewAlbumName}
                 testID="album-name-input"
               />
               <View style={styles.privacyRow}>
                 {(['public','friends','private'] as const).map((p) => (
                   <Pressable
                     key={p}
-                    onPress={() => setNewPrivacy(p)}
-                    style={[styles.privacyChip, newPrivacy === p && styles.privacyChipActive]}
+                    onPress={() => setNewAlbumPrivacy(p)}
+                    style={[styles.privacyChip, newAlbumPrivacy === p && styles.privacyChipActive]}
                     testID={`privacy-${p}`}
                   >
-                    <Text style={[styles.privacyText, newPrivacy === p && styles.privacyTextActive]}>
+                    <Text style={[styles.privacyText, newAlbumPrivacy === p && styles.privacyTextActive]}>
                       {p === 'public' ? 'Public' : p === 'friends' ? 'Amis' : 'Privé'}
                     </Text>
                   </Pressable>
@@ -570,26 +568,7 @@ export default function AlbumsScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.modalBtn, styles.createBtn]}
-                  onPress={async () => {
-                    if (!newName.trim()) {
-                      showError('Nom requis', 'Veuillez saisir un nom pour votre album');
-                      return;
-                    }
-                    try {
-                      // Utiliser le provider pour créer l'album
-                      await createAlbum(newName.trim());
-                      setShowCreate(false);
-                      setNewName('');
-                      setNewPrivacy('private');
-                      handleHaptic('medium');
-                      showSuccess('Album créé', `L'album "${newName.trim()}" a été créé avec succès`);
-                      announceForAccessibility(`Album ${newName.trim()} créé avec succès`);
-                    } catch (error) {
-                      console.error('Error creating album:', error);
-                      showError('Erreur de création', 'Impossible de créer l\'album. Veuillez réessayer.');
-                      announceForAccessibility('Erreur lors de la création de l\'album');
-                    }
-                  }}
+                  onPress={handleCreateAlbum}
                   testID="confirm-create"
                 >
                   <Text style={styles.createText}>Créer</Text>
