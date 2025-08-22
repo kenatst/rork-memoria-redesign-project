@@ -22,11 +22,17 @@ import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import { CameraFilters } from '@/components/CameraFilters';
 import ImageCompression from '@/components/ImageCompression';
+import { useImageCompression } from '@/providers/ImageCompressionProvider';
+import { useOfflineQueue } from '@/providers/OfflineQueueProvider';
+import { useAI } from '@/providers/AIProvider';
 
 const { height: screenHeight } = Dimensions.get('window');
 
 export default function CaptureScreen() {
   const { albums, addPhotoToAlbum } = useAppState();
+  const { compressImage, isCompressing } = useImageCompression();
+  const { addToQueue, pendingCount } = useOfflineQueue();
+  const { analyzePhotos, isAnalyzing } = useAI();
   const insets = useSafeAreaInsets();
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
@@ -219,12 +225,35 @@ export default function CaptureScreen() {
       
       if (photo) {
         const filteredUri = await applyFilter(photo.uri, filterMode);
-        if (mediaPermission?.granted) {
-          await MediaLibrary.saveToLibraryAsync(filteredUri);
+        
+        // Auto-compress image using AI provider
+        try {
+          const compressedResult = await compressImage(filteredUri);
+          const finalUri = compressedResult.uri;
+          
+          if (mediaPermission?.granted) {
+            await MediaLibrary.saveToLibraryAsync(finalUri);
+          } else {
+            // Add to offline queue if no permission
+            addToQueue('photo_upload', { uri: finalUri, timestamp: Date.now() });
+          }
+          
+          setRecentPhotos(prev => [finalUri, ...prev.slice(0, 9)]);
+          
+          // Analyze photo with AI in background
+          analyzePhotos([finalUri]).catch(console.error);
+          
+          setImageToCompress(finalUri);
+          setShowImageCompression(true);
+        } catch (error) {
+          console.error('Compression failed, using original:', error);
+          if (mediaPermission?.granted) {
+            await MediaLibrary.saveToLibraryAsync(filteredUri);
+          }
+          setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
+          setImageToCompress(filteredUri);
+          setShowImageCompression(true);
         }
-        setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
-        setImageToCompress(filteredUri);
-        setShowImageCompression(true);
       }
     } catch (error) {
       console.log('Erreur capture:', error);
@@ -234,8 +263,18 @@ export default function CaptureScreen() {
 
   const handleAddToAlbum = (albumId: string) => {
     if (capturedPhoto) {
-      addPhotoToAlbum(albumId, capturedPhoto);
-      Alert.alert('Succès', "Photo ajoutée à l'album!");
+      try {
+        addPhotoToAlbum(albumId, capturedPhoto);
+        Alert.alert('Succès', "Photo ajoutée à l'album!");
+      } catch (error) {
+        // Add to offline queue if failed
+        addToQueue('photo_upload', { 
+          albumId, 
+          photoUri: capturedPhoto, 
+          timestamp: Date.now() 
+        });
+        Alert.alert('Ajouté à la file', "Photo sera synchronisée quand la connexion sera rétablie");
+      }
       setShowAlbumSelector(false);
       setCapturedPhoto(null);
     }
@@ -421,7 +460,28 @@ export default function CaptureScreen() {
               </Animated.View>
             )}
 
-            <View style={[styles.topControls, { top: Math.max(12, insets.top + 8) }]}>
+            {/* Offline Queue Indicator */}
+            {pendingCount > 0 && (
+              <View style={[styles.offlineIndicator, { top: Math.max(12, insets.top + 8) }]}>
+                <Text style={styles.offlineText}>📤 {pendingCount} en attente</Text>
+              </View>
+            )}
+            
+            {/* AI Analysis Indicator */}
+            {isAnalyzing && (
+              <View style={[styles.aiIndicator, { top: Math.max(40, insets.top + 36) }]}>
+                <Text style={styles.aiText}>🧠 Analyse IA...</Text>
+              </View>
+            )}
+            
+            {/* Compression Indicator */}
+            {isCompressing && (
+              <View style={[styles.compressionIndicator, { top: Math.max(68, insets.top + 64) }]}>
+                <Text style={styles.compressionText}>🗜️ Compression...</Text>
+              </View>
+            )}
+
+            <View style={[styles.topControls, { top: Math.max(96, insets.top + 92) }]}>
               {Platform.OS !== 'web' ? (
                 <BlurView intensity={20} style={styles.controlsBlur}>
                   <View style={styles.controlsContent}>
@@ -820,4 +880,48 @@ const styles = StyleSheet.create({
   modalActions: { marginTop: 16 },
   skipBtn: { backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   skipText: { color: '#FFFFFF', fontWeight: '700' },
+  
+  // New styles for providers integration
+  offlineIndicator: {
+    position: 'absolute',
+    left: 20,
+    backgroundColor: 'rgba(255, 165, 0, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    zIndex: 25,
+  },
+  offlineText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  aiIndicator: {
+    position: 'absolute',
+    left: 20,
+    backgroundColor: 'rgba(255, 215, 0, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    zIndex: 25,
+  },
+  aiText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  compressionIndicator: {
+    position: 'absolute',
+    left: 20,
+    backgroundColor: 'rgba(0, 255, 0, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    zIndex: 25,
+  },
+  compressionText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

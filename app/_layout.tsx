@@ -86,6 +86,16 @@ function RootLayoutNav() {
         headerStyle: { backgroundColor: '#000000' },
         headerTintColor: '#FFFFFF'
       }} />
+      <Stack.Screen name="video-studio" options={{ 
+        title: "Studio Vidéo",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
+      <Stack.Screen name="ai-suggestions" options={{ 
+        title: "Suggestions IA",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
     </Stack>
   );
 }

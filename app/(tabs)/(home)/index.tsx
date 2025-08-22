@@ -10,11 +10,17 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/providers/AuthProvider";
+import { useOfflineQueue } from "@/providers/OfflineQueueProvider";
+import { useAI } from "@/providers/AIProvider";
+import { useImageCompression } from "@/providers/ImageCompressionProvider";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { displayName, points, onboardingComplete, getSmartAlbums, favoriteAlbums, toggleFavoriteAlbum, favoriteGroups } = useAppState() as any;
   const { isAuthenticated } = useAuth();
+  const { pendingCount, failedCount, processQueue } = useOfflineQueue();
+  const { generateActivityReport, isAnalyzing } = useAI();
+  const { isCompressing } = useImageCompression();
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<number>(3);
@@ -318,12 +324,88 @@ export default function HomeScreen() {
                 <Text style={styles.cardSub}>Créer avec localisation</Text>
               </LinearGradient>
             </Pressable>
+            
+            <Pressable
+              style={[styles.card, styles.aiCard]}
+              onPress={() => {
+                handleHapticFeedback();
+                router.push("/ai-suggestions");
+              }}
+              testID="ai-suggestions"
+            >
+              <LinearGradient
+                colors={['#2d1b69', '#1a1a2e']}
+                style={styles.cardGradient}
+              >
+                <View style={styles.cardIcon}>
+                  <Sparkles color={Colors.palette.accentGold} size={28} />
+                </View>
+                <Text style={styles.cardTitle}>IA Suggestions</Text>
+                <Text style={styles.cardSub}>Albums intelligents</Text>
+                {isAnalyzing && (
+                  <View style={styles.processingBadge}>
+                    <Text style={styles.processingText}>Analyse...</Text>
+                  </View>
+                )}
+              </LinearGradient>
+            </Pressable>
 
 
           </View>
 
-          
-
+          {/* Status Cards */}
+          <View style={styles.statusSection}>
+            {/* Offline Queue Status */}
+            {(pendingCount > 0 || failedCount > 0) && (
+              <Pressable 
+                style={styles.statusCard}
+                onPress={() => {
+                  handleHapticFeedback();
+                  processQueue();
+                }}
+              >
+                <LinearGradient
+                  colors={failedCount > 0 ? ['#FF4444', '#CC0000'] : ['#FFA500', '#FF8C00']}
+                  style={styles.statusGradient}
+                >
+                  <View style={styles.statusIcon}>
+                    {failedCount > 0 ? (
+                      <WifiOff color="#FFFFFF" size={20} />
+                    ) : (
+                      <Wifi color="#FFFFFF" size={20} />
+                    )}
+                  </View>
+                  <View style={styles.statusContent}>
+                    <Text style={styles.statusTitle}>
+                      {failedCount > 0 ? 'Synchronisation échouée' : 'Synchronisation en attente'}
+                    </Text>
+                    <Text style={styles.statusSubtitle}>
+                      {pendingCount} en attente{failedCount > 0 ? `, ${failedCount} échouées` : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.statusAction}>Synchroniser</Text>
+                </LinearGradient>
+              </Pressable>
+            )}
+            
+            {/* Compression Status */}
+            {isCompressing && (
+              <View style={styles.statusCard}>
+                <LinearGradient
+                  colors={['#00FF00', '#00CC00']}
+                  style={styles.statusGradient}
+                >
+                  <View style={styles.statusIcon}>
+                    <BarChart3 color="#FFFFFF" size={20} />
+                  </View>
+                  <View style={styles.statusContent}>
+                    <Text style={styles.statusTitle}>Compression en cours</Text>
+                    <Text style={styles.statusSubtitle}>Optimisation des images...</Text>
+                  </View>
+                </LinearGradient>
+              </View>
+            )}
+          </View>
 
         </ScrollView>
       </Animated.View>
@@ -445,6 +527,66 @@ const styles = StyleSheet.create({
   tertiaryCard: {},
   quaternaryCard: {},
   eventCard: {},
+  aiCard: {},
+  processingBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  processingText: {
+    color: '#FFD700',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  statusSection: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  statusCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  statusGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  statusIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusContent: {
+    flex: 1,
+  },
+  statusTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  statusSubtitle: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+  },
+  statusAction: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
   cardGradient: {
     padding: 20,
     minHeight: 120,
