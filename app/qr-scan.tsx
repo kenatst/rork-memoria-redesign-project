@@ -4,7 +4,7 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { X, Zap, MapPin, Shield, Wifi, WifiOff } from 'lucide-react-native';
+import { X, Zap, MapPin, Shield, Wifi, WifiOff, Flashlight, FlashlightOff } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
@@ -47,6 +47,7 @@ export default function QRScanScreen() {
   const [glassBreakAnim] = useState(new Animated.Value(0));
   const [showGlass, setShowGlass] = useState<boolean>(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [torchOn, setTorchOn] = useState<boolean>(false);
   
   useEffect(() => {
     requestLocationPermission();
@@ -355,12 +356,15 @@ export default function QRScanScreen() {
     );
   }
 
+  const cameraExtraProps: any = Platform.OS !== 'web' ? { torch: torchOn ? 'on' : 'off' } : {};
+
   return (
     <View style={styles.container}>
       <CameraView
         testID="camera-view"
         style={styles.camera}
         facing={'back' as CameraType}
+        {...cameraExtraProps}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],
@@ -510,7 +514,7 @@ export default function QRScanScreen() {
           )}
         </View>
 
-        {/* Close button */}
+        {/* Close + Torch buttons */}
         <Pressable 
           style={styles.closeButton} 
           onPress={() => router.back()}
@@ -522,6 +526,30 @@ export default function QRScanScreen() {
           ) : (
             <View style={[styles.closeBlur, styles.webBlur]}>
               <X color={Colors.palette.taupeDeep} size={24} />
+            </View>
+          )}
+        </Pressable>
+
+        <Pressable 
+          style={styles.torchButton}
+          onPress={() => setTorchOn((v) => !v)}
+          testID="toggle-torch"
+        >
+          {Platform.OS !== 'web' ? (
+            <BlurView intensity={20} style={styles.closeBlur}>
+              {torchOn ? (
+                <Flashlight color={Colors.palette.taupeDeep} size={24} />
+              ) : (
+                <FlashlightOff color={Colors.palette.taupeDeep} size={24} />
+              )}
+            </BlurView>
+          ) : (
+            <View style={[styles.closeBlur, styles.webBlur]}>
+              {torchOn ? (
+                <Flashlight color={Colors.palette.taupeDeep} size={24} />
+              ) : (
+                <FlashlightOff color={Colors.palette.taupeDeep} size={24} />
+              )}
             </View>
           )}
         </Pressable>
@@ -760,6 +788,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 60,
     right: 20,
+  },
+  torchButton: {
+    position: 'absolute',
+    top: 60,
+    right: 80,
   },
   closeBlur: {
     width: 48,

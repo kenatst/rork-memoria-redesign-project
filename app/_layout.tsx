@@ -24,7 +24,7 @@ function RootLayoutNav() {
     }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-      <Stack.Screen name="ephemeral-events" options={{ headerShown: false }} />
+      <Stack.Screen name="local-events" options={{ headerShown: false }} />
       <Stack.Screen name="qr-scan" options={{ 
         title: "Scanner QR", 
         presentation: "modal",
@@ -49,6 +49,7 @@ function RootLayoutNav() {
         headerTintColor: '#FFFFFF'
       }} />
       <Stack.Screen name="album/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="album/[id]/mini-film" options={{ headerShown: false }} />
       <Stack.Screen name="event/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
     </Stack>

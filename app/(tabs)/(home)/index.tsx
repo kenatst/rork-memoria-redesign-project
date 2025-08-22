@@ -303,8 +303,8 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>Événements Géolocalisés</Text>
-                <Text style={styles.sectionSub}>IA • Géofencing • Modération temps réel</Text>
+                <Text style={styles.sectionTitle}>Explorer</Text>
+                <Text style={styles.sectionSub}>Accès rapide aux fonctionnalités</Text>
                 {!isOnline && (
                   <Animated.View style={[styles.offlineIndicator, { opacity: floatAnim }]}>
                     <WifiOff size={16} color="#FF4444" />
@@ -327,58 +327,34 @@ export default function HomeScreen() {
                   style={styles.actionButton}
                   onPress={() => {
                     handleHapticFeedback();
-                    // Partage social
                   }}
                 >
                   <Share2 color={Colors.palette.taupe} size={20} />
                 </Pressable>
-                <Pressable onPress={() => {
-                  handleHapticFeedback();
-                  router.push("/(tabs)/albums");
-                }}>
-                  <Globe color={Colors.palette.taupe} size={24} />
-                </Pressable>
               </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
-              {albums.length > 0 ? getSmartAlbums().byLocation.filter((album: any) => !album.groupId).map((album: any) => (
-                <Pressable 
-                  key={album.id} 
-                  style={styles.albumCard} 
-                  testID={`album-card-${album.id}`} 
-                  onPress={() => {
-                    handleHapticFeedback();
-                    router.push(`/album/${album.id}`);
-                  }}
-                >
-                  <View style={styles.albumImageContainer}>
-                    <Image
-                      source={{ uri: album.coverImage || "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=1600&auto=format&fit=crop" }}
-                      style={styles.albumCover}
-                      contentFit="cover"
-                    />
-                    <LinearGradient
-                      colors={['transparent', 'rgba(0,0,0,0.8)']}
-                      style={styles.albumOverlay}
-                    />
-                    <View style={[styles.statusBadge, styles.publicBadge]}>
-                      <Text style={styles.statusText}>ALBUM</Text>
-                    </View>
+              <Pressable 
+                style={styles.albumCard}
+                onPress={() => { handleHapticFeedback(); router.push('/local-events'); }}
+                testID="open-local-events"
+              >
+                <View style={styles.albumImageContainer}>
+                  <Image
+                    source={{ uri: 'https://images.unsplash.com/photo-1532635224-97aa6b1a4310?q=80&w=1600&auto=format&fit=crop' }}
+                    style={styles.albumCover}
+                    contentFit="cover"
+                  />
+                  <LinearGradient colors={['transparent','rgba(0,0,0,0.8)']} style={styles.albumOverlay} />
+                  <View style={[styles.statusBadge, styles.publicBadge]}>
+                    <Text style={styles.statusText}>ÉVÉNEMENTS</Text>
                   </View>
-                  <Pressable style={styles.pinBtn} onPress={() => toggleFavoriteAlbum(album.id)} testID={`pin-album-${album.id}`}>
-                    <Text style={styles.pinText}>{favoriteAlbums.includes(album.id) ? 'Épinglé' : 'Épingler'}</Text>
-                  </Pressable>
-                  <View style={styles.albumInfo}>
-                    <Text style={styles.albumTitle}>{album.name}</Text>
-                    <Text style={styles.albumMeta}>{album.photos.length} photos</Text>
-                  </View>
-                </Pressable>
-              )) : (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>Aucun album créé</Text>
-                  <Text style={styles.emptySubtext}>Créez votre premier album pour voir vos photos ici</Text>
                 </View>
-              )}
+                <View style={styles.albumInfo}>
+                  <Text style={styles.albumTitle}>Événements Géolocalisés</Text>
+                  <Text style={styles.albumMeta}>Autour de vous</Text>
+                </View>
+              </Pressable>
             </ScrollView>
           </View>
 

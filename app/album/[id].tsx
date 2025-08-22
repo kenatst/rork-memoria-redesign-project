@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { AlbumExport } from '@/components/AlbumExport';
-import { ArrowLeft, Camera, Plus, Search, MoreVertical, Share2, Download, Settings, Star, MessageCircle, Trash2, Send } from 'lucide-react-native';
+import { ArrowLeft, Camera, Plus, Search, MoreVertical, Share2, Download, Settings, Star, MessageCircle, Trash2, Send, Clapperboard } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
@@ -301,6 +301,11 @@ export default function AlbumDetailScreen() {
             <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); setShowAlbumComments(true); }}>
               <MessageCircle color={Colors.palette.accentGold} size={20} />
               <Text style={styles.optionText}>Commentaires de l'album</Text>
+            </Pressable>
+            
+            <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); router.push(`/album/${id}/mini-film`); }} testID="open-mini-film">
+              <Clapperboard color="#FF8A00" size={20} />
+              <Text style={styles.optionText}>Mini film (3s/transitions + musique)</Text>
             </Pressable>
             
             <Pressable style={styles.optionItem}>
