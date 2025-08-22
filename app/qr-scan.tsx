@@ -226,6 +226,12 @@ export default function QRScanScreen() {
           return;
         }
 
+        try {
+          await playSuccessSound();
+        } catch (e) {
+          console.log('sound error', e);
+        }
+        triggerGlassBreak();
         Alert.alert(
           'Invitation au groupe',
           `Voulez-vous rejoindre ce groupe Memoria ?\n\nCode: ${qrData.inviteCode}`,
