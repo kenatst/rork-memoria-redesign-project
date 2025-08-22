@@ -29,7 +29,7 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     // Charger les groupes depuis le provider
-    const mockGroups = persistedGroups.map(group => ({
+    const mockGroups = persistedGroups.map((group: any) => ({
       ...group,
       members: group.members.length,
       cover: group.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop',

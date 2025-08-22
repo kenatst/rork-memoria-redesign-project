@@ -16,6 +16,9 @@ import {
 import { useAppState } from '@/providers/AppStateProvider';
 import Colors from '@/constants/colors';
 import { Image } from 'expo-image';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 
 interface BatchActionsProps {
   visible: boolean;
@@ -85,50 +88,112 @@ export default function BatchActions({ visible, onClose, selectedPhotos }: Batch
   const handleShare = useCallback(async () => {
     setIsProcessing(true);
     
-    // Simulate sharing process
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    addNotification({
-      type: 'photo_added',
-      title: 'Partage préparé',
-      message: `${selectedPhotos.length} photo(s) prêtes à être partagées`,
-      read: false
-    });
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share && selectedPhotoObjects.length === 1) {
+          await navigator.share({
+            title: 'Photo partagée',
+            url: selectedPhotoObjects[0].uri
+          });
+        } else {
+          // Copy URLs to clipboard for web
+          const urls = selectedPhotoObjects.map(p => p.uri).join('\n');
+          await navigator.clipboard.writeText(urls);
+          Alert.alert('Liens copiés', 'URLs des photos copiées dans le presse-papiers');
+        }
+      } else {
+        // Share multiple files on mobile
+        for (const photo of selectedPhotoObjects) {
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(photo.uri);
+          }
+        }
+      }
+      
+      addNotification({
+        type: 'photo_added',
+        title: 'Photos partagées',
+        message: `${selectedPhotos.length} photo(s) ont été partagées`,
+        read: false
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+      Alert.alert('Erreur', 'Impossible de partager les photos');
+    }
     
     setIsProcessing(false);
     onClose();
-  }, [selectedPhotos, addNotification, onClose]);
+  }, [selectedPhotos, selectedPhotoObjects, addNotification, onClose]);
 
   const handleDownload = useCallback(async () => {
     setIsProcessing(true);
     
-    // Simulate download process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    addNotification({
-      type: 'photo_added',
-      title: 'Téléchargement terminé',
-      message: `${selectedPhotos.length} photo(s) téléchargées dans la galerie`,
-      read: false
-    });
+    try {
+      if (Platform.OS === 'web') {
+        // Download files on web
+        for (const photo of selectedPhotoObjects) {
+          const link = document.createElement('a');
+          link.href = photo.uri;
+          link.download = `photo_${photo.id}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } else {
+        // Save to device gallery on mobile
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status === 'granted') {
+          for (const photo of selectedPhotoObjects) {
+            await MediaLibrary.saveToLibraryAsync(photo.uri);
+          }
+        } else {
+          Alert.alert('Permission requise', 'Accès à la galerie nécessaire pour télécharger');
+          setIsProcessing(false);
+          return;
+        }
+      }
+      
+      addNotification({
+        type: 'photo_added',
+        title: 'Téléchargement terminé',
+        message: `${selectedPhotos.length} photo(s) téléchargées`,
+        read: false
+      });
+    } catch (error) {
+      console.log('Download error:', error);
+      Alert.alert('Erreur', 'Impossible de télécharger les photos');
+    }
     
     setIsProcessing(false);
     onClose();
-  }, [selectedPhotos, addNotification, onClose]);
+  }, [selectedPhotos, selectedPhotoObjects, addNotification, onClose]);
 
   const handleArchive = useCallback(() => {
-    setIsProcessing(true);
-    
-    // Simulate archive process
-    addNotification({
-      type: 'photo_added',
-      title: 'Photos archivées',
-      message: `${selectedPhotos.length} photo(s) ont été archivées`,
-      read: false
-    });
-    
-    setIsProcessing(false);
-    onClose();
+    Alert.alert(
+      'Archiver les photos',
+      `Archiver ${selectedPhotos.length} photo(s) ? Elles seront masquées de la vue principale.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Archiver',
+          onPress: () => {
+            setIsProcessing(true);
+            
+            // TODO: Implement actual archiving logic
+            // For now, just show notification
+            addNotification({
+              type: 'photo_added',
+              title: 'Photos archivées',
+              message: `${selectedPhotos.length} photo(s) ont été archivées`,
+              read: false
+            });
+            
+            setIsProcessing(false);
+            onClose();
+          }
+        }
+      ]
+    );
   }, [selectedPhotos, addNotification, onClose]);
 
   return (

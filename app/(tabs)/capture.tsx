@@ -39,6 +39,10 @@ export default function CaptureScreen() {
   const [contrast, setContrast] = useState<number>(1);
   const [saturation, setSaturation] = useState<number>(1);
   const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
+  const [cameraMode, setCameraMode] = useState<'photo' | 'video' | 'portrait' | 'square'>('photo');
+  const [timer, setTimer] = useState<0 | 3 | 10>(0);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [showCaptureAnimation, setShowCaptureAnimation] = useState<boolean>(false);
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
   const [showGallery, setShowGallery] = useState<boolean>(false);
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
@@ -52,6 +56,9 @@ export default function CaptureScreen() {
   const [glowAnim] = useState(() => new Animated.Value(0));
   const [pulseAnim] = useState(() => new Animated.Value(1));
   const [floatAnim] = useState(() => new Animated.Value(0));
+  const [flashAnim] = useState(() => new Animated.Value(0));
+  const [scaleAnim] = useState(() => new Animated.Value(1));
+  const [rotateAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.loop(
@@ -132,16 +139,46 @@ export default function CaptureScreen() {
     }
   }, [exposure, brightness, contrast, saturation]);
 
+  const playFlashAnimation = useCallback(() => {
+    setShowCaptureAnimation(true);
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => {
+      setShowCaptureAnimation(false);
+    });
+  }, [flashAnim]);
+
   const takePicture = useCallback(async () => {
     if (!cameraRef.current) return;
+    
+    // Enhanced haptic feedback
     handleHapticFeedback('heavy');
+    
+    // Play capture animation
+    playFlashAnimation();
+    
+    // Button animation
     Animated.sequence([
       Animated.timing(captureAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
+      Animated.timing(captureAnim, { toValue: 1.1, duration: 100, useNativeDriver: true }),
       Animated.timing(captureAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
     ]).start();
 
+    // Scale animation for the whole camera view
+    Animated.sequence([
+      Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9, base64: false, exif: true });
+      const photo = await cameraRef.current.takePictureAsync({ 
+        quality: 0.9, 
+        base64: false, 
+        exif: true,
+        skipProcessing: false
+      });
+      
       if (photo) {
         const filteredUri = await applyFilter(photo.uri, filterMode);
         if (mediaPermission?.granted) {
@@ -155,7 +192,7 @@ export default function CaptureScreen() {
       console.log('Erreur capture:', error);
       Alert.alert('Erreur', "Impossible de prendre la photo");
     }
-  }, [applyFilter, filterMode, mediaPermission, handleHapticFeedback]);
+  }, [applyFilter, filterMode, mediaPermission, handleHapticFeedback, playFlashAnimation, captureAnim, scaleAnim]);
 
   const handleAddToAlbum = (albumId: string) => {
     if (capturedPhoto) {
@@ -181,8 +218,17 @@ export default function CaptureScreen() {
 
   const toggleCameraFacing = useCallback(() => {
     handleHapticFeedback('light');
+    
+    // Rotation animation for flip button
+    const currentValue = (rotateAnim as any)._value || 0;
+    Animated.timing(rotateAnim, {
+      toValue: currentValue + 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    
     setFacing(current => (current === 'back' ? 'front' : 'back'));
-  }, [handleHapticFeedback]);
+  }, [handleHapticFeedback, rotateAnim]);
 
   const toggleFlash = useCallback(() => {
     handleHapticFeedback('light');
@@ -196,11 +242,24 @@ export default function CaptureScreen() {
 
   const cycleFilter = useCallback(() => {
     handleHapticFeedback('light');
-    const filters = ['none', 'vintage', 'noir', 'vivid', 'warm', 'cool', 'dramatic', 'soft'];
-    const currentIndex = filters.indexOf(filterMode);
-    const nextIndex = (currentIndex + 1) % filters.length;
-    setFilterMode(filters[nextIndex]);
-  }, [filterMode, handleHapticFeedback]);
+    setShowCameraFilters(true);
+  }, [handleHapticFeedback]);
+  
+  const cycleCameraMode = useCallback(() => {
+    handleHapticFeedback('light');
+    const modes: Array<'photo' | 'video' | 'portrait' | 'square'> = ['photo', 'video', 'portrait', 'square'];
+    const currentIndex = modes.indexOf(cameraMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    setCameraMode(modes[nextIndex]);
+  }, [cameraMode, handleHapticFeedback]);
+  
+  const cycleTimer = useCallback(() => {
+    handleHapticFeedback('light');
+    const timers: Array<0 | 3 | 10> = [0, 3, 10];
+    const currentIndex = timers.indexOf(timer);
+    const nextIndex = (currentIndex + 1) % timers.length;
+    setTimer(timers[nextIndex]);
+  }, [timer, handleHapticFeedback]);
   
   const resetAdvancedSettings = useCallback(() => {
     setExposure(0);
@@ -242,7 +301,6 @@ export default function CaptureScreen() {
   const handleDeleteLast = useCallback(() => {
     if (!lastPhoto) return;
     setRecentPhotos(prev => prev.filter(u => u !== lastPhoto));
-    setShowPhotoActions(false);
   }, [lastPhoto]);
 
   if (!permission) {
@@ -274,17 +332,30 @@ export default function CaptureScreen() {
 
   const ratioBoxStyle = ratio === '3:4' ? styles.ratio34 : ratio === '16:9' ? styles.ratio169 : styles.ratioFull;
 
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
   return (
     <View style={styles.container}>
       <View style={styles.cameraWrapper}>
-        <View style={ratioBoxStyle}>
+        <Animated.View style={[ratioBoxStyle, { transform: [{ scale: scaleAnim }] }]}>
           <CameraView
             ref={cameraRef}
             style={StyleSheet.absoluteFillObject}
             facing={facing}
             flash={flash}
             zoom={zoom}
+            mode={cameraMode === 'video' ? 'video' : 'picture'}
           >
+            {/* Flash Animation Overlay */}
+            {showCaptureAnimation && (
+              <Animated.View 
+                style={[styles.flashOverlay, { opacity: flashAnim }]}
+                pointerEvents="none"
+              />
+            )}
             {grid && (
               <View style={styles.gridOverlay}>
                 <View style={styles.gridLine} />
@@ -320,6 +391,11 @@ export default function CaptureScreen() {
                     <Pressable style={styles.controlButton} onPress={toggleGrid} testID="grid-btn">
                       <Grid3X3 color={grid ? '#FFD700' : '#FFFFFF'} size={24} />
                     </Pressable>
+                    <Pressable style={styles.controlButton} onPress={cycleTimer} testID="timer-btn">
+                      <Text style={[styles.ratioText, { color: timer > 0 ? '#FFD700' : '#FFFFFF' }]}>
+                        {timer > 0 ? `${timer}s` : '⏱'}
+                      </Text>
+                    </Pressable>
                     <Pressable style={styles.controlButton} onPress={() => setRatio(prev => prev === 'full' ? '3:4' : prev === '3:4' ? '16:9' : 'full')} testID="ratio-btn">
                       <Text style={styles.ratioText}>{ratio}</Text>
                     </Pressable>
@@ -340,12 +416,22 @@ export default function CaptureScreen() {
                     <Pressable style={styles.controlButton} onPress={toggleGrid}>
                       <Grid3X3 color={grid ? '#FFD700' : '#FFFFFF'} size={24} />
                     </Pressable>
+                    <Pressable style={styles.controlButton} onPress={cycleTimer}>
+                      <Text style={[styles.ratioText, { color: timer > 0 ? '#FFD700' : '#FFFFFF' }]}>
+                        {timer > 0 ? `${timer}s` : '⏱'}
+                      </Text>
+                    </Pressable>
                     <Pressable style={styles.controlButton} onPress={() => setRatio(prev => prev === 'full' ? '3:4' : prev === '3:4' ? '16:9' : 'full')}>
                       <Text style={styles.ratioText}>{ratio}</Text>
                     </Pressable>
                   </View>
                 </View>
               )}
+            </View>
+            
+            {/* Camera Mode Indicator */}
+            <View style={styles.modeIndicator}>
+              <Text style={styles.modeText}>{cameraMode.toUpperCase()}</Text>
             </View>
 
             <View style={styles.bottomControls}>
@@ -356,19 +442,37 @@ export default function CaptureScreen() {
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
 
-                    <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
-                      <Pressable style={styles.captureButton} onPress={takePicture} testID="capture-btn">
-                        <LinearGradient colors={['#FFD700', '#FFA500', '#FF6B35']} style={styles.captureGradient}>
-                          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                            <Camera color="#000000" size={32} strokeWidth={3} />
-                          </Animated.View>
-                        </LinearGradient>
+                    <View style={styles.captureSection}>
+                      <Pressable style={styles.modeButton} onPress={cycleCameraMode} testID="mode-btn">
+                        <Text style={styles.modeButtonText}>{cameraMode}</Text>
+                      </Pressable>
+                      
+                      <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
+                        <Pressable 
+                          style={[
+                            styles.captureButton,
+                            cameraMode === 'video' && isRecording && styles.recordingButton
+                          ]} 
+                          onPress={takePicture} 
+                          testID="capture-btn"
+                        >
+                          <LinearGradient 
+                            colors={isRecording ? ['#FF3B30', '#FF1744'] : ['#FFD700', '#FFA500', '#FF6B35']} 
+                            style={styles.captureGradient}
+                          >
+                            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                              <Camera color="#000000" size={32} strokeWidth={3} />
+                            </Animated.View>
+                          </LinearGradient>
+                        </Pressable>
+                      </Animated.View>
+                    </View>
+
+                    <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+                      <Pressable style={styles.sideButton} onPress={toggleCameraFacing} testID="flip-btn">
+                        <RotateCcw color="#FFFFFF" size={28} />
                       </Pressable>
                     </Animated.View>
-
-                    <Pressable style={styles.sideButton} onPress={toggleCameraFacing} testID="flip-btn">
-                      <RotateCcw color="#FFFFFF" size={28} />
-                    </Pressable>
                   </View>
                   <View style={styles.zoomRow}>
                     <Pressable style={styles.zoomBtn} onPress={() => setZoom(z => Math.max(0, +(z - 0.1).toFixed(2)))} testID="zoom-out">
@@ -386,18 +490,37 @@ export default function CaptureScreen() {
                     <Pressable style={styles.sideButton} onPress={cycleFilter}>
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
-                    <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
-                      <Pressable style={styles.captureButton} onPress={takePicture}>
-                        <LinearGradient colors={['#FFD700', '#FFA500', '#FF6B35']} style={styles.captureGradient}>
-                          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                            <Camera color="#000000" size={32} strokeWidth={3} />
-                          </Animated.View>
-                        </LinearGradient>
+                    
+                    <View style={styles.captureSection}>
+                      <Pressable style={styles.modeButton} onPress={cycleCameraMode}>
+                        <Text style={styles.modeButtonText}>{cameraMode}</Text>
+                      </Pressable>
+                      
+                      <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
+                        <Pressable 
+                          style={[
+                            styles.captureButton,
+                            cameraMode === 'video' && isRecording && styles.recordingButton
+                          ]} 
+                          onPress={takePicture}
+                        >
+                          <LinearGradient 
+                            colors={isRecording ? ['#FF3B30', '#FF1744'] : ['#FFD700', '#FFA500', '#FF6B35']} 
+                            style={styles.captureGradient}
+                          >
+                            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                              <Camera color="#000000" size={32} strokeWidth={3} />
+                            </Animated.View>
+                          </LinearGradient>
+                        </Pressable>
+                      </Animated.View>
+                    </View>
+                    
+                    <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+                      <Pressable style={styles.sideButton} onPress={toggleCameraFacing}>
+                        <RotateCcw color="#FFFFFF" size={28} />
                       </Pressable>
                     </Animated.View>
-                    <Pressable style={styles.sideButton} onPress={toggleCameraFacing}>
-                      <RotateCcw color="#FFFFFF" size={28} />
-                    </Pressable>
                   </View>
                   <View style={styles.zoomRow}>
                     <Pressable style={styles.zoomBtn} onPress={() => setZoom(z => Math.max(0, +(z - 0.1).toFixed(2)))}>
@@ -422,7 +545,7 @@ export default function CaptureScreen() {
               </Pressable>
             )}
           </CameraView>
-        </View>
+        </Animated.View>
       </View>
       
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -548,6 +671,14 @@ const styles = StyleSheet.create({
   gridLineVertical2: { left: '66.66%' },
   gridLineHorizontal1: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.3)', width: '100%', height: 1, top: '33.33%' },
   gridLineHorizontal2: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.3)', width: '100%', height: 1, top: '66.66%' },
+  
+  flashOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', zIndex: 100 },
+  modeIndicator: { position: 'absolute', top: 80, left: 20, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, zIndex: 20 },
+  modeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  captureSection: { alignItems: 'center', gap: 8 },
+  modeButton: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  modeButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  recordingButton: { borderWidth: 3, borderColor: '#FF3B30' },
 
   topControls: { position: 'absolute', top: 20, left: 20, right: 20, zIndex: 20 },
   controlsBlur: { borderRadius: 20, overflow: 'hidden' },
