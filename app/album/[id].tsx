@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Dimensions, Alert, Modal } from 'react-native';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Dimensions, Alert, Modal, TextInput } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
-import { ArrowLeft, Camera, Plus, Search, MoreVertical, Share2, Download, Settings } from 'lucide-react-native';
+import { ArrowLeft, Camera, Plus, Search, MoreVertical, Share2, Download, Settings, Star, MessageCircle, Trash2, Send } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
@@ -25,7 +25,12 @@ export default function AlbumDetailScreen() {
     selectedPhotos, 
     batchSelectPhotos, 
     clearSelection,
-    exportAlbum 
+    exportAlbum,
+    comments,
+    addComment,
+    deleteComment,
+    favoriteAlbums,
+    toggleFavoriteAlbum
   } = useAppState();
 
   const album = useMemo(() => albums.find(a => a.id === id), [albums, id]);
@@ -34,10 +39,37 @@ export default function AlbumDetailScreen() {
   const [showChangeCover, setShowChangeCover] = useState<boolean>(false);
   const [showOptions, setShowOptions] = useState<boolean>(false);
   const [selectionMode, setSelectionMode] = useState<boolean>(false);
+  const [showAlbumComments, setShowAlbumComments] = useState<boolean>(false);
+  const [albumCommentText, setAlbumCommentText] = useState<string>('');
 
   useEffect(() => {
     if (!album) return;
   }, [album]);
+
+  const albumComments = useMemo(() => comments.filter(c => c.albumId === id), [comments, id]);
+  const isFavorite = useMemo(() => Boolean(album && favoriteAlbums.includes(album.id)), [favoriteAlbums, album]);
+
+  const handleToggleFavorite = useCallback(() => {
+    if (!album) return;
+    toggleFavoriteAlbum(album.id);
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [album, toggleFavoriteAlbum]);
+
+  const handleAddAlbumComment = useCallback(() => {
+    if (!album) return;
+    if (!albumCommentText.trim()) return;
+    addComment(albumCommentText.trim(), undefined, album.id);
+    setAlbumCommentText('');
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [albumCommentText, album, addComment]);
+
+  const handleDeleteAlbumComment = useCallback((commentId: string) => {
+    deleteComment(commentId);
+  }, [deleteComment]);
 
   const addFromLibrary = async () => {
     try {
@@ -143,6 +175,9 @@ export default function AlbumDetailScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>{album.name}</Text>
         <View style={styles.headerActions}>
+          <Pressable style={styles.actionBtn} onPress={handleToggleFavorite} testID="favorite-album-btn">
+            <Star color={isFavorite ? '#000' : '#FFD700'} size={20} fill={isFavorite ? '#FFD700' : 'transparent'} />
+          </Pressable>
           <Pressable style={styles.actionBtn} onPress={() => setShowSearch(true)} testID="search-btn">
             <Search color="#FFD700" size={20} />
           </Pressable>
@@ -261,6 +296,11 @@ export default function AlbumDetailScreen() {
               <Text style={styles.optionText}>Exporter l'album</Text>
             </Pressable>
             
+            <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); setShowAlbumComments(true); }}>
+              <MessageCircle color={Colors.palette.accentGold} size={20} />
+              <Text style={styles.optionText}>Commentaires de l'album</Text>
+            </Pressable>
+            
             <Pressable style={styles.optionItem}>
               <Share2 color="#2196F3" size={20} />
               <Text style={styles.optionText}>Partager l'album</Text>
@@ -292,8 +332,6 @@ export default function AlbumDetailScreen() {
                   if (album) {
                     updateAlbumCover(album.id, uri);
                     setShowChangeCover(false);
-                    
-                    // Haptic feedback
                     if (Platform.OS !== 'web') {
                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     }
@@ -306,6 +344,47 @@ export default function AlbumDetailScreen() {
             
             <Pressable style={styles.changeCoverCancel} onPress={() => setShowChangeCover(false)}>
               <Text style={styles.changeCoverCancelText}>Annuler</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Album Comments Modal */}
+      <Modal visible={showAlbumComments} transparent animationType="slide" onRequestClose={() => setShowAlbumComments(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.albumCommentsModal}>
+            <Text style={styles.changeCoverTitle}>Commentaires de l'album</Text>
+            <Text style={styles.changeCoverSubtitle}>Visibles par tous les membres</Text>
+            <ScrollView style={styles.albumCommentsList} showsVerticalScrollIndicator={false}>
+              {albumComments.map(c => (
+                <View key={c.id} style={styles.commentItem}>
+                  <View style={styles.commentHeader}>
+                    <Text style={styles.commentAuthor}>{c.author}</Text>
+                    <Text style={styles.commentDate}>{new Date(c.createdAt).toLocaleDateString('fr-FR')}</Text>
+                    <Pressable style={styles.deleteCommentButton} onPress={() => handleDeleteAlbumComment(c.id)}>
+                      <Trash2 color="#FF6B6B" size={16} />
+                    </Pressable>
+                  </View>
+                  <Text style={styles.commentText}>{c.text}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.commentInput}>
+              <TextInput 
+                style={styles.textInput}
+                placeholder="Ajouter un commentaire..."
+                placeholderTextColor="#A9AFBC"
+                value={albumCommentText}
+                onChangeText={setAlbumCommentText}
+                multiline
+                maxLength={500}
+              />
+              <Pressable style={[styles.sendButton, { opacity: albumCommentText.trim() ? 1 : 0.5 }]} onPress={handleAddAlbumComment} disabled={!albumCommentText.trim()}>
+                <Send color={Colors.palette.accentGold} size={20} />
+              </Pressable>
+            </View>
+            <Pressable style={styles.changeCoverCancel} onPress={() => setShowAlbumComments(false)}>
+              <Text style={styles.changeCoverCancelText}>Fermer</Text>
             </Pressable>
           </View>
         </View>
@@ -358,4 +437,15 @@ const styles = StyleSheet.create({
   coverPickerContainer: { marginVertical: 16 },
   changeCoverCancel: { marginTop: 16, paddingVertical: 12, paddingHorizontal: 24 },
   changeCoverCancelText: { color: Colors.palette.taupe, fontSize: 16, fontWeight: '600' },
+  albumCommentsModal: { backgroundColor: '#0B0B0D', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12 },
+  albumCommentsList: { maxHeight: 260 },
+  commentItem: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, marginBottom: 8 },
+  commentHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  commentAuthor: { color: Colors.palette.accentGold, fontSize: 14, fontWeight: '600', flex: 1 },
+  commentDate: { color: '#A9AFBC', fontSize: 12, marginRight: 8 },
+  deleteCommentButton: { padding: 4 },
+  commentText: { color: '#FFFFFF', fontSize: 14, lineHeight: 20 },
+  commentInput: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  textInput: { flex: 1, color: '#FFFFFF', fontSize: 16, maxHeight: 100, paddingVertical: 8 },
+  sendButton: { padding: 8, borderRadius: 8 },
 });
