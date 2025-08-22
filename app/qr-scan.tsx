@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Text, Pressable, Alert, Animated, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, Text, Pressable, Alert, Animated, Platform, Dimensions } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,6 +42,8 @@ export default function QRScanScreen() {
   const [particleAnimations] = useState(() => 
     Array.from({ length: 20 }, () => new Animated.Value(0))
   );
+  const window = Dimensions.get('window');
+  const frameSize = useMemo(() => Math.round(Math.min(window.width, window.height) * 0.6), [window.width, window.height]);
   const [glassBreakAnim] = useState(new Animated.Value(0));
   const [showGlass, setShowGlass] = useState<boolean>(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -398,19 +400,19 @@ export default function QRScanScreen() {
             styles.scanningOverlay,
             {
               opacity: arOverlayAnimation,
-              transform: [
-                {
-                  scale: arOverlayAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.8, 1],
-                  }),
-                },
-              ],
             },
           ]}
         >
-          <View style={styles.scanFrame}>
-            {/* Animated scanning line */}
+          <View style={styles.scanMask} pointerEvents="none">
+            <View style={styles.maskPiece} />
+            <View style={styles.maskRow}>
+              <View style={styles.maskPiece} />
+              <View style={[styles.maskHole, { width: frameSize, height: frameSize }]} />
+              <View style={styles.maskPiece} />
+            </View>
+            <View style={styles.maskPiece} />
+          </View>
+          <View style={[styles.scanFrame, { width: frameSize, height: frameSize }]} testID="scan-frame">
             <Animated.View
               style={[
                 styles.scanLine,
@@ -419,15 +421,13 @@ export default function QRScanScreen() {
                     {
                       translateY: scanningAnimation.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [-100, 100],
+                        outputRange: [-frameSize / 2 + 2, frameSize / 2 - 2],
                       }),
                     },
                   ],
                 },
               ]}
             />
-            
-            {/* Corner indicators */}
             <View style={[styles.corner, styles.topLeft]} />
             <View style={[styles.corner, styles.topRight]} />
             <View style={[styles.corner, styles.bottomLeft]} />
@@ -613,14 +613,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   scanningOverlay: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -125 }, { translateY: -125 }],
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scanFrame: {
-    width: 250,
-    height: 250,
     position: 'relative',
     borderRadius: 20,
     overflow: 'hidden',
@@ -635,6 +632,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 10,
+    top: '50%',
+    marginTop: -1,
   },
   corner: {
     position: 'absolute',
@@ -670,6 +669,23 @@ const styles = StyleSheet.create({
     borderLeftWidth: 0,
     borderTopWidth: 0,
     borderBottomRightRadius: 20,
+  },
+  scanMask: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+  },
+  maskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  maskPiece: {
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    height: '20%',
+  },
+  maskHole: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   statusContainer: {
     position: 'absolute',
