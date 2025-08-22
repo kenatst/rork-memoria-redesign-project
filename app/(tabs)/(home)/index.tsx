@@ -341,7 +341,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
-              {albums.length > 0 ? getSmartAlbums().byLocation.map((album: any) => (
+              {albums.length > 0 ? getSmartAlbums().byLocation.filter((album: any) => !album.groupId).map((album: any) => (
                 <Pressable 
                   key={album.id} 
                   style={styles.albumCard} 

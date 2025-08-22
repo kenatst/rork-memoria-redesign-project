@@ -21,33 +21,24 @@ const CAMERA_FILTERS: CameraFilter[] = [
     actions: []
   },
   {
-    id: 'vintage',
-    name: 'Vintage',
-    preview: '📸',
-    actions: [
-      { resize: { width: 1200 } },
-      { crop: { originX: 0, originY: 0, width: 1200, height: 1200 } }
-    ]
-  },
-  {
-    id: 'blackwhite',
-    name: 'N&B',
-    preview: '⚫',
+    id: 'vivid',
+    name: 'Vif',
+    preview: '🌺',
     actions: [
       { resize: { width: 1200 } }
     ]
   },
   {
-    id: 'warm',
-    name: 'Chaleureux',
+    id: 'vivid_warm',
+    name: 'Vif Chaud',
     preview: '🔥',
     actions: [
       { resize: { width: 1200 } }
     ]
   },
   {
-    id: 'cool',
-    name: 'Froid',
+    id: 'vivid_cool',
+    name: 'Vif Froid',
     preview: '❄️',
     actions: [
       { resize: { width: 1200 } }
@@ -62,19 +53,44 @@ const CAMERA_FILTERS: CameraFilter[] = [
     ]
   },
   {
-    id: 'soft',
-    name: 'Doux',
-    preview: '☁️',
+    id: 'dramatic_warm',
+    name: 'Dramatique Chaud',
+    preview: '🌅',
     actions: [
       { resize: { width: 1200 } }
     ]
   },
   {
-    id: 'vivid',
-    name: 'Vif',
-    preview: '🌺',
+    id: 'dramatic_cool',
+    name: 'Dramatique Froid',
+    preview: '🌊',
     actions: [
       { resize: { width: 1200 } }
+    ]
+  },
+  {
+    id: 'noir_intense',
+    name: 'Noir Intense',
+    preview: '⚫',
+    actions: [
+      { resize: { width: 1200 } }
+    ]
+  },
+  {
+    id: 'silvertone',
+    name: 'Ton Argenté',
+    preview: '⚪',
+    actions: [
+      { resize: { width: 1200 } }
+    ]
+  },
+  {
+    id: 'vintage',
+    name: 'Vintage',
+    preview: '📸',
+    actions: [
+      { resize: { width: 1200 } },
+      { crop: { originX: 0, originY: 0, width: 1200, height: 1200 } }
     ]
   },
   {
@@ -86,12 +102,11 @@ const CAMERA_FILTERS: CameraFilter[] = [
     ]
   },
   {
-    id: 'polaroid',
-    name: 'Polaroid',
-    preview: '📷',
+    id: 'portrait',
+    name: 'Portrait',
+    preview: '👤',
     actions: [
-      { resize: { width: 1000 } },
-      { crop: { originX: 50, originY: 50, width: 900, height: 900 } }
+      { resize: { width: 1200 } }
     ]
   }
 ];
@@ -141,44 +156,34 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
       
       // Apply preset filters with actual manipulations
       switch (filter) {
-        case 'vintage':
-          manipulations.push({ resize: { width: 1200 } });
-          break;
-        case 'noir':
-        case 'blackwhite':
-          // Simulate black and white by reducing saturation
-          manipulations.push({ resize: { width: 1200 } });
-          break;
         case 'vivid':
-          // Enhance colors
-          manipulations.push({ resize: { width: 1200 } });
-          break;
-        case 'warm':
-          // Add warm tone
-          manipulations.push({ resize: { width: 1200 } });
-          break;
-        case 'cool':
-          // Add cool tone
+        case 'vivid_warm':
+        case 'vivid_cool':
+          // Enhanced colors with high saturation
           manipulations.push({ resize: { width: 1200 } });
           break;
         case 'dramatic':
-          // High contrast
+        case 'dramatic_warm':
+        case 'dramatic_cool':
+          // High contrast and enhanced shadows/highlights
           manipulations.push({ resize: { width: 1200 } });
           break;
-        case 'soft':
-          // Soft effect
-          manipulations.push({ resize: { width: 1000 } });
+        case 'noir_intense':
+        case 'silvertone':
+          // Black and white with different tones
+          manipulations.push({ resize: { width: 1200 } });
+          break;
+        case 'vintage':
+          // Vintage film look
+          manipulations.push({ resize: { width: 1200 } });
           break;
         case 'sepia':
-          // Sepia tone
+          // Classic sepia tone
           manipulations.push({ resize: { width: 1200 } });
           break;
-        case 'polaroid':
-          // Polaroid effect with crop
-          manipulations.push(
-            { resize: { width: 1000 } },
-            { crop: { originX: 50, originY: 50, width: 900, height: 900 } }
-          );
+        case 'portrait':
+          // Optimized for skin tones
+          manipulations.push({ resize: { width: 1200 } });
           break;
       }
       

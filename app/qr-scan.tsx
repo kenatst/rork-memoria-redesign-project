@@ -228,10 +228,10 @@ export default function QRScanScreen() {
 
         try {
           await playSuccessSound();
+          triggerGlassBreak();
         } catch (e) {
           console.log('sound error', e);
         }
-        triggerGlassBreak();
         Alert.alert(
           'Invitation au groupe',
           `Voulez-vous rejoindre ce groupe Memoria ?\n\nCode: ${qrData.inviteCode}`,
