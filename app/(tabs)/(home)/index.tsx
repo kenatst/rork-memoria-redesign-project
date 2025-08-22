@@ -299,25 +299,7 @@ export default function HomeScreen() {
               </LinearGradient>
             </Pressable>
 
-            <Pressable
-              style={[styles.card, styles.secondaryCard]}
-              onPress={() => {
-                handleHapticFeedback();
-                router.push("/local-events");
-              }}
-              testID="open-local-events"
-            >
-              <LinearGradient
-                colors={['#131417', '#2A2D34']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardIcon}>
-                  <Calendar color={Colors.palette.accentGold} size={28} />
-                </View>
-                <Text style={styles.cardTitle}>Événements</Text>
-                <Text style={styles.cardSub}>Autour de vous</Text>
-              </LinearGradient>
-            </Pressable>
+
           </View>
 
           

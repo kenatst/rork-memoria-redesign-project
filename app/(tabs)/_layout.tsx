@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Camera, FolderOpen, User2, Home, Users2 } from "lucide-react-native";
+import { Camera, FolderOpen, User2, Home, Users2, Calendar } from "lucide-react-native";
 import React from "react";
 import CustomTabBar from "@/components/CustomTabBar";
 
@@ -38,6 +38,13 @@ export default function TabLayout() {
         options={{
           title: "",
           tabBarIcon: ({ color }) => <Users2 color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          title: "",
+          tabBarIcon: ({ color }) => <Calendar color={color} />,
         }}
       />
       <Tabs.Screen

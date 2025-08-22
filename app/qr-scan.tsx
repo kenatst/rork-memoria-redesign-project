@@ -43,7 +43,7 @@ export default function QRScanScreen() {
     Array.from({ length: 20 }, () => new Animated.Value(0))
   );
   const window = Dimensions.get('window');
-  const frameSize = useMemo(() => Math.round(Math.min(window.width, window.height) * 0.7), [window.width, window.height]);
+  const frameSize = useMemo(() => Math.round(Math.min(window.width, window.height) * 0.65), [window.width, window.height]);
   const [glassBreakAnim] = useState(new Animated.Value(0));
   const [showGlass, setShowGlass] = useState<boolean>(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -417,7 +417,7 @@ export default function QRScanScreen() {
             </View>
             <View style={styles.maskPieceVertical} />
           </View>
-          <View style={[styles.scanFrame, { width: frameSize, height: frameSize }]} testID="scan-frame">
+          <View style={[styles.scanFrame, { width: frameSize, height: frameSize, alignSelf: 'center' }]} testID="scan-frame">
             <Animated.View
               style={[
                 styles.scanLine,
@@ -426,7 +426,7 @@ export default function QRScanScreen() {
                     {
                       translateY: scanningAnimation.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [-frameSize / 2 + 2, frameSize / 2 - 2],
+                        outputRange: [0, frameSize - 4],
                       }),
                     },
                   ],
@@ -650,19 +650,19 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderRadius: 20,
     overflow: 'hidden',
+    alignSelf: 'center',
   },
   scanLine: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 2,
+    right: 2,
     height: 2,
     backgroundColor: Colors.palette.accentGold,
     shadowColor: Colors.palette.accentGold,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 10,
-    top: '50%',
-    marginTop: -1,
+    top: 2,
   },
   corner: {
     position: 'absolute',
