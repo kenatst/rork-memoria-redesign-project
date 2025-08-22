@@ -12,6 +12,8 @@ import { useAppState } from '@/providers/AppStateProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import ProgressToast from '@/components/ProgressToast';
+import { useToast } from '@/providers/ToastProvider';
+import { useAccessibility } from '@/components/AccessibilityProvider';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -36,6 +38,8 @@ export default function AlbumsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum, addNotification } = useAppState();
+  const { showError, showSuccess } = useToast();
+  const { announceForAccessibility, getAccessibleLabel } = useAccessibility();
 
   const [albums, setAlbums] = useState<Album[]>([]);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
@@ -127,19 +131,28 @@ export default function AlbumsScreen() {
   const handleRefresh = async () => {
     handleHaptic('light');
     setRefreshing(true);
-    // refresh from provider only
-    setAlbums(persistedAlbums.map(album => ({
-      id: album.id,
-      name: album.name,
-      coverImage: album.coverImage || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop',
-      photoCount: album.photos.length,
-      createdAt: new Date(album.createdAt),
-      lastUpdated: new Date(album.createdAt),
-      type: 'personal' as const,
-      privacy: 'private' as const,
-      groupId: album.groupId,
-    })));
-    setRefreshing(false);
+    try {
+      // refresh from provider only
+      setAlbums(persistedAlbums.map(album => ({
+        id: album.id,
+        name: album.name,
+        coverImage: album.coverImage || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop',
+        photoCount: album.photos.length,
+        createdAt: new Date(album.createdAt),
+        lastUpdated: new Date(album.createdAt),
+        type: 'personal' as const,
+        privacy: 'private' as const,
+        groupId: album.groupId,
+      })));
+      showSuccess('Albums actualisés', 'Vos albums ont été synchronisés avec succès');
+      announceForAccessibility('Albums actualisés avec succès');
+    } catch (error) {
+      console.error('Error refreshing albums:', error);
+      showError('Erreur de synchronisation', 'Impossible de synchroniser vos albums. Vérifiez votre connexion.');
+      announceForAccessibility('Erreur lors de la synchronisation des albums');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const toggleView = () => {
@@ -197,11 +210,23 @@ export default function AlbumsScreen() {
               <Text style={styles.userBio}>Créateur de souvenirs authentiques</Text>
               <Text style={styles.userEmail}>{user?.email ?? 'invité@exemple.com'}</Text>
             </View>
-            <Pressable style={[styles.round, styles.cameraBtn]} onPress={() => { handleHaptic('medium'); router.push('/(tabs)/capture'); }} testID="albums-camera-btn">
+            <Pressable 
+              style={[styles.round, styles.cameraBtn]} 
+              onPress={() => { handleHaptic('medium'); router.push('/(tabs)/capture'); }} 
+              testID="albums-camera-btn"
+              accessibilityLabel={getAccessibleLabel('Ouvrir l\'appareil photo', 'Appuyez pour capturer de nouvelles photos')}
+              accessibilityRole="button"
+            >
               <Camera color="#000" size={22} />
             </Pressable>
           </View>
-          <Pressable style={styles.linkCard} onPress={() => handleHaptic('light')} testID="universal-link">
+          <Pressable 
+            style={styles.linkCard} 
+            onPress={() => handleHaptic('light')} 
+            testID="universal-link"
+            accessibilityLabel={getAccessibleLabel('Lien universel', 'Partagez votre profil avec ce lien')}
+            accessibilityRole="button"
+          >
             <View style={styles.linkLeft}><Link2 color={Colors.palette.taupe} size={18} /></View>
             <Text style={styles.linkText}>{universalLink}</Text>
           </Pressable>
@@ -325,24 +350,25 @@ export default function AlbumsScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.modalBtn, styles.createBtn]}
-                  onPress={() => {
-                    if (!newName.trim()) return;
-                    const a: Album = {
-                      id: String(Date.now()),
-                      name: newName.trim(),
-                      coverImage: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop',
-                      photoCount: 0,
-                      createdAt: new Date(),
-                      lastUpdated: new Date(),
-                      type: 'personal',
-                      privacy: newPrivacy,
-                    };
-                    // Utiliser le provider pour créer l'album
-                    createAlbum(newName.trim());
-                    setShowCreate(false);
-                    setNewName('');
-                    setNewPrivacy('private');
-                    handleHaptic('medium');
+                  onPress={async () => {
+                    if (!newName.trim()) {
+                      showError('Nom requis', 'Veuillez saisir un nom pour votre album');
+                      return;
+                    }
+                    try {
+                      // Utiliser le provider pour créer l'album
+                      await createAlbum(newName.trim());
+                      setShowCreate(false);
+                      setNewName('');
+                      setNewPrivacy('private');
+                      handleHaptic('medium');
+                      showSuccess('Album créé', `L'album "${newName.trim()}" a été créé avec succès`);
+                      announceForAccessibility(`Album ${newName.trim()} créé avec succès`);
+                    } catch (error) {
+                      console.error('Error creating album:', error);
+                      showError('Erreur de création', 'Impossible de créer l\'album. Veuillez réessayer.');
+                      announceForAccessibility('Erreur lors de la création de l\'album');
+                    }
                   }}
                   testID="confirm-create"
                 >

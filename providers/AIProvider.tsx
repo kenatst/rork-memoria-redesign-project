@@ -1,1 +1,213 @@
-import React, { useState, useCallback, useMemo } from 'react';\nimport createContextHook from '@nkzw/create-context-hook';\n\ninterface MiniFilmSettings {\n  duration: number;\n  transition: 'fade' | 'slide' | 'zoom' | 'dissolve';\n  music?: string;\n  title?: string;\n  subtitle?: string;\n  aspectRatio: '16:9' | '9:16' | '1:1' | '4:3';\n  quality: 'low' | 'medium' | 'high' | 'ultra';\n}\n\ninterface MiniFilmResult {\n  id: string;\n  videoUri: string;\n  thumbnailUri: string;\n  duration: number;\n  createdAt: string;\n  settings: MiniFilmSettings;\n  photos: string[];\n}\n\ninterface AIContextValue {\n  generateMiniFilm: (photos: string[], settings?: Partial<MiniFilmSettings>) => Promise<MiniFilmResult>;\n  isGenerating: boolean;\n  progress: number;\n}\n\nconst DEFAULT_MINI_FILM_SETTINGS: MiniFilmSettings = {\n  duration: 30,\n  transition: 'fade',\n  aspectRatio: '16:9',\n  quality: 'medium',\n};\n\nexport const [AIProvider, useAI] = createContextHook<AIContextValue>(() => {\n  const [isGenerating, setIsGenerating] = useState<boolean>(false);\n  const [progress, setProgress] = useState<number>(0);\n\n  const generateMiniFilm = useCallback(async (\n    photos: string[], \n    customSettings?: Partial<MiniFilmSettings>\n  ): Promise<MiniFilmResult> => {\n    setIsGenerating(true);\n    setProgress(0);\n    \n    try {\n      const settings = { ...DEFAULT_MINI_FILM_SETTINGS, ...customSettings };\n      console.log('Starting mini-film generation with settings:', settings);\n      \n      const steps = [\n        'Analyzing photos...',\n        'Detecting faces and objects...',\n        'Selecting best moments...',\n        'Applying transitions...',\n        'Adding music and effects...',\n        'Rendering video...',\n        'Finalizing...',\n      ];\n      \n      for (let i = 0; i < steps.length; i++) {\n        console.log(steps[i]);\n        setProgress((i + 1) / steps.length);\n        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));\n      }\n      \n      const result: MiniFilmResult = {\n        id: `minifilm_${Date.now()}`,\n        videoUri: `https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4`,\n        thumbnailUri: photos[0] || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=400&auto=format&fit=crop',\n        duration: settings.duration,\n        createdAt: new Date().toISOString(),\n        settings,\n        photos,\n      };\n      \n      console.log('Mini-film generated successfully:', result);\n      return result;\n    } catch (error) {\n      console.error('Mini-film generation failed:', error);\n      throw error;\n    } finally {\n      setIsGenerating(false);\n      setProgress(0);\n    }\n  }, []);\n\n  return useMemo(() => ({\n    generateMiniFilm,\n    isGenerating,\n    progress,\n  }), [generateMiniFilm, isGenerating, progress]);\n});
+import { useState, useCallback, useMemo } from 'react';
+import createContextHook from '@nkzw/create-context-hook';
+
+interface MiniFilmSettings {
+  duration: number;
+  transition: 'fade' | 'slide' | 'zoom' | 'dissolve';
+  music?: string;
+  title?: string;
+  subtitle?: string;
+  aspectRatio: '16:9' | '9:16' | '1:1' | '4:3';
+  quality: 'low' | 'medium' | 'high' | 'ultra';
+}
+
+interface MiniFilmResult {
+  id: string;
+  videoUri: string;
+  thumbnailUri: string;
+  duration: number;
+  createdAt: string;
+  settings: MiniFilmSettings;
+  photos: string[];
+}
+
+interface PhotoAnalysis {
+  faces: number;
+  objects: string[];
+  quality: number;
+  brightness: number;
+  composition: 'good' | 'average' | 'poor';
+  timestamp?: string;
+  location?: string;
+}
+
+interface AIContextValue {
+  generateMiniFilm: (photos: string[], settings?: Partial<MiniFilmSettings>) => Promise<MiniFilmResult>;
+  analyzePhotos: (photos: string[]) => Promise<PhotoAnalysis[]>;
+  organizePhotos: (photos: string[], criteria: 'date' | 'location' | 'people' | 'events') => Promise<{ [key: string]: string[] }>;
+  isGenerating: boolean;
+  isAnalyzing: boolean;
+  progress: number;
+}
+
+const DEFAULT_MINI_FILM_SETTINGS: MiniFilmSettings = {
+  duration: 30,
+  transition: 'fade',
+  aspectRatio: '16:9',
+  quality: 'medium',
+};
+
+export const [AIProvider, useAI] = createContextHook<AIContextValue>(() => {
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
+
+  const generateMiniFilm = useCallback(async (
+    photos: string[], 
+    customSettings?: Partial<MiniFilmSettings>
+  ): Promise<MiniFilmResult> => {
+    setIsGenerating(true);
+    setProgress(0);
+    
+    try {
+      const settings = { ...DEFAULT_MINI_FILM_SETTINGS, ...customSettings };
+      console.log('Starting mini-film generation with settings:', settings);
+      
+      const steps = [
+        'Analyzing photos...',
+        'Detecting faces and objects...',
+        'Selecting best moments...',
+        'Applying transitions...',
+        'Adding music and effects...',
+        'Rendering video...',
+        'Finalizing...',
+      ];
+      
+      for (let i = 0; i < steps.length; i++) {
+        console.log(steps[i]);
+        setProgress((i + 1) / steps.length);
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+      }
+
+      // Simulate video generation
+      const result: MiniFilmResult = {
+        id: `minifilm_${Date.now()}`,
+        videoUri: `https://example.com/minifilm_${Date.now()}.mp4`,
+        thumbnailUri: photos[0] || 'https://via.placeholder.com/400x300',
+        duration: settings.duration,
+        createdAt: new Date().toISOString(),
+        settings,
+        photos,
+      };
+
+      console.log('Mini-film generated successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Error generating mini-film:', error);
+      throw new Error('Failed to generate mini-film');
+    } finally {
+      setIsGenerating(false);
+      setProgress(0);
+    }
+  }, []);
+
+  const analyzePhotos = useCallback(async (photos: string[]): Promise<PhotoAnalysis[]> => {
+    setIsAnalyzing(true);
+    setProgress(0);
+
+    try {
+      console.log('Starting photo analysis for', photos.length, 'photos');
+      
+      const analyses: PhotoAnalysis[] = [];
+      
+      for (let i = 0; i < photos.length; i++) {
+        setProgress((i + 1) / photos.length);
+        
+        // Simulate AI analysis
+        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+        
+        const analysis: PhotoAnalysis = {
+          faces: Math.floor(Math.random() * 5),
+          objects: ['person', 'building', 'nature', 'vehicle', 'food'].slice(0, Math.floor(Math.random() * 3) + 1),
+          quality: Math.random() * 0.4 + 0.6, // 0.6 to 1.0
+          brightness: Math.random() * 0.6 + 0.2, // 0.2 to 0.8
+          composition: Math.random() > 0.7 ? 'good' : Math.random() > 0.4 ? 'average' : 'poor',
+          timestamp: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+        
+        analyses.push(analysis);
+      }
+
+      console.log('Photo analysis completed:', analyses);
+      return analyses;
+    } catch (error) {
+      console.error('Error analyzing photos:', error);
+      throw new Error('Failed to analyze photos');
+    } finally {
+      setIsAnalyzing(false);
+      setProgress(0);
+    }
+  }, []);
+
+  const organizePhotos = useCallback(async (
+    photos: string[], 
+    criteria: 'date' | 'location' | 'people' | 'events'
+  ): Promise<{ [key: string]: string[] }> => {
+    setIsAnalyzing(true);
+    setProgress(0);
+
+    try {
+      console.log('Organizing photos by', criteria);
+      
+      // Simulate AI organization
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setProgress(0.5);
+      
+      let organized: { [key: string]: string[] } = {};
+      
+      switch (criteria) {
+        case 'date':
+          organized = {
+            'This Week': photos.slice(0, Math.floor(photos.length * 0.3)),
+            'Last Month': photos.slice(Math.floor(photos.length * 0.3), Math.floor(photos.length * 0.6)),
+            'Earlier': photos.slice(Math.floor(photos.length * 0.6)),
+          };
+          break;
+        case 'location':
+          organized = {
+            'Home': photos.slice(0, Math.floor(photos.length * 0.4)),
+            'Work': photos.slice(Math.floor(photos.length * 0.4), Math.floor(photos.length * 0.7)),
+            'Travel': photos.slice(Math.floor(photos.length * 0.7)),
+          };
+          break;
+        case 'people':
+          organized = {
+            'Family': photos.slice(0, Math.floor(photos.length * 0.5)),
+            'Friends': photos.slice(Math.floor(photos.length * 0.5), Math.floor(photos.length * 0.8)),
+            'Solo': photos.slice(Math.floor(photos.length * 0.8)),
+          };
+          break;
+        case 'events':
+          organized = {
+            'Celebrations': photos.slice(0, Math.floor(photos.length * 0.3)),
+            'Daily Life': photos.slice(Math.floor(photos.length * 0.3), Math.floor(photos.length * 0.7)),
+            'Special Moments': photos.slice(Math.floor(photos.length * 0.7)),
+          };
+          break;
+      }
+      
+      setProgress(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('Photos organized successfully:', organized);
+      return organized;
+    } catch (error) {
+      console.error('Error organizing photos:', error);
+      throw new Error('Failed to organize photos');
+    } finally {
+      setIsAnalyzing(false);
+      setProgress(0);
+    }
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    generateMiniFilm,
+    analyzePhotos,
+    organizePhotos,
+    isGenerating,
+    isAnalyzing,
+    progress,
+  }), [generateMiniFilm, analyzePhotos, organizePhotos, isGenerating, isAnalyzing, progress]);
+
+  return contextValue;
+});

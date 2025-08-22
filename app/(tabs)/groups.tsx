@@ -9,6 +9,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppState } from '@/providers/AppStateProvider';
 import Colors from '@/constants/colors';
 import type { Group as PersistedGroup } from '@/providers/AppStateProvider';
+import { useToast } from '@/providers/ToastProvider';
+import { useAccessibility } from '@/components/AccessibilityProvider';
+import * as Haptics from 'expo-haptics';
 
 type UIGroup = {
   id: string;
@@ -21,12 +24,15 @@ type UIGroup = {
 export default function GroupsScreen() {
   const router = useRouter();
   const { groups: persistedGroups, createGroup, favoriteGroups, toggleFavoriteGroup } = useAppState();
+  const { showError, showSuccess } = useToast();
+  const { announceForAccessibility, getAccessibleLabel } = useAccessibility();
   const [groups, setGroups] = useState<UIGroup[]>([]);
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(40));
   const [showCreate, setShowCreate] = useState<boolean>(false);
   const [newName, setNewName] = useState<string>('');
   const [newDescription, setNewDescription] = useState<string>('');
+  const [isCreating, setIsCreating] = useState<boolean>(false);
 
   useEffect(() => {
     const mockGroups: UIGroup[] = (persistedGroups as PersistedGroup[]).map((group: PersistedGroup) => ({
@@ -55,7 +61,18 @@ export default function GroupsScreen() {
             <View style={styles.headerContent}>
               <Users2 color="#FFD700" size={24} />
               <Text style={styles.headerTitle}>Groupes</Text>
-              <Pressable style={styles.createBtn} testID="create-group" onPress={() => setShowCreate(true)}>
+              <Pressable 
+                style={styles.createBtn} 
+                testID="create-group" 
+                onPress={() => {
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }
+                  setShowCreate(true);
+                }}
+                accessibilityLabel={getAccessibleLabel('Créer un nouveau groupe', 'Appuyez pour créer un nouveau groupe')}
+                accessibilityRole="button"
+              >
                 <Plus color="#000" size={18} />
                 <Text style={styles.createText}>Nouveau</Text>
               </Pressable>
@@ -66,7 +83,18 @@ export default function GroupsScreen() {
             <View style={styles.headerContent}>
               <Users2 color="#FFD700" size={24} />
               <Text style={styles.headerTitle}>Groupes</Text>
-              <Pressable style={styles.createBtn} testID="create-group" onPress={() => setShowCreate(true)}>
+              <Pressable 
+                style={styles.createBtn} 
+                testID="create-group" 
+                onPress={() => {
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }
+                  setShowCreate(true);
+                }}
+                accessibilityLabel={getAccessibleLabel('Créer un nouveau groupe', 'Appuyez pour créer un nouveau groupe')}
+                accessibilityRole="button"
+              >
                 <Plus color="#000" size={18} />
                 <Text style={styles.createText}>Nouveau</Text>
               </Pressable>
@@ -77,7 +105,19 @@ export default function GroupsScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {groups.map((g: UIGroup) => (
-          <Pressable key={g.id} style={styles.card} onPress={() => router.push(`/group/${g.id}`)} testID={`group-${g.id}`}>
+          <Pressable 
+            key={g.id} 
+            style={styles.card} 
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              router.push(`/group/${g.id}`);
+            }} 
+            testID={`group-${g.id}`}
+            accessibilityLabel={getAccessibleLabel(`Groupe ${g.name}`, `${g.members} membres, rôle: ${g.role}`)}
+            accessibilityRole="button"
+          >
             <Image source={{ uri: g.cover }} style={styles.cover} contentFit="cover" />
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.overlay} />
             <View style={styles.row}>
@@ -97,7 +137,30 @@ export default function GroupsScreen() {
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.meta}>{g.members} membres</Text>
-              <Pressable style={styles.pinBtn} onPress={() => toggleFavoriteGroup(g.id)} testID={`pin-group-${g.id}`}>
+              <Pressable 
+                style={styles.pinBtn} 
+                onPress={async () => {
+                  try {
+                    if (Platform.OS !== 'web') {
+                      await Haptics.selectionAsync();
+                    }
+                    toggleFavoriteGroup(g.id);
+                    const isFavorite = favoriteGroups?.includes(g.id);
+                    const message = isFavorite ? 'Groupe désépinglé' : 'Groupe épinglé';
+                    showSuccess(message, `${g.name} ${isFavorite ? 'retiré des' : 'ajouté aux'} favoris`);
+                    announceForAccessibility(message);
+                  } catch (error) {
+                    console.error('Error toggling favorite group:', error);
+                    showError('Erreur', 'Impossible de modifier les favoris');
+                  }
+                }} 
+                testID={`pin-group-${g.id}`}
+                accessibilityLabel={getAccessibleLabel(
+                  favoriteGroups?.includes(g.id) ? 'Désépingler le groupe' : 'Épingler le groupe',
+                  favoriteGroups?.includes(g.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'
+                )}
+                accessibilityRole="button"
+              >
                 <Text style={styles.pinText}>{favoriteGroups?.includes(g.id) ? 'Épinglé' : 'Épingler'}</Text>
               </Pressable>
             </View>
@@ -133,18 +196,44 @@ export default function GroupsScreen() {
                 <Text style={styles.cancelText}>Annuler</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalBtn, styles.createConfirmBtn]}
-                onPress={() => {
-                  if (!newName.trim()) return;
-                  // Utiliser le provider pour créer le groupe
-                  createGroup(newName.trim(), newDescription.trim() || undefined);
-                  setShowCreate(false);
-                  setNewName('');
-                  setNewDescription('');
+                style={[styles.modalBtn, styles.createConfirmBtn, isCreating && styles.disabledBtn]}
+                onPress={async () => {
+                  if (isCreating) return;
+                  
+                  if (!newName.trim()) {
+                    showError('Nom requis', 'Veuillez saisir un nom pour votre groupe');
+                    return;
+                  }
+                  
+                  setIsCreating(true);
+                  try {
+                    if (Platform.OS !== 'web') {
+                      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                    
+                    // Utiliser le provider pour créer le groupe
+                    await createGroup(newName.trim(), newDescription.trim() || undefined);
+                    setShowCreate(false);
+                    setNewName('');
+                    setNewDescription('');
+                    showSuccess('Groupe créé', `Le groupe "${newName.trim()}" a été créé avec succès`);
+                    announceForAccessibility(`Groupe ${newName.trim()} créé avec succès`);
+                  } catch (error) {
+                    console.error('Error creating group:', error);
+                    showError('Erreur de création', 'Impossible de créer le groupe. Veuillez réessayer.');
+                    announceForAccessibility('Erreur lors de la création du groupe');
+                  } finally {
+                    setIsCreating(false);
+                  }
                 }}
                 testID="confirm-create-group"
+                disabled={isCreating}
+                accessibilityLabel={getAccessibleLabel('Créer le groupe', 'Confirmer la création du groupe')}
+                accessibilityRole="button"
               >
-                <Text style={styles.createConfirmText}>Créer</Text>
+                <Text style={[styles.createConfirmText, isCreating && styles.disabledText]}>
+                  {isCreating ? 'Création...' : 'Créer'}
+                </Text>
               </Pressable>
             </View>
             </View>
@@ -192,4 +281,6 @@ const styles = StyleSheet.create({
   createConfirmBtn: { backgroundColor: '#FFD700' },
   cancelText: { color: '#FFFFFF', fontWeight: '700' },
   createConfirmText: { color: '#000', fontWeight: '800' },
+  disabledBtn: { opacity: 0.6 },
+  disabledText: { opacity: 0.7 },
 });
