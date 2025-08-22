@@ -163,18 +163,7 @@ export default function AlbumsScreen() {
     return filtered;
   }, [albums, searchQuery, filterType, selectedGroup, sortBy, sortOrder, favoriteAlbumIds]);
 
-  const handleMainRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      // Simulate refresh
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      showSuccess('Synchronisé', 'Albums mis à jour');
-    } catch (error) {
-      showError('Erreur', 'Impossible de synchroniser les albums');
-    } finally {
-      setRefreshing(false);
-    }
-  }, [showSuccess, showError]);
+
 
   const renderAlbumItem = useCallback(({ item: album, index }: { item: Album; index: number }) => {
     const isFavorite = favoriteAlbumIds.includes(album.id);
@@ -194,7 +183,7 @@ export default function AlbumsScreen() {
         ]}
       >
         <Pressable
-          style={[styles.albumCard, viewMode === 'list' && styles.albumListItem]}
+          style={[styles.albumCard, viewMode === 'list' && styles.listItem]}
           onPress={() => {
             if (Platform.OS !== 'web') {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -208,7 +197,7 @@ export default function AlbumsScreen() {
           <View style={styles.albumImageContainer}>
             <Image
               source={{ uri: album.coverImage }}
-              style={[styles.albumCover, viewMode === 'list' && styles.albumListCover]}
+              style={[styles.albumCover, viewMode === 'list' && styles.albumCoverList]}
               contentFit="cover"
               transition={300}
             />
@@ -225,20 +214,20 @@ export default function AlbumsScreen() {
             )}
             
             {album.privacy === 'private' && (
-              <View style={[styles.privacyBadge]}>
+              <View style={[styles.statusBadge, styles.privateBadge]}>
                 <Lock size={12} color="#FFFFFF" />
               </View>
             )}
             
             {album.privacy === 'public' && (
-              <View style={[styles.privacyBadge]}>
+              <View style={[styles.statusBadge, styles.publicBadge]}>
                 <Globe size={12} color="#FFFFFF" />
               </View>
             )}
             
             {/* Favorite button */}
             <Pressable
-              style={[styles.favoriteBadge, isFavorite && styles.favoriteBadgeActive]}
+              style={[styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
               onPress={() => {
                 if (Platform.OS !== 'web') {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -257,8 +246,8 @@ export default function AlbumsScreen() {
             </Pressable>
           </View>
           
-          <View style={[styles.albumInfo, viewMode === 'list' && styles.albumListInfo]}>
-            <Text style={styles.albumName} numberOfLines={viewMode === 'list' ? 2 : 1}>
+          <View style={[styles.albumInfo, viewMode === 'list' && styles.albumInfoList]}>
+            <Text style={[styles.albumName, viewMode === 'list' && styles.albumTitle]} numberOfLines={viewMode === 'list' ? 2 : 1}>
               {album.name}
             </Text>
             <Text style={styles.albumStats}>
@@ -281,7 +270,7 @@ export default function AlbumsScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <Text style={styles.userName}>Utilisateur non connecté</Text>
+        <Text style={styles.errorText}>Utilisateur non connecté</Text>
       </View>
     );
   }
@@ -359,7 +348,7 @@ export default function AlbumsScreen() {
     }
   }, []);
 
-  const handleRefreshAlbums = async () => {
+  const handleRefreshAlbums = useCallback(async () => {
     handleHaptic('light');
     setRefreshing(true);
     try {
@@ -384,7 +373,7 @@ export default function AlbumsScreen() {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [persistedAlbums, showSuccess, showError, announceForAccessibility, handleHaptic]);
 
   const toggleView = () => {
     handleHaptic('light');
@@ -503,7 +492,7 @@ export default function AlbumsScreen() {
           style={styles.albumsContainer}
           contentContainerStyle={styles.albumsContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefreshAlbums} tintColor={Colors.palette.accentGold} colors={[Colors.palette.accentGold]} progressBackgroundColor="#1a1a1a" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefreshAlbums} tintColor="#FFD700" colors={["#FFD700"]} progressBackgroundColor="#1a1a1a" />}
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
             {filteredAlbums.slice(0, 6).map((a) => (

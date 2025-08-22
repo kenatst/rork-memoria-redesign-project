@@ -13,7 +13,19 @@ import {
 import { Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Calendar, Save, Loader2 } from 'lucide-react-native';
-import MapView, { Marker } from 'react-native-maps';
+// Conditional import for react-native-maps to avoid web errors
+let MapView: any = null;
+let Marker: any = null;
+
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+  } catch (error) {
+    console.warn('react-native-maps not available:', error);
+  }
+}
 import { useAppState } from '@/providers/AppStateProvider';
 import { getCurrentLocation, requestLocationPermission, LocationCoords, GeolocationError } from '@/utils/geolocation';
 
