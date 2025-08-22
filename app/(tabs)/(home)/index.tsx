@@ -298,65 +298,29 @@ export default function HomeScreen() {
                 <Text style={styles.cardSub}>Albums partagés</Text>
               </LinearGradient>
             </Pressable>
+
+            <Pressable
+              style={[styles.card, styles.secondaryCard]}
+              onPress={() => {
+                handleHapticFeedback();
+                router.push("/local-events");
+              }}
+              testID="open-local-events"
+            >
+              <LinearGradient
+                colors={['#131417', '#2A2D34']}
+                style={styles.cardGradient}
+              >
+                <View style={styles.cardIcon}>
+                  <Calendar color={Colors.palette.accentGold} size={28} />
+                </View>
+                <Text style={styles.cardTitle}>Événements</Text>
+                <Text style={styles.cardSub}>Autour de vous</Text>
+              </LinearGradient>
+            </Pressable>
           </View>
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>Explorer</Text>
-                <Text style={styles.sectionSub}>Accès rapide aux fonctionnalités</Text>
-                {!isOnline && (
-                  <Animated.View style={[styles.offlineIndicator, { opacity: floatAnim }]}>
-                    <WifiOff size={16} color="#FF4444" />
-                    <Text style={styles.offlineText}>Mode hors-ligne</Text>
-                  </Animated.View>
-                )}
-              </View>
-              <View style={styles.headerActions}>
-                <Pressable 
-                  style={styles.actionButton}
-                  onPress={() => {
-                    handleHapticFeedback();
-                    router.push('/(tabs)/profile');
-                  }}
-                  testID="view-profile"
-                >
-                  <BarChart3 color={Colors.palette.taupe} size={20} />
-                </Pressable>
-                <Pressable 
-                  style={styles.actionButton}
-                  onPress={() => {
-                    handleHapticFeedback();
-                  }}
-                >
-                  <Share2 color={Colors.palette.taupe} size={20} />
-                </Pressable>
-              </View>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
-              <Pressable 
-                style={styles.albumCard}
-                onPress={() => { handleHapticFeedback(); router.push('/local-events'); }}
-                testID="open-local-events"
-              >
-                <View style={styles.albumImageContainer}>
-                  <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1532635224-97aa6b1a4310?q=80&w=1600&auto=format&fit=crop' }}
-                    style={styles.albumCover}
-                    contentFit="cover"
-                  />
-                  <LinearGradient colors={['transparent','rgba(0,0,0,0.8)']} style={styles.albumOverlay} />
-                  <View style={[styles.statusBadge, styles.publicBadge]}>
-                    <Text style={styles.statusText}>ÉVÉNEMENTS</Text>
-                  </View>
-                </View>
-                <View style={styles.albumInfo}>
-                  <Text style={styles.albumTitle}>Événements Géolocalisés</Text>
-                  <Text style={styles.albumMeta}>Autour de vous</Text>
-                </View>
-              </Pressable>
-            </ScrollView>
-          </View>
+          
 
 
         </ScrollView>
