@@ -32,7 +32,7 @@ export default function CaptureScreen() {
   const [grid, setGrid] = useState<boolean>(false);
 
   const [zoom, setZoom] = useState<number>(0);
-  const [ratio, setRatio] = useState<'full' | '3:4' | '16:9'>('full');
+  const [ratio, setRatio] = useState<'full' | '3:4' | '16:9'>('full'); // UI crop only, camera stays full screen
 
   const [filterMode, setFilterMode] = useState<string>('none');
   const [exposure, setExposure] = useState<number>(0);
@@ -340,8 +340,8 @@ export default function CaptureScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.cameraWrapper}>
-        <Animated.View style={[ratioBoxStyle, { transform: [{ scale: scaleAnim }] }]}>
+      <View style={[styles.cameraWrapper, { paddingTop: Math.max(0, insets.top), paddingBottom: Math.max(0, insets.bottom) }]}>
+        <Animated.View style={[styles.ratioFull, { transform: [{ scale: scaleAnim }] }]}> 
           <CameraView
             ref={cameraRef}
             style={StyleSheet.absoluteFillObject}
@@ -357,6 +357,14 @@ export default function CaptureScreen() {
                 pointerEvents="none"
               />
             )}
+
+            {/* Letterboxing mask for stable preview when ratio != full */}
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+              {ratio !== 'full' && (
+                <RatioMask ratio={ratio} />
+              )}
+            </View>
+
             {grid && (
               <View style={styles.gridOverlay}>
                 <View style={styles.gridLine} />
@@ -630,6 +638,19 @@ export default function CaptureScreen() {
           }}
         />
       </SafeAreaView>
+    </View>
+  );
+}
+
+// Stable letterbox mask component
+function RatioMask({ ratio }: { ratio: '3:4' | '16:9' }) {
+  const { width, height } = Dimensions.get('window');
+  const contentHeight = ratio === '3:4' ? (width * 4) / 3 : (width * 9) / 16;
+  const topBottom = Math.max(0, (height - contentHeight) / 2);
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: topBottom, backgroundColor: '#000000' }} />
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: topBottom, backgroundColor: '#000000' }} />
     </View>
   );
 }
