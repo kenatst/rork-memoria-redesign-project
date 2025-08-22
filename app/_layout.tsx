@@ -9,6 +9,7 @@ import { AppStateProvider } from "@/providers/AppStateProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
+import Toast from 'react-native-toast-message';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch((e) => console.log("Splash error", e));
@@ -73,6 +74,7 @@ export default function RootLayout() {
                 <ErrorBoundary>
                   <RootLayoutNav />
                 </ErrorBoundary>
+                <Toast />
               </GestureHandlerRootView>
             </AppStateProvider>
           </NotificationsProvider>

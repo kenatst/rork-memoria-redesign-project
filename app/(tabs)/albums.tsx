@@ -10,7 +10,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useAppState } from '@/providers/AppStateProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { ProgressToast } from '@/components/ProgressToast';
+import ProgressToast from '@/components/ProgressToast';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -34,7 +34,7 @@ interface Album {
 export default function AlbumsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum } = useAppState();
+  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum, addNotification } = useAppState();
 
   const [albums, setAlbums] = useState<Album[]>([]);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
