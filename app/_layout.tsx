@@ -71,6 +71,21 @@ function RootLayoutNav() {
         headerStyle: { backgroundColor: '#000000' },
         headerTintColor: '#FFFFFF'
       }} />
+      <Stack.Screen name="analytics" options={{ 
+        title: "Analytics",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
+      <Stack.Screen name="social-share" options={{ 
+        title: "Partage Social",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
+      <Stack.Screen name="collaboration" options={{ 
+        title: "Collaboration",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
     </Stack>
   );
 }

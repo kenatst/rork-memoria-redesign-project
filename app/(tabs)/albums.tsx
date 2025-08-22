@@ -163,7 +163,7 @@ export default function AlbumsScreen() {
     return filtered;
   }, [albums, searchQuery, filterType, selectedGroup, sortBy, sortOrder, favoriteAlbumIds]);
 
-  const handleRefresh = useCallback(async () => {
+  const handleMainRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       // Simulate refresh
@@ -291,9 +291,8 @@ export default function AlbumsScreen() {
   const [toastLabel, setToastLabel] = useState<string>('');
   const [toastProgress, setToastProgress] = useState<number>(0);
 
-
-  const [fadeAnim] = useState<Animated.Value>(() => new Animated.Value(0));
-  const [slideAnim] = useState<Animated.Value>(() => new Animated.Value(40));
+  const [contentFadeAnim] = useState<Animated.Value>(() => new Animated.Value(0));
+  const [contentSlideAnim] = useState<Animated.Value>(() => new Animated.Value(40));
   const [glowAnim] = useState<Animated.Value>(() => new Animated.Value(0));
   const [albumAnimations] = useState<{ scale: Animated.Value; opacity: Animated.Value; translateY: Animated.Value; }[]>(() =>
     Array.from({ length: 20 }, () => ({
@@ -325,8 +324,8 @@ export default function AlbumsScreen() {
     setAlbums(normalized);
 
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
+      Animated.timing(contentFadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.spring(contentSlideAnim, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
     ]).start();
     Animated.loop(
       Animated.sequence([
@@ -334,7 +333,7 @@ export default function AlbumsScreen() {
         Animated.timing(glowAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
-  }, [persistedAlbums, fadeAnim, slideAnim, glowAnim]);
+  }, [persistedAlbums, contentFadeAnim, contentSlideAnim, glowAnim]);
 
   const loadAlbums = async () => {
     const mock: Album[] = [
@@ -434,8 +433,8 @@ export default function AlbumsScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>        
-        <Animated.View style={[styles.header, { transform: [{ translateY: slideAnim }] }]}>
+      <Animated.View style={[styles.content, { opacity: contentFadeAnim }]}>        
+        <Animated.View style={[styles.header, { transform: [{ translateY: contentSlideAnim }] }]}>
           {!useAppState().isOnline && (
             <View style={styles.offlineBadge}>
               <Text style={styles.offlineText}>Hors‑ligne</Text>
@@ -470,7 +469,7 @@ export default function AlbumsScreen() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View style={[styles.filtersBar, { transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View style={[styles.filtersBar, { transform: [{ translateY: contentSlideAnim }] }]}>
           {(['all', 'recent', 'shared', 'favorites', 'mostViewed', 'lastActivity'] as const).map((key) => {
             const active = filterType === key;
             return (
@@ -803,4 +802,15 @@ const styles = StyleSheet.create({
   createText: { color: '#000000', fontWeight: '800' },
   gridItem: { width: (screenWidth - 56) / 2, marginBottom: 16 },
   listItem: { marginBottom: 12 },
+  statusBadge: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
+  statusText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  privateBadge: { backgroundColor: 'rgba(255,68,68,0.2)' },
+  publicBadge: { backgroundColor: 'rgba(34,197,94,0.2)' },
+  favoriteButton: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
+  favoriteButtonActive: { backgroundColor: 'rgba(255,215,0,0.9)' },
+  albumCardList: { flexDirection: 'row', alignItems: 'center', padding: 12 },
+  albumCoverList: { width: 60, height: 60, borderRadius: 12 },
+  albumInfoList: { flex: 1, marginLeft: 12 },
+  albumTitle: { color: Colors.palette.taupeDeep, fontSize: 16, fontWeight: '700' },
+  errorText: { color: '#FF4444', fontSize: 14, textAlign: 'center', marginTop: 20 },
 });

@@ -31,12 +31,46 @@ interface PhotoAnalysis {
   location?: string;
 }
 
+interface StyleTransferResult {
+  id: string;
+  originalUri: string;
+  styledUri: string;
+  style: string;
+  createdAt: string;
+}
+
+interface UsageStats {
+  timeSpent: number;
+  photosViewed: number;
+  albumsCreated: number;
+  favoritePhotos: string[];
+  mostActiveHours: number[];
+  weeklyActivity: { [key: string]: number };
+}
+
+interface ActivityReport {
+  period: 'daily' | 'weekly' | 'monthly';
+  summary: string;
+  highlights: string[];
+  stats: {
+    photosAdded: number;
+    albumsCreated: number;
+    commentsPosted: number;
+    timeSpent: number;
+  };
+  recommendations: string[];
+}
+
 interface AIContextValue {
   generateMiniFilm: (photos: string[], settings?: Partial<MiniFilmSettings>) => Promise<MiniFilmResult>;
   analyzePhotos: (photos: string[]) => Promise<PhotoAnalysis[]>;
   organizePhotos: (photos: string[], criteria: 'date' | 'location' | 'people' | 'events') => Promise<{ [key: string]: string[] }>;
+  applyStyleTransfer: (photoUri: string, style: string) => Promise<StyleTransferResult>;
+  getUsageStats: () => Promise<UsageStats>;
+  generateActivityReport: (period: 'daily' | 'weekly' | 'monthly') => Promise<ActivityReport>;
   isGenerating: boolean;
   isAnalyzing: boolean;
+  isProcessing: boolean;
   progress: number;
 }
 
@@ -50,6 +84,7 @@ const DEFAULT_MINI_FILM_SETTINGS: MiniFilmSettings = {
 export const [AIProvider, useAI] = createContextHook<AIContextValue>(() => {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
 
   const generateMiniFilm = useCallback(async (
@@ -197,14 +232,179 @@ export const [AIProvider, useAI] = createContextHook<AIContextValue>(() => {
     }
   }, []);
 
+  const applyStyleTransfer = useCallback(async (
+    photoUri: string,
+    style: string
+  ): Promise<StyleTransferResult> => {
+    setIsProcessing(true);
+    setProgress(0);
+
+    try {
+      console.log('Applying style transfer:', style, 'to photo:', photoUri);
+      
+      const steps = [
+        'Loading photo...',
+        'Analyzing style...',
+        'Applying neural style transfer...',
+        'Optimizing result...',
+        'Finalizing...',
+      ];
+      
+      for (let i = 0; i < steps.length; i++) {
+        console.log(steps[i]);
+        setProgress((i + 1) / steps.length);
+        await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
+      }
+
+      const result: StyleTransferResult = {
+        id: `styled_${Date.now()}`,
+        originalUri: photoUri,
+        styledUri: `https://example.com/styled_${Date.now()}.jpg`,
+        style,
+        createdAt: new Date().toISOString(),
+      };
+
+      console.log('Style transfer completed:', result);
+      return result;
+    } catch (error) {
+      console.error('Error applying style transfer:', error);
+      throw new Error('Failed to apply style transfer');
+    } finally {
+      setIsProcessing(false);
+      setProgress(0);
+    }
+  }, []);
+
+  const getUsageStats = useCallback(async (): Promise<UsageStats> => {
+    setIsAnalyzing(true);
+    setProgress(0);
+
+    try {
+      console.log('Calculating usage statistics...');
+      
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setProgress(0.5);
+      
+      const stats: UsageStats = {
+        timeSpent: Math.floor(Math.random() * 120) + 30, // 30-150 minutes
+        photosViewed: Math.floor(Math.random() * 500) + 100,
+        albumsCreated: Math.floor(Math.random() * 20) + 5,
+        favoritePhotos: Array.from({ length: Math.floor(Math.random() * 50) + 10 }, (_, i) => `photo_${i}`),
+        mostActiveHours: [14, 19, 21], // 2PM, 7PM, 9PM
+        weeklyActivity: {
+          'Monday': Math.floor(Math.random() * 60) + 10,
+          'Tuesday': Math.floor(Math.random() * 60) + 10,
+          'Wednesday': Math.floor(Math.random() * 60) + 10,
+          'Thursday': Math.floor(Math.random() * 60) + 10,
+          'Friday': Math.floor(Math.random() * 60) + 10,
+          'Saturday': Math.floor(Math.random() * 90) + 20,
+          'Sunday': Math.floor(Math.random() * 90) + 20,
+        },
+      };
+      
+      setProgress(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('Usage statistics calculated:', stats);
+      return stats;
+    } catch (error) {
+      console.error('Error calculating usage stats:', error);
+      throw new Error('Failed to calculate usage statistics');
+    } finally {
+      setIsAnalyzing(false);
+      setProgress(0);
+    }
+  }, []);
+
+  const generateActivityReport = useCallback(async (
+    period: 'daily' | 'weekly' | 'monthly'
+  ): Promise<ActivityReport> => {
+    setIsAnalyzing(true);
+    setProgress(0);
+
+    try {
+      console.log('Generating activity report for period:', period);
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setProgress(0.7);
+      
+      const reports = {
+        daily: {
+          summary: "Aujourd'hui, vous avez été particulièrement actif avec 45 minutes passées à organiser vos souvenirs.",
+          highlights: [
+            "📸 12 nouvelles photos ajoutées",
+            "❤️ 8 photos marquées comme favorites",
+            "📁 2 nouveaux albums créés",
+            "💬 5 commentaires postés"
+          ],
+          stats: { photosAdded: 12, albumsCreated: 2, commentsPosted: 5, timeSpent: 45 },
+          recommendations: [
+            "Créez un mini-film avec vos photos de la journée",
+            "Partagez votre album 'Sortie en famille' avec vos proches"
+          ]
+        },
+        weekly: {
+          summary: "Cette semaine, vous avez créé de magnifiques souvenirs avec 3h20 d'activité et 89 nouvelles photos.",
+          highlights: [
+            "📸 89 nouvelles photos ajoutées",
+            "📁 7 albums créés",
+            "🎬 2 mini-films générés",
+            "👥 15 interactions sociales"
+          ],
+          stats: { photosAdded: 89, albumsCreated: 7, commentsPosted: 23, timeSpent: 200 },
+          recommendations: [
+            "Organisez automatiquement vos photos par événements",
+            "Invitez des amis à collaborer sur vos albums partagés"
+          ]
+        },
+        monthly: {
+          summary: "Ce mois-ci a été exceptionnel avec 15h d'activité et la création de souvenirs inoubliables.",
+          highlights: [
+            "📸 342 nouvelles photos ajoutées",
+            "📁 28 albums créés",
+            "🎬 8 mini-films générés",
+            "⭐ 156 photos favorites"
+          ],
+          stats: { photosAdded: 342, albumsCreated: 28, commentsPosted: 89, timeSpent: 900 },
+          recommendations: [
+            "Créez un résumé vidéo de votre mois",
+            "Exportez vos meilleurs albums en haute qualité",
+            "Configurez la sauvegarde automatique cloud"
+          ]
+        }
+      };
+      
+      const report: ActivityReport = {
+        period,
+        ...reports[period]
+      };
+      
+      setProgress(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('Activity report generated:', report);
+      return report;
+    } catch (error) {
+      console.error('Error generating activity report:', error);
+      throw new Error('Failed to generate activity report');
+    } finally {
+      setIsAnalyzing(false);
+      setProgress(0);
+    }
+  }, []);
+
   const contextValue = useMemo(() => ({
     generateMiniFilm,
     analyzePhotos,
     organizePhotos,
+    applyStyleTransfer,
+    getUsageStats,
+    generateActivityReport,
     isGenerating,
     isAnalyzing,
+    isProcessing,
     progress,
-  }), [generateMiniFilm, analyzePhotos, organizePhotos, isGenerating, isAnalyzing, progress]);
+  }), [generateMiniFilm, analyzePhotos, organizePhotos, applyStyleTransfer, getUsageStats, generateActivityReport, isGenerating, isAnalyzing, isProcessing, progress]);
 
   return contextValue;
 });

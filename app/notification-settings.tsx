@@ -104,11 +104,21 @@ export default function NotificationSettingsScreen() {
       }
     }
     
-    await scheduleLocalNotification(
-      'Test de notification',
-      'Vos paramètres de notification fonctionnent correctement !',
-      { test: true }
-    );
+    try {
+      await scheduleLocalNotification(
+        'Test de notification ✅',
+        'Vos paramètres de notification fonctionnent correctement ! Memoria est prêt à vous tenir informé.',
+        { test: true }
+      );
+      
+      // Show success feedback
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error('Error sending test notification:', error);
+      alert('Erreur lors de l\'envoi de la notification test');
+    }
   };
 
   const getPermissionStatusText = () => {
@@ -191,15 +201,44 @@ export default function NotificationSettingsScreen() {
 
           {/* Test Notification */}
           <View style={styles.section}>
-            <Pressable style={styles.testCard} onPress={sendTestNotification}>
+            <Text style={styles.sectionTitle}>Test</Text>
+            <Pressable 
+              style={styles.testCard} 
+              onPress={sendTestNotification}
+              disabled={permissionStatus !== 'granted' && permissionStatus !== 'unavailable'}
+            >
               <LinearGradient
-                colors={['rgba(46, 204, 113, 0.1)', 'rgba(46, 204, 113, 0.05)']}
+                colors={[
+                  permissionStatus === 'granted' || permissionStatus === 'unavailable' 
+                    ? 'rgba(46, 204, 113, 0.1)' 
+                    : 'rgba(255, 68, 68, 0.1)',
+                  permissionStatus === 'granted' || permissionStatus === 'unavailable'
+                    ? 'rgba(46, 204, 113, 0.05)'
+                    : 'rgba(255, 68, 68, 0.05)'
+                ]}
                 style={styles.testCardGradient}
               >
-                <Bell color="#2ECC71" size={24} />
+                <Bell 
+                  color={permissionStatus === 'granted' || permissionStatus === 'unavailable' ? '#2ECC71' : '#FF4444'} 
+                  size={24} 
+                />
                 <View style={styles.testCardText}>
-                  <Text style={styles.testCardTitle}>Tester les notifications</Text>
-                  <Text style={styles.testCardDescription}>Envoyer une notification de test</Text>
+                  <Text style={[styles.testCardTitle, {
+                    color: permissionStatus === 'granted' || permissionStatus === 'unavailable' ? '#2ECC71' : '#FF4444'
+                  }]}>
+                    {permissionStatus === 'granted' || permissionStatus === 'unavailable' 
+                      ? 'Tester les notifications' 
+                      : 'Permissions requises'
+                    }
+                  </Text>
+                  <Text style={styles.testCardDescription}>
+                    {permissionStatus === 'granted' 
+                      ? 'Envoyer une notification de test pour vérifier vos paramètres'
+                      : permissionStatus === 'unavailable'
+                      ? 'Les notifications ne sont pas disponibles sur le web'
+                      : 'Autorisez les notifications pour tester'
+                    }
+                  </Text>
                 </View>
               </LinearGradient>
             </Pressable>
