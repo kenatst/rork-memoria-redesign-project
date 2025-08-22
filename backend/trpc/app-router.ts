@@ -14,6 +14,9 @@ import {
   exportAlbumProcedure, 
   searchAlbumsProcedure 
 } from "./routes/albums/manage/route";
+import { generateMiniFilmProcedure } from "./routes/video/generate/route";
+import { suggestAlbumsProcedure } from "./routes/ai/suggest-albums/route";
+import { enhancePhotoProcedure } from "./routes/photos/enhance/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -23,6 +26,7 @@ export const appRouter = createTRPCRouter({
     create: createPhotoProcedure,
     sync: syncDataProcedure,
     getData: getDataProcedure,
+    enhance: enhancePhotoProcedure,
   }),
   groups: createTRPCRouter({
     create: createGroupProcedure,
@@ -35,6 +39,12 @@ export const appRouter = createTRPCRouter({
     updateCover: updateAlbumCoverProcedure,
     export: exportAlbumProcedure,
     search: searchAlbumsProcedure,
+  }),
+  video: createTRPCRouter({
+    generate: generateMiniFilmProcedure,
+  }),
+  ai: createTRPCRouter({
+    suggestAlbums: suggestAlbumsProcedure,
   }),
 });
 
