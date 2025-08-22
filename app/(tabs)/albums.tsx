@@ -26,6 +26,8 @@ interface Album {
   privacy: 'public' | 'private' | 'friends';
   isActive?: boolean;
   groupId?: string;
+  views?: number;
+  coverTransform?: { scale: number; offsetX: number; offsetY: number };
 }
 
 export default function AlbumsScreen() {
@@ -36,7 +38,7 @@ export default function AlbumsScreen() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filterType, setFilterType] = useState<'all' | 'recent' | 'shared' | 'favorites'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'recent' | 'shared' | 'favorites' | 'mostViewed' | 'lastActivity'>('all');
   const [selectedGroup, setSelectedGroup] = useState<string | 'all'>('all');
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showCreate, setShowCreate] = useState<boolean>(false);
@@ -66,10 +68,12 @@ export default function AlbumsScreen() {
       coverImage: album.coverImage || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop',
       photoCount: album.photos.length,
       createdAt: new Date(album.createdAt),
-      lastUpdated: new Date(album.createdAt),
+      lastUpdated: new Date(album.lastActivity ?? album.createdAt),
       type: 'personal' as const,
       privacy: 'private' as const,
       groupId: album.groupId,
+      views: (album as any).views ?? 0,
+      coverTransform: (album as any).coverTransform ?? { scale: 1, offsetX: 0, offsetY: 0 },
     }));
     setAlbums(normalized);
 
@@ -152,6 +156,8 @@ export default function AlbumsScreen() {
     if (filterType === 'recent') list = [...list].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
     if (filterType === 'shared') list = list.filter((a) => a.type === 'shared' || a.privacy === 'friends');
     if (filterType === 'favorites') list = list.filter((a) => favoriteAlbumIds.includes(a.id));
+    if (filterType === 'mostViewed') list = [...list].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+    if (filterType === 'lastActivity') list = [...list].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
     if (selectedGroup !== 'all') list = list.filter((a) => a.groupId === selectedGroup);
     return list;
   }, [albums, filterType, selectedGroup, favoriteAlbumIds]);
@@ -174,6 +180,11 @@ export default function AlbumsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>        
         <Animated.View style={[styles.header, { transform: [{ translateY: slideAnim }] }]}>
+          {!useAppState().isOnline && (
+            <View style={styles.offlineBadge}>
+              <Text style={styles.offlineText}>Hors‑ligne</Text>
+            </View>
+          )}
           <View style={styles.userRow}>
             <Image source={{ uri: avatarUri }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" transition={150} />
             <View style={styles.userInfo}>
@@ -192,12 +203,12 @@ export default function AlbumsScreen() {
         </Animated.View>
 
         <Animated.View style={[styles.filtersBar, { transform: [{ translateY: slideAnim }] }]}>
-          {(['all', 'recent', 'shared', 'favorites'] as const).map((key) => {
+          {(['all', 'recent', 'shared', 'favorites', 'mostViewed', 'lastActivity'] as const).map((key) => {
             const active = filterType === key;
             return (
               <Pressable key={key} style={[styles.chip, active && styles.chipActive]} onPress={() => setFilterType(key)} testID={`chip-${key}`}>
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {key === 'all' ? 'Tous' : key === 'recent' ? 'Récents' : key === 'shared' ? 'Partagés' : 'Favoris'}
+                  {key === 'all' ? 'Tous' : key === 'recent' ? 'Récents' : key === 'shared' ? 'Partagés' : key === 'favorites' ? 'Favoris' : key === 'mostViewed' ? 'Top vues' : 'Activité'}
                 </Text>
               </Pressable>
             );
@@ -355,7 +366,7 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onTo
     return (
       <View style={styles.albumCardContent}>
         <View style={styles.albumImageContainer}>
-          <Image source={{ uri: album.coverImage }} style={styles.albumCover} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+          <Image source={{ uri: album.coverImage }} style={[styles.albumCover, album.coverTransform ? { transform: [{ scale: album.coverTransform.scale }, { translateX: album.coverTransform.offsetX }, { translateY: album.coverTransform.offsetY }] } : null]} contentFit="cover" cachePolicy="memory-disk" transition={200} />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={styles.albumOverlay} />
           <View style={styles.favoriteBadgeWrap}>
             <Pressable style={[styles.favoriteBadge, isFavorite && styles.favoriteBadgeActive]} onPress={onToggleFavorite} testID={`fav-${album.id}`}>
@@ -379,7 +390,7 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onTo
         </View>
         <View style={styles.albumInfo}>
           <Text style={styles.albumName} numberOfLines={2}>{album.name}</Text>
-          <View style={styles.albumMeta}><Text style={styles.albumStats}>{album.photoCount} photos</Text></View>
+          <View style={styles.albumMeta}><Text style={styles.albumStats}>{album.photoCount} photos • {(album.views ?? 0)} vues</Text></View>
           <Text style={styles.albumDate}>{formatDate(album.lastUpdated)}</Text>
           {groupBadge}
         </View>
@@ -389,7 +400,7 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onTo
   return (
     <View style={styles.albumListContent}>
       <View style={styles.albumListImageContainer}>
-        <Image source={{ uri: album.coverImage }} style={styles.albumListCover} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+        <Image source={{ uri: album.coverImage }} style={[styles.albumListCover, album.coverTransform ? { transform: [{ scale: album.coverTransform.scale }, { translateX: album.coverTransform.offsetX }, { translateY: album.coverTransform.offsetY }] } : null]} contentFit="cover" cachePolicy="memory-disk" transition={200} />
         {album.isActive && (<Animated.View style={[styles.listLiveBadge, { opacity: glow }]}><Sparkles size={10} color="#FFD700" /></Animated.View>)}
       </View>
       <View style={styles.albumListInfo}>
@@ -432,6 +443,8 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
   chipText: { color: Colors.palette.taupe, fontWeight: '700' },
   chipTextActive: { color: '#FFD700' },
+  offlineBadge: { alignSelf: 'flex-end', backgroundColor: '#FF4444', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginBottom: 8 },
+  offlineText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   groupChipsRow: { gap: 8, paddingLeft: 8, alignItems: 'center' },
   groupChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)', marginRight: 8 },
   groupChipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },

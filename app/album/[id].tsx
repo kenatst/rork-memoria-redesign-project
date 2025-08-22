@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Dimensions, Alert, Modal, TextInput } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Dimensions, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { AlbumExport } from '@/components/AlbumExport';
-import { ArrowLeft, Camera, Plus, Search, MoreVertical, Share2, Download, Settings, Star, MessageCircle, Trash2, Send, Clapperboard } from 'lucide-react-native';
+import { ArrowLeft, Camera, Plus, Search, MoreVertical, Share2, Download, Settings, Star, MessageCircle, Trash2, Send, Clapperboard, Link2, XCircle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
@@ -31,7 +31,11 @@ export default function AlbumDetailScreen() {
     addComment,
     deleteComment,
     favoriteAlbums,
-    toggleFavoriteAlbum
+    toggleFavoriteAlbum,
+    setAlbumCoverTransform,
+    incrementAlbumView,
+    createTemporaryShareLink,
+    revokeShareLink
   } = useAppState();
 
   const album = useMemo(() => albums.find(a => a.id === id), [albums, id]);
@@ -46,7 +50,8 @@ export default function AlbumDetailScreen() {
 
   useEffect(() => {
     if (!album) return;
-  }, [album]);
+    incrementAlbumView(album.id);
+  }, [album, incrementAlbumView]);
 
   const albumComments = useMemo(() => comments.filter(c => c.albumId === id), [comments, id]);
   const isFavorite = useMemo(() => Boolean(album && favoriteAlbums.includes(album.id)), [favoriteAlbums, album]);
@@ -73,6 +78,8 @@ export default function AlbumDetailScreen() {
     deleteComment(commentId);
   }, [deleteComment]);
 
+  const [importing, setImporting] = useState<boolean>(false);
+
   const addFromLibrary = async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -88,12 +95,16 @@ export default function AlbumDetailScreen() {
       });
       if (res.canceled) return;
       const assets = (res as any).assets ?? [];
+      setImporting(true);
+      let done = 0;
       for (const asset of assets) {
         if (asset.uri && album) {
           await addPhotoToAlbum(album.id, asset.uri);
+          done++;
         }
       }
-      Alert.alert('Succès', `${assets.length} photo(s) ajoutée(s) à l'album`);
+      setImporting(false);
+      Alert.alert('Succès', `${done} photo(s) ajoutée(s) à l'album`);
       
       // Haptic feedback
       if (Platform.OS !== 'web') {
@@ -118,6 +129,15 @@ export default function AlbumDetailScreen() {
       router.push(`/photo/${encoded}`);
     }
   };
+
+  // Prefetch next images
+  useEffect(() => {
+    if (!album) return;
+    const nextUris = album.photos.slice(0, 30);
+    try {
+      (Image as any).prefetch && (Image as any).prefetch(nextUris);
+    } catch {}
+  }, [album]);
 
   const toggleSelectionMode = () => {
     if (selectionMode) {
@@ -265,7 +285,7 @@ export default function AlbumDetailScreen() {
       {!selectionMode && (
         <Pressable style={styles.floatingAddBtn} onPress={addFromLibrary} testID="floating-add">
           <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.floatingBtnGradient}>
-            <Plus color="#000" size={24} />
+            {importing ? <ActivityIndicator color="#000" /> : <Plus color="#000" size={24} />}
           </LinearGradient>
         </Pressable>
       )}
@@ -291,6 +311,30 @@ export default function AlbumDetailScreen() {
             <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); setShowChangeCover(true); }}>
               <Camera color="#FFD700" size={20} />
               <Text style={styles.optionText}>Changer la couverture</Text>
+            </Pressable>
+
+            <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); router.push(`/album/${id}/cover-editor`); }} testID="open-cover-editor">
+              <Camera color="#4DB6AC" size={20} />
+              <Text style={styles.optionText}>Éditeur de couverture (recadrage/zoom)</Text>
+            </Pressable>
+
+            <Pressable style={styles.optionItem} onPress={() => {
+              if (!album) return;
+              const link = createTemporaryShareLink(album.id, 24);
+              if (link) {
+                Alert.alert('Lien créé', `Expire le ${new Date(link.expiresAt).toLocaleString()}`, [
+                  { text: 'OK' },
+                  { text: 'Partager', onPress: () => {} }
+                ]);
+              }
+            }}>
+              <Link2 color="#2196F3" size={20} />
+              <Text style={styles.optionText}>Lien de partage 24h</Text>
+            </Pressable>
+
+            <Pressable style={styles.optionItem} onPress={() => { if (album) revokeShareLink(album.id); }}>
+              <XCircle color="#FF5252" size={20} />
+              <Text style={styles.optionText}>Révoquer le lien</Text>
             </Pressable>
             
             <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); setShowExport(true); }}>
