@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Text, Pressable, Alert, Animated, Platform, Dimensions } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Alert, Animated, Platform } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import Colors from '@/constants/colors';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { useAppState } from '@/providers/AppStateProvider';
+import { Audio } from 'expo-av';
 
 
 
@@ -41,6 +42,9 @@ export default function QRScanScreen() {
   const [particleAnimations] = useState(() => 
     Array.from({ length: 20 }, () => new Animated.Value(0))
   );
+  const [glassBreakAnim] = useState(new Animated.Value(0));
+  const [showGlass, setShowGlass] = useState<boolean>(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
   
   useEffect(() => {
     requestLocationPermission();
@@ -150,6 +154,37 @@ export default function QRScanScreen() {
     return !checks.maliciousContent && !checks.fraudulentEvent && !checks.expiredEvent;
   };
 
+  const playSuccessSound = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        const audio = new (window as any).Audio('https://cdn.pixabay.com/download/audio/2022/03/15/audio_2b9285e3a9.mp3?filename=click-124467.mp3');
+        audio.volume = 0.6;
+        audio.play();
+        return;
+      }
+      const { sound: snd } = await Audio.Sound.createAsync({ uri: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_5f8c3d85d3.mp3?filename=success-1-6297.mp3' });
+      setSound(snd);
+      await snd.setVolumeAsync(0.6);
+      await snd.playAsync();
+    } catch (e) {
+      console.log('playSuccessSound error', e);
+    }
+  };
+
+  const triggerGlassBreak = () => {
+    setShowGlass(true);
+    glassBreakAnim.setValue(0);
+    Animated.timing(glassBreakAnim, {
+      toValue: 1,
+      duration: 700,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setTimeout(() => setShowGlass(false), 500);
+      }
+    });
+  };
+
   const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanned) return;
     
@@ -243,10 +278,13 @@ export default function QRScanScreen() {
         return;
       }
 
-      // Success - navigate to event
+      // Success UX: sound + glass break ceremony
+      await playSuccessSound();
+      triggerGlassBreak();
+
       Alert.alert(
         'QR Code Scanné!',
-        `Accès autorisé à: ${qrData.eventName}\n\nFonctionnalités activées:\n• Réalité Augmentée\n• Géofencing Vérifié\n• Modération IA\n• Mode Hors-ligne`,
+        `Accès autorisé à: ${qrData.eventName ?? 'Événement'}\n\nFonctionnalités activées:\n• Réalité Augmentée\n• Géofencing Vérifié\n• Modération IA\n• Mode Hors-ligne`,
         [
           { text: 'Annuler', onPress: () => setScanned(false) },
           { 
@@ -480,6 +518,31 @@ export default function QRScanScreen() {
             </View>
           )}
         </Pressable>
+        {/* Glass break ceremony bottom-left */}
+        {showGlass && (
+          <Animated.View
+            testID="glass-break-overlay"
+            style={[
+              styles.glassContainer,
+              {
+                opacity: glassBreakAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
+                transform: [
+                  { scale: glassBreakAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.05] }) },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.shardRow}>
+              <View style={[styles.shard, { transform: [{ rotate: '-8deg' }] }]} />
+              <View style={[styles.shard, { transform: [{ rotate: '12deg' }], width: 24 }]} />
+              <View style={[styles.shard, { transform: [{ rotate: '-18deg' }], width: 18 }]} />
+            </View>
+            <View style={styles.shardRow}>
+              <View style={[styles.shard, { transform: [{ rotate: '6deg' }], width: 22 }]} />
+              <View style={[styles.shard, { transform: [{ rotate: '-10deg' }], width: 26 }]} />
+            </View>
+          </Animated.View>
+        )}
       </CameraView>
     </View>
   );
@@ -677,5 +740,31 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  glassContainer: {
+    position: 'absolute',
+    left: 20,
+    bottom: 40,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+  },
+  shardRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  shard: {
+    height: 2,
+    width: 20,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.9,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
 });

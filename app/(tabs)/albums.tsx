@@ -175,7 +175,7 @@ export default function AlbumsScreen() {
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>        
         <Animated.View style={[styles.header, { transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.userRow}>
-            <Image source={{ uri: avatarUri }} style={styles.avatar} contentFit="cover" />
+            <Image source={{ uri: avatarUri }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" transition={150} />
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{displayName}</Text>
               <Text style={styles.userBio}>Créateur de souvenirs authentiques</Text>
@@ -236,7 +236,7 @@ export default function AlbumsScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
             {filteredAlbums.slice(0, 6).map((a) => (
               <Pressable key={a.id} style={styles.quickItem} onPress={() => router.push(`/album/${a.id}`)} testID={`quick-${a.id}`}>
-                <Image source={{ uri: a.coverImage }} style={styles.quickImage} contentFit="cover" />
+                <Image source={{ uri: a.coverImage }} style={styles.quickImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                 <Text numberOfLines={1} style={styles.quickLabel}>{a.name}</Text>
               </Pressable>
             ))}
@@ -355,7 +355,7 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onTo
     return (
       <View style={styles.albumCardContent}>
         <View style={styles.albumImageContainer}>
-          <Image source={{ uri: album.coverImage }} style={styles.albumCover} contentFit="cover" />
+          <Image source={{ uri: album.coverImage }} style={styles.albumCover} contentFit="cover" cachePolicy="memory-disk" transition={200} />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={styles.albumOverlay} />
           <View style={styles.favoriteBadgeWrap}>
             <Pressable style={[styles.favoriteBadge, isFavorite && styles.favoriteBadgeActive]} onPress={onToggleFavorite} testID={`fav-${album.id}`}>
@@ -389,7 +389,7 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onTo
   return (
     <View style={styles.albumListContent}>
       <View style={styles.albumListImageContainer}>
-        <Image source={{ uri: album.coverImage }} style={styles.albumListCover} contentFit="cover" />
+        <Image source={{ uri: album.coverImage }} style={styles.albumListCover} contentFit="cover" cachePolicy="memory-disk" transition={200} />
         {album.isActive && (<Animated.View style={[styles.listLiveBadge, { opacity: glow }]}><Sparkles size={10} color="#FFD700" /></Animated.View>)}
       </View>
       <View style={styles.albumListInfo}>

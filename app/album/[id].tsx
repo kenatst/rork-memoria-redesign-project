@@ -3,6 +3,7 @@ import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Dimensions, Al
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
+import { AlbumExport } from '@/components/AlbumExport';
 import { ArrowLeft, Camera, Plus, Search, MoreVertical, Share2, Download, Settings, Star, MessageCircle, Trash2, Send } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -38,6 +39,7 @@ export default function AlbumDetailScreen() {
   const [showBatchActions, setShowBatchActions] = useState<boolean>(false);
   const [showChangeCover, setShowChangeCover] = useState<boolean>(false);
   const [showOptions, setShowOptions] = useState<boolean>(false);
+  const [showExport, setShowExport] = useState<boolean>(false);
   const [selectionMode, setSelectionMode] = useState<boolean>(false);
   const [showAlbumComments, setShowAlbumComments] = useState<boolean>(false);
   const [albumCommentText, setAlbumCommentText] = useState<string>('');
@@ -243,7 +245,7 @@ export default function AlbumDetailScreen() {
                   }
                 }}
               >
-                <Image source={{ uri }} style={styles.photo} contentFit="cover" />
+                <Image source={{ uri }} style={styles.photo} contentFit="cover" cachePolicy="memory-disk" transition={200} />
                 {selectionMode && (
                   <View style={[styles.selectionOverlay, isSelected && styles.selectedOverlay]}>
                     {isSelected && (
@@ -291,7 +293,7 @@ export default function AlbumDetailScreen() {
               <Text style={styles.optionText}>Changer la couverture</Text>
             </Pressable>
             
-            <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); handleExportAlbum(); }}>
+            <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); setShowExport(true); }}>
               <Download color="#4CAF50" size={20} />
               <Text style={styles.optionText}>Exporter l'album</Text>
             </Pressable>
@@ -389,6 +391,7 @@ export default function AlbumDetailScreen() {
           </View>
         </View>
       </Modal>
+      <AlbumExport album={album} isVisible={showExport} onClose={() => setShowExport(false)} />
     </View>
   );
 }
