@@ -15,101 +15,13 @@ interface CameraFilter {
 }
 
 const CAMERA_FILTERS: CameraFilter[] = [
-  {
-    id: 'none',
-    name: 'Original',
-    preview: '🌈',
-    actions: []
-  },
-  {
-    id: 'vivid',
-    name: 'Vif',
-    preview: '🌺',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'vivid_warm',
-    name: 'Vif Chaud',
-    preview: '🔥',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'vivid_cool',
-    name: 'Vif Froid',
-    preview: '❄️',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'dramatic',
-    name: 'Dramatique',
-    preview: '🎭',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'dramatic_warm',
-    name: 'Dramatique Chaud',
-    preview: '🌅',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'dramatic_cool',
-    name: 'Dramatique Froid',
-    preview: '🌊',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'noir_intense',
-    name: 'Noir Intense',
-    preview: '⚫',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'silvertone',
-    name: 'Ton Argenté',
-    preview: '⚪',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'vintage',
-    name: 'Vintage',
-    preview: '📸',
-    actions: [
-      { resize: { width: 1200 } },
-      { crop: { originX: 0, originY: 0, width: 1200, height: 1200 } }
-    ]
-  },
-  {
-    id: 'sepia',
-    name: 'Sépia',
-    preview: '🟤',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  },
-  {
-    id: 'portrait',
-    name: 'Portrait',
-    preview: '👤',
-    actions: [
-      { resize: { width: 1200 } }
-    ]
-  }
+  { id: 'none', name: 'Original', preview: '🌈', actions: [] },
+  { id: 'square', name: 'Carré', preview: '⬛', actions: [{ resize: { width: 1600 } }] },
+  { id: 'rotate_90', name: 'Rotation 90°', preview: '↩️', actions: [{ rotate: 90 }] },
+  { id: 'flip_h', name: 'Miroir H', preview: '↔️', actions: [{ flip: ImageManipulator.FlipType.Horizontal }] },
+  { id: 'flip_v', name: 'Miroir V', preview: '↕️', actions: [{ flip: ImageManipulator.FlipType.Vertical }] },
+  { id: 'hd', name: 'HD', preview: '🖼️', actions: [{ resize: { width: 2048 } }] },
+  { id: 'thumbnail', name: 'Miniature', preview: '🧩', actions: [{ resize: { width: 512 } }] },
 ];
 
 interface CameraFiltersProps {
@@ -174,66 +86,24 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
     
     try {
       let manipulations: ImageManipulator.Action[] = [];
-      
-      // Apply more sophisticated filters with actual image processing
       switch (filter) {
-        case 'vivid':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Simulate vivid colors by adjusting brightness and contrast
-          );
+        case 'square':
+          manipulations.push({ resize: { width: 1600 } });
           break;
-        case 'vivid_warm':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Add warm tone effect
-          );
+        case 'rotate_90':
+          manipulations.push({ rotate: 90 });
           break;
-        case 'vivid_cool':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Add cool tone effect
-          );
+        case 'flip_h':
+          manipulations.push({ flip: ImageManipulator.FlipType.Horizontal });
           break;
-        case 'dramatic':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // High contrast effect
-          );
+        case 'flip_v':
+          manipulations.push({ flip: ImageManipulator.FlipType.Vertical });
           break;
-        case 'dramatic_warm':
-        case 'dramatic_cool':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Dramatic with temperature adjustment
-          );
+        case 'hd':
+          manipulations.push({ resize: { width: 2048 } });
           break;
-        case 'noir_intense':
-        case 'silvertone':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Black and white conversion would go here
-            // Note: expo-image-manipulator doesn't have built-in B&W conversion
-            // In a real app, you'd use a more advanced image processing library
-          );
-          break;
-        case 'vintage':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Vintage effect with sepia-like tones
-          );
-          break;
-        case 'sepia':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Sepia tone effect
-          );
-          break;
-        case 'portrait':
-          manipulations.push(
-            { resize: { width: 1200 } },
-            // Portrait optimization
-          );
+        case 'thumbnail':
+          manipulations.push({ resize: { width: 512 } });
           break;
       }
       
@@ -312,19 +182,19 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity testID="filters-close" onPress={onClose} style={styles.closeButton}>
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.title}>Filtres Caméra</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={toggleFlash} style={styles.flashButton}>
+            <TouchableOpacity testID="filters-flash" onPress={toggleFlash} style={styles.flashButton}>
               {flashMode === 'off' ? (
                 <ZapOff size={20} color="#FFFFFF" />
               ) : (
                 <Zap size={20} color={flashMode === 'on' ? '#FFD700' : '#FFFFFF'} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={toggleCameraFacing} style={styles.flipButton}>
+            <TouchableOpacity testID="filters-flip-camera" onPress={toggleCameraFacing} style={styles.flipButton}>
               <RotateCcw size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -347,6 +217,7 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
             {/* Zoom Control */}
             <View style={styles.zoomContainer}>
               <TouchableOpacity 
+                testID="filters-zoom-out"
                 style={styles.zoomButton}
                 onPress={() => handleZoomChange(zoom - 0.1)}
                 disabled={zoom <= 0}
@@ -355,6 +226,7 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
               </TouchableOpacity>
               <Text style={styles.zoomValue}>{Math.round(zoom * 10 + 10)}x</Text>
               <TouchableOpacity 
+                testID="filters-zoom-in"
                 style={styles.zoomButton}
                 onPress={() => handleZoomChange(zoom + 0.1)}
                 disabled={zoom >= 1}
@@ -385,6 +257,7 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
                   styles.filterButton,
                   selectedFilter.id === filter.id && styles.selectedFilter
                 ]}
+                testID={`filter-${filter.id}`}
                 onPress={async () => {
                   setSelectedFilter(filter);
                   if (Platform.OS !== 'web') {
@@ -407,6 +280,7 @@ export function CameraFilters({ isVisible, onClose, onPhotoTaken }: CameraFilter
         {/* Capture Button */}
         <View style={styles.captureSection}>
           <TouchableOpacity
+            testID="filters-capture"
             style={[
               styles.captureButton,
               isCapturing && styles.capturingButton

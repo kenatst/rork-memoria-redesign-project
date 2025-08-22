@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppStateProvider } from "@/providers/AppStateProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
+import { NotificationsProvider } from "@/providers/NotificationsProvider";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch((e) => console.log("Splash error", e));
@@ -65,14 +66,16 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AppStateProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <StatusBar style="light" backgroundColor="#000000" />
-              <ErrorBoundary>
-                <RootLayoutNav />
-              </ErrorBoundary>
-            </GestureHandlerRootView>
-          </AppStateProvider>
+          <NotificationsProvider>
+            <AppStateProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <StatusBar style="light" backgroundColor="#000000" />
+                <ErrorBoundary>
+                  <RootLayoutNav />
+                </ErrorBoundary>
+              </GestureHandlerRootView>
+            </AppStateProvider>
+          </NotificationsProvider>
         </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>
