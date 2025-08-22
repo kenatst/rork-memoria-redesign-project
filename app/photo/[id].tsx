@@ -33,12 +33,14 @@ export default function PhotoDetailScreen() {
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
   const [commentText, setCommentText] = useState<string>('');
-  const [showComments, setShowComments] = useState<boolean>(false);
+  const [showComments, setShowComments] = useState<boolean>(true);
+  
+  const targetUri = React.useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
   // Trouver la photo dans les albums
   const photo = React.useMemo(() => {
     for (const album of albums) {
-      const photoIndex = album.photos.findIndex(p => p.includes(id || ''));
+      const photoIndex = album.photos.findIndex(p => p === targetUri);
       if (photoIndex !== -1) {
         return {
           uri: album.photos[photoIndex],
@@ -49,11 +51,11 @@ export default function PhotoDetailScreen() {
       }
     }
     return null;
-  }, [albums, id]);
+  }, [albums, targetUri]);
   
   const photoComments = React.useMemo(() => 
-    comments.filter(c => c.photoId === id),
-    [comments, id]
+    comments.filter(c => c.photoId === targetUri),
+    [comments, targetUri]
   );
   
   const handleHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
@@ -82,8 +84,8 @@ export default function PhotoDetailScreen() {
   }, [isLiked, id, handleHapticFeedback]);
   
   const handleAddComment = useCallback(() => {
-    if (commentText.trim() && id) {
-      addComment(commentText.trim(), id);
+    if (commentText.trim() && targetUri) {
+      addComment(commentText.trim(), targetUri);
       setCommentText('');
       handleHapticFeedback('light');
     }

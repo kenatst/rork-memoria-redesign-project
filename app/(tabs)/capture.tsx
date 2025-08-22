@@ -43,7 +43,6 @@ export default function CaptureScreen() {
   const [showGallery, setShowGallery] = useState<boolean>(false);
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [showPhotoActions, setShowPhotoActions] = useState<boolean>(false);
   const [showCameraFilters, setShowCameraFilters] = useState<boolean>(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
@@ -151,7 +150,6 @@ export default function CaptureScreen() {
         setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
         setCapturedPhoto(filteredUri);
         setShowAlbumSelector(true);
-        setShowPhotoActions(true);
       }
     } catch (error) {
       console.log('Erreur capture:', error);
@@ -166,6 +164,13 @@ export default function CaptureScreen() {
       setShowAlbumSelector(false);
       setCapturedPhoto(null);
     }
+  };
+
+  const handleDeleteCaptured = () => {
+    if (!capturedPhoto) return;
+    setRecentPhotos(prev => prev.filter(u => u !== capturedPhoto));
+    setCapturedPhoto(null);
+    setShowAlbumSelector(false);
   };
 
   const handleSkipAlbum = () => {
@@ -410,7 +415,7 @@ export default function CaptureScreen() {
             {lastPhoto && (
               <Pressable
                 style={styles.lastThumb}
-                onPress={() => setShowPhotoActions(true)}
+                onPress={() => { setCapturedPhoto(lastPhoto); setShowAlbumSelector(true); }}
                 testID="last-photo-thumb"
               >
                 <Image source={{ uri: lastPhoto }} style={styles.lastThumbImage} contentFit="cover" />
@@ -470,38 +475,19 @@ export default function CaptureScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
-              <View style={styles.modalActions}>
-                <Pressable style={styles.skipBtn} onPress={handleSkipAlbum} testID="skip-album">
+              <View style={[styles.modalActions, { flexDirection: 'row', gap: 12 }]}>
+                <Pressable style={[styles.skipBtn, { flex: 1 }]} onPress={handleSkipAlbum} testID="skip-album">
                   <Text style={styles.skipText}>Passer</Text>
+                </Pressable>
+                <Pressable style={[styles.deleteBtn, { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' }]} onPress={handleDeleteCaptured} testID="delete-captured">
+                  <Text style={styles.actionText}>Supprimer</Text>
                 </Pressable>
               </View>
             </View>
           </KeyboardAvoidingView>
         </Modal>
 
-        <Modal visible={showPhotoActions} transparent animationType="fade" onRequestClose={() => setShowPhotoActions(false)}>
-          <View style={styles.modalBackdropCenter}>
-            <View style={styles.photoActionsCard}>
-              {lastPhoto && (
-                <Image source={{ uri: lastPhoto }} style={styles.photoPreview} contentFit="cover" />
-              )}
-              <View style={styles.actionsRow}>
-                <Pressable style={styles.actionBtn} onPress={() => lastPhoto && (Platform.OS === 'web' ? window.open(lastPhoto, '_blank') : Alert.alert('Aperçu', 'Ouvrez l’aperçu via partage'))} testID="view-last">
-                  <Text style={styles.actionText}>Voir</Text>
-                </Pressable>
-                <Pressable style={styles.actionBtn} onPress={handleShareLast} testID="share-last">
-                  <Text style={styles.actionText}>Partager</Text>
-                </Pressable>
-                <Pressable style={[styles.actionBtn, styles.deleteBtn]} onPress={handleDeleteLast} testID="delete-last">
-                  <Text style={styles.actionText}>Supprimer</Text>
-                </Pressable>
-              </View>
-              <Pressable style={styles.closeBtn} onPress={() => setShowPhotoActions(false)} testID="close-actions">
-                <Text style={styles.closeText}>Fermer</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
+
 
         {/* Camera Filters Modal */}
         <CameraFilters 
@@ -514,7 +500,6 @@ export default function CaptureScreen() {
             setRecentPhotos(prev => [uri, ...prev.slice(0, 9)]);
             setCapturedPhoto(uri);
             setShowAlbumSelector(true);
-            setShowPhotoActions(true);
             if (filter) {
               setFilterMode(filter.id);
             }

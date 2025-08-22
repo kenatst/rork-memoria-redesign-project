@@ -13,7 +13,7 @@ import { useAuth } from "@/providers/AuthProvider";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { displayName, points, onboardingComplete } = useAppState();
+  const { displayName, points, onboardingComplete, getSmartAlbums, favoriteAlbums, toggleFavoriteAlbum, favoriteGroups } = useAppState() as any;
   const { isAuthenticated } = useAuth();
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -193,6 +193,31 @@ export default function HomeScreen() {
             )}
           </View>
 
+          {/* Accès rapide favoris */}
+          {(favoriteAlbums.length > 0 || favoriteGroups.length > 0) && (
+            <View style={styles.quickRow}>
+              <Text style={styles.quickTitle}>Accès rapide</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {favoriteAlbums.map((id: string) => {
+                  const a = albums.find(al => al.id === id);
+                  if (!a) return null;
+                  return (
+                    <Pressable key={`fav-alb-${id}`} style={styles.quickChip} onPress={() => router.push(`/album/${id}`)} testID={`quick-album-${id}`}>
+                      <Image source={{ uri: a.coverImage || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=400&auto=format&fit=crop' }} style={styles.quickAvatar} contentFit="cover" />
+                      <Text numberOfLines={1} style={styles.quickText}>{a.name}</Text>
+                    </Pressable>
+                  );
+                })}
+                {favoriteGroups.map((id: string) => (
+                  <Pressable key={`fav-grp-${id}`} style={styles.quickChip} onPress={() => router.push(`/group/${id}`)} testID={`quick-group-${id}`}>
+                    <Image source={{ uri: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=400&auto=format&fit=crop' }} style={styles.quickAvatar} contentFit="cover" />
+                    <Text numberOfLines={1} style={styles.quickText}>Groupe</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           <View style={styles.actionsGrid}>
             <Pressable
               style={[styles.card, styles.primaryCard]}
@@ -316,7 +341,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
-              {albums.length > 0 ? albums.map((album) => (
+              {albums.length > 0 ? getSmartAlbums().byLocation.map((album: any) => (
                 <Pressable 
                   key={album.id} 
                   style={styles.albumCard} 
@@ -340,6 +365,9 @@ export default function HomeScreen() {
                       <Text style={styles.statusText}>ALBUM</Text>
                     </View>
                   </View>
+                  <Pressable style={styles.pinBtn} onPress={() => toggleFavoriteAlbum(album.id)} testID={`pin-album-${album.id}`}>
+                    <Text style={styles.pinText}>{favoriteAlbums.includes(album.id) ? 'Épinglé' : 'Épingler'}</Text>
+                  </Pressable>
                   <View style={styles.albumInfo}>
                     <Text style={styles.albumTitle}>{album.name}</Text>
                     <Text style={styles.albumMeta}>{album.photos.length} photos</Text>
@@ -497,6 +525,11 @@ const styles = StyleSheet.create({
     marginTop: 32,
     paddingHorizontal: 20,
   },
+  quickRow: { marginTop: 16, paddingHorizontal: 20, gap: 8 },
+  quickTitle: { color: Colors.palette.taupeDeep, fontSize: 16, fontWeight: '800' },
+  quickChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#131417', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, marginRight: 10, gap: 8 },
+  quickAvatar: { width: 28, height: 28 },
+  quickText: { color: '#fff', fontSize: 12, maxWidth: 120 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -549,6 +582,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(0,0,0,0.7)',
   },
+  pinBtn: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(255,215,0,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  pinText: { color: Colors.palette.accentGold, fontSize: 10, fontWeight: '800' },
   liveBadge: {
     backgroundColor: '#FF4444',
   },

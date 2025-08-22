@@ -126,6 +126,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [favoriteAlbums, setFavoriteAlbums] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [favoriteGroups, setFavoriteGroups] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -152,6 +153,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
           setComments(data.comments ?? []);
           setPhotos(data.photos ?? []);
           setFavoriteAlbums(data.favoriteAlbums ?? []);
+          setFavoriteGroups((data as any).favoriteGroups ?? []);
           setLastSync(data.lastSync);
           setProfileAvatar(data.profileAvatar);
         }
@@ -176,6 +178,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       comments?: Comment[];
       photos?: Photo[];
       favoriteAlbums?: string[];
+      favoriteGroups?: string[];
       lastSync?: string;
       profileAvatar?: string;
     }) => {
@@ -189,6 +192,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
           comments, 
           photos, 
           favoriteAlbums, 
+          favoriteGroups,
           lastSync, 
           profileAvatar 
         };
@@ -198,7 +202,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         console.log("Persist AppState error", e);
       }
     },
-    [onboardingComplete, displayName, points, albums, groups, comments, photos, favoriteAlbums, lastSync, profileAvatar]
+    [onboardingComplete, displayName, points, albums, groups, comments, photos, favoriteAlbums, favoriteGroups, lastSync, profileAvatar]
   );
 
   const setOnboardingComplete = useCallback(
@@ -257,36 +261,42 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   }, [albums, persist]);
 
   const addPhotoToAlbum = useCallback(async (albumId: string, photoUri: string) => {
+    const newPhoto: Photo = {
+      id: `${albumId}-${Date.now()}`,
+      uri: photoUri,
+      albumId,
+      likes: [],
+      createdAt: new Date().toISOString(),
+      metadata: { timestamp: new Date().toISOString() }
+    };
     try {
-      // Sync with backend
       await trpcClient.photos.create.mutate({
         uri: photoUri,
         albumId,
-        metadata: {
-          timestamp: new Date().toISOString(),
-        }
+        metadata: { timestamp: new Date().toISOString() }
       });
-      
-      // Update local state
       const updatedAlbums = albums.map(album => 
         album.id === albumId 
           ? { ...album, photos: [...album.photos, photoUri], coverImage: album.coverImage || photoUri }
           : album
       );
+      const updatedPhotos = [...photos, newPhoto];
       setAlbums(updatedAlbums);
-      persist({ albums: updatedAlbums });
+      setPhotos(updatedPhotos);
+      persist({ albums: updatedAlbums, photos: updatedPhotos });
     } catch (error) {
       console.error('Failed to add photo to album:', error);
-      // Still update local state as fallback
       const updatedAlbums = albums.map(album => 
         album.id === albumId 
           ? { ...album, photos: [...album.photos, photoUri], coverImage: album.coverImage || photoUri }
           : album
       );
+      const updatedPhotos = [...photos, newPhoto];
       setAlbums(updatedAlbums);
-      persist({ albums: updatedAlbums });
+      setPhotos(updatedPhotos);
+      persist({ albums: updatedAlbums, photos: updatedPhotos });
     }
-  }, [albums, persist]);
+  }, [albums, photos, persist]);
 
   // Groups functions
   const createGroup = useCallback((name: string, description?: string) => {
@@ -613,6 +623,15 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     });
   }, [persist]);
 
+  const toggleFavoriteGroup = useCallback((groupId: string) => {
+    setFavoriteGroups(prev => {
+      const isFavorite = prev.includes(groupId);
+      const updated = isFavorite ? prev.filter(id => id !== groupId) : [...prev, groupId];
+      persist({ favoriteGroups: updated });
+      return updated;
+    });
+  }, [persist]);
+
   // Album cover update
   const updateAlbumCover = useCallback(async (albumId: string, coverImage: string) => {
     try {
@@ -647,7 +666,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     const byLocation = albums.filter(album => {
       return album.photos.some(photoUri => {
         const photo = photos.find(p => p.uri === photoUri);
-        return photo?.metadata?.location;
+        return Boolean(photo?.metadata?.location);
       });
     });
     
@@ -698,6 +717,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       batchMovePhotos,
       favoriteAlbums,
       toggleFavoriteAlbum,
+      favoriteGroups,
+      toggleFavoriteGroup,
       updateAlbumCover,
       getSmartAlbums,
       notifications,
@@ -745,6 +766,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       batchMovePhotos,
       favoriteAlbums,
       toggleFavoriteAlbum,
+      favoriteGroups,
+      toggleFavoriteGroup,
       updateAlbumCover,
       getSmartAlbums,
       notifications,

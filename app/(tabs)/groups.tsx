@@ -19,7 +19,7 @@ interface Group {
 
 export default function GroupsScreen() {
   const router = useRouter();
-  const { groups: persistedGroups, createGroup } = useAppState();
+  const { groups: persistedGroups, createGroup, favoriteGroups, toggleFavoriteGroup } = useAppState() as any;
   const [groups, setGroups] = useState<Group[]>([]);
   const [fadeAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(40));
@@ -96,7 +96,9 @@ export default function GroupsScreen() {
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.meta}>{g.members} membres</Text>
-
+              <Pressable style={styles.pinBtn} onPress={() => toggleFavoriteGroup(g.id)} testID={`pin-group-${g.id}`}>
+                <Text style={styles.pinText}>{favoriteGroups?.includes(g.id) ? 'Épinglé' : 'Épingler'}</Text>
+              </Pressable>
             </View>
           </Pressable>
         ))}
@@ -174,6 +176,8 @@ const styles = StyleSheet.create({
   roleBadge: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10 },
   metaRow: { position: 'absolute', left: 12, right: 12, bottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   meta: { color: '#E8EAF0', fontSize: 12 },
+  pinBtn: { backgroundColor: 'rgba(255,215,0,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  pinText: { color: '#FFD700', fontSize: 12, fontWeight: '800' },
   noteBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFD700', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 },
   noteText: { color: '#000', fontSize: 12, fontWeight: '800' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },

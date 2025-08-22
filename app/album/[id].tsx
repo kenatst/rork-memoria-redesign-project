@@ -80,7 +80,8 @@ export default function AlbumDetailScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } else {
-      router.push(`/photo/${idx}`);
+      const encoded = encodeURIComponent(uri);
+      router.push(`/photo/${encoded}`);
     }
   };
 
