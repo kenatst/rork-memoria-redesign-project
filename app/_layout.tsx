@@ -67,8 +67,8 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <NotificationsProvider>
-            <AppStateProvider>
+          <AppStateProvider>
+            <NotificationsProvider>
               <GestureHandlerRootView style={{ flex: 1 }}>
                 <StatusBar style="light" backgroundColor="#000000" />
                 <ErrorBoundary>
@@ -76,8 +76,8 @@ export default function RootLayout() {
                 </ErrorBoundary>
                 <Toast />
               </GestureHandlerRootView>
-            </AppStateProvider>
-          </NotificationsProvider>
+            </NotificationsProvider>
+          </AppStateProvider>
         </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>

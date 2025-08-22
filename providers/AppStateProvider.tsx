@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { trpcClient } from "@/lib/trpc";
@@ -141,10 +141,15 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const [favoriteGroups, setFavoriteGroups] = useState<string[]>([]);
   const ARCHIVE_ALBUM_NAME = 'Archives';
 
+  const mountedRef = useRef<boolean>(false);
+
   useEffect(() => {
+    mountedRef.current = true;
+    let syncTimeout: ReturnType<typeof setTimeout> | undefined;
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(KEY);
+        if (!mountedRef.current) return;
         if (raw) {
           const data = JSON.parse(raw) as { 
             onboardingComplete?: boolean; 
@@ -171,11 +176,15 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
           setLastSync(data.lastSync);
           setProfileAvatar(data.profileAvatar);
         }
-        setTimeout(() => { syncData(); }, 1000);
+        syncTimeout = setTimeout(() => { if (mountedRef.current) { syncData(); } }, 1000);
       } catch (e) {
         console.log("Load AppState error", e);
       }
     })();
+    return () => {
+      mountedRef.current = false;
+      if (syncTimeout) clearTimeout(syncTimeout);
+    };
   }, []);
 
   const persist = useCallback(
@@ -491,7 +500,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
 
   const syncData = useCallback(async (retryCount = 0) => {
     try {
-      setIsOnline(true);
+      if (mountedRef.current) setIsOnline(true);
       console.log('Starting sync...', { photosCount: photos.length, albumsCount: albums.length });
       const result = await trpcClient.photos.sync.mutate({
         photos,
@@ -500,6 +509,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         groups,
         lastSync
       });
+      if (!mountedRef.current) return;
       const newLastSync = result.syncedAt;
       setLastSync(newLastSync);
       persist({ lastSync: newLastSync });
@@ -521,11 +531,11 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       console.log('Data synced successfully:', result);
     } catch (error) {
       console.error('Sync failed:', error);
-      setIsOnline(false);
+      if (mountedRef.current) setIsOnline(false);
       if (retryCount < 3) {
         const delay = Math.pow(2, retryCount) * 1000;
         console.log(`Retrying sync in ${delay}ms...`);
-        setTimeout(() => { syncData(retryCount + 1); }, delay);
+        setTimeout(() => { if (mountedRef.current) { syncData(retryCount + 1); } }, delay);
       }
     }
   }, [photos, comments, albums, groups, lastSync, persist]);
