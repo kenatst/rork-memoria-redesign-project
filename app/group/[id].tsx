@@ -12,6 +12,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { useAppState } from '@/providers/AppStateProvider';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
 import ImagePickerComponent from '@/components/ImagePicker';
+import { GroupPermissions, GroupMember, UserRole } from '@/components/GroupPermissions';
 
 
 interface Member {
@@ -45,6 +46,7 @@ export default function GroupDetailScreen() {
   const [showCreateAlbum, setShowCreateAlbum] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [newComment, setNewComment] = useState('');
@@ -237,7 +239,7 @@ export default function GroupDetailScreen() {
             <ArrowLeft color="#FFD700" size={24} />
           </Pressable>
           <Text style={styles.headerTitle}>{group.name}</Text>
-          <Pressable style={styles.settingsBtn} onPress={() => setShowMembers(true)} testID="settings-btn">
+          <Pressable style={styles.settingsBtn} onPress={() => setShowPermissions(true)} testID="permissions-btn">
             <Settings color="#FFD700" size={24} />
           </Pressable>
         </View>
@@ -417,6 +419,49 @@ export default function GroupDetailScreen() {
               </View>
               </View>
             </KeyboardAvoidingView>
+          </View>
+        </Modal>
+
+        {/* Group Permissions Modal */}
+        <Modal visible={showPermissions} transparent animationType="slide" onRequestClose={() => setShowPermissions(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.permissionsModal}>
+              <GroupPermissions
+                groupId={group.id}
+                members={members.map(member => ({
+                  id: member.id,
+                  name: member.name,
+                  role: member.role as UserRole,
+                  avatar: member.avatar,
+                  joinedAt: member.joinedAt.toISOString(),
+                  permissions: {
+                    canAddPhotos: true,
+                    canDeletePhotos: member.role === 'owner' || member.role === 'admin',
+                    canModerate: member.role === 'owner' || member.role === 'admin',
+                    canInvite: true,
+                    canManageMembers: member.role === 'owner'
+                  }
+                } as GroupMember))}
+                currentUserRole="owner"
+                onUpdateMemberRole={(memberId, newRole) => {
+                  setMembers(prev => prev.map(m => 
+                    m.id === memberId ? { ...m, role: newRole as 'owner' | 'admin' | 'member' } : m
+                  ));
+                  handleHaptic('medium');
+                }}
+                onRemoveMember={(memberId) => {
+                  setMembers(prev => prev.filter(m => m.id !== memberId));
+                  handleHaptic('heavy');
+                }}
+                onUpdatePermissions={(memberId, permissions) => {
+                  console.log('Updating permissions for', memberId, permissions);
+                  handleHaptic('light');
+                }}
+              />
+              <Pressable style={styles.modalCloseBtn} onPress={() => setShowPermissions(false)} testID="close-permissions">
+                <Text style={styles.modalCloseText}>Fermer</Text>
+              </Pressable>
+            </View>
           </View>
         </Modal>
 
@@ -624,6 +669,7 @@ const styles = StyleSheet.create({
   cancelText: { color: '#fff', fontWeight: '700' },
   createText: { color: '#000', fontWeight: '800' },
   membersModal: { backgroundColor: '#0B0B0D', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
+  permissionsModal: { backgroundColor: '#0B0B0D', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%', flex: 1 },
   membersList: { maxHeight: 400 },
   memberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
   memberItemAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },

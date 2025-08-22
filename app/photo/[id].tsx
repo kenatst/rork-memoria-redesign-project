@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
+import UniversalComments from '@/components/UniversalComments';
 
 interface PhotoLike {
   id: string;
@@ -48,6 +49,7 @@ export default function PhotoDetailScreen() {
   const [showTagInput, setShowTagInput] = useState<boolean>(false);
   const [newTag, setNewTag] = useState<string>('');
   const [photoTags, setPhotoTags] = useState<string[]>([]);
+  const [showUniversalComments, setShowUniversalComments] = useState<boolean>(false);
   
   const targetUri = React.useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
@@ -396,7 +398,7 @@ export default function PhotoDetailScreen() {
                     <Text style={styles.actionCount}>{likes.length}</Text>
                   </Pressable>
                   
-                  <Pressable style={styles.actionButton} onPress={() => setShowComments(!showComments)}>
+                  <Pressable style={styles.actionButton} onPress={() => setShowUniversalComments(true)}>
                     <MessageCircle color="#FFFFFF" size={28} />
                     <Text style={styles.actionCount}>{photoComments.length}</Text>
                   </Pressable>
@@ -425,7 +427,7 @@ export default function PhotoDetailScreen() {
                     <Text style={styles.actionCount}>{likes.length}</Text>
                   </Pressable>
                   
-                  <Pressable style={styles.actionButton} onPress={() => setShowComments(!showComments)}>
+                  <Pressable style={styles.actionButton} onPress={() => setShowUniversalComments(true)}>
                     <MessageCircle color="#FFFFFF" size={28} />
                     <Text style={styles.actionCount}>{photoComments.length}</Text>
                   </Pressable>
@@ -649,6 +651,14 @@ export default function PhotoDetailScreen() {
             )}
           </View>
         )}
+        
+        {/* Universal Comments Modal */}
+        <UniversalComments
+          visible={showUniversalComments}
+          onClose={() => setShowUniversalComments(false)}
+          photoId={targetUri}
+          photoUri={currentPhoto?.uri}
+        />
       </SafeAreaView>
     </View>
   );

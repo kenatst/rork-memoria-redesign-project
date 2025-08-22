@@ -21,6 +21,7 @@ import {
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import { CameraFilters } from '@/components/CameraFilters';
+import ImageCompression from '@/components/ImageCompression';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -49,6 +50,8 @@ export default function CaptureScreen() {
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [showCameraFilters, setShowCameraFilters] = useState<boolean>(false);
+  const [showImageCompression, setShowImageCompression] = useState<boolean>(false);
+  const [imageToCompress, setImageToCompress] = useState<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -220,8 +223,8 @@ export default function CaptureScreen() {
           await MediaLibrary.saveToLibraryAsync(filteredUri);
         }
         setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
-        setCapturedPhoto(filteredUri);
-        setShowAlbumSelector(true);
+        setImageToCompress(filteredUri);
+        setShowImageCompression(true);
       }
     } catch (error) {
       console.log('Erreur capture:', error);
@@ -670,11 +673,27 @@ export default function CaptureScreen() {
               MediaLibrary.saveToLibraryAsync(uri);
             }
             setRecentPhotos(prev => [uri, ...prev.slice(0, 9)]);
-            setCapturedPhoto(uri);
-            setShowAlbumSelector(true);
+            setImageToCompress(uri);
+            setShowImageCompression(true);
             if (filter) {
               setFilterMode(filter.id);
             }
+          }}
+        />
+
+        {/* Image Compression Modal */}
+        <ImageCompression
+          visible={showImageCompression}
+          imageUri={imageToCompress || ''}
+          onClose={() => {
+            setShowImageCompression(false);
+            setImageToCompress(null);
+          }}
+          onCompress={(compressedUri) => {
+            setCapturedPhoto(compressedUri);
+            setShowAlbumSelector(true);
+            setShowImageCompression(false);
+            setImageToCompress(null);
           }}
         />
       </SafeAreaView>
