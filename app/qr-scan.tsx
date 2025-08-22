@@ -43,7 +43,7 @@ export default function QRScanScreen() {
     Array.from({ length: 20 }, () => new Animated.Value(0))
   );
   const window = Dimensions.get('window');
-  const frameSize = useMemo(() => Math.round(Math.min(window.width, window.height) * 0.6), [window.width, window.height]);
+  const frameSize = useMemo(() => Math.round(Math.min(window.width, window.height) * 0.7), [window.width, window.height]);
   const [glassBreakAnim] = useState(new Animated.Value(0));
   const [showGlass, setShowGlass] = useState<boolean>(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -358,6 +358,7 @@ export default function QRScanScreen() {
   return (
     <View style={styles.container}>
       <CameraView
+        testID="camera-view"
         style={styles.camera}
         facing={'back' as CameraType}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
@@ -404,13 +405,13 @@ export default function QRScanScreen() {
           ]}
         >
           <View style={styles.scanMask} pointerEvents="none">
-            <View style={styles.maskPiece} />
+            <View style={styles.maskPieceVertical} />
             <View style={styles.maskRow}>
-              <View style={styles.maskPiece} />
+              <View style={styles.maskSide} />
               <View style={[styles.maskHole, { width: frameSize, height: frameSize }]} />
-              <View style={styles.maskPiece} />
+              <View style={styles.maskSide} />
             </View>
-            <View style={styles.maskPiece} />
+            <View style={styles.maskPieceVertical} />
           </View>
           <View style={[styles.scanFrame, { width: frameSize, height: frameSize }]} testID="scan-frame">
             <Animated.View
@@ -678,14 +679,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  maskPiece: {
+  maskPieceVertical: {
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    height: '20%',
   },
   maskHole: {
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
+  },
+  maskSide: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   statusContainer: {
     position: 'absolute',
