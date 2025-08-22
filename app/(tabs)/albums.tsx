@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
-import { Camera, Users, Calendar, Heart, Plus, Grid3X3, List, Sparkles, Lock, Globe, Link2 } from 'lucide-react-native';
+import { Camera, Users, Calendar, Heart, Plus, Grid3X3, List, Sparkles, Lock, Globe, Link2, Search } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/providers/AuthProvider';
 import { useAppState } from '@/providers/AppStateProvider';
@@ -14,6 +14,7 @@ import Colors from '@/constants/colors';
 import ProgressToast from '@/components/ProgressToast';
 import { useToast } from '@/providers/ToastProvider';
 import { useAccessibility } from '@/components/AccessibilityProvider';
+import AdvancedSearch from '@/components/AdvancedSearch';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -55,6 +56,8 @@ export default function AlbumsScreen() {
   const [newAlbumType, setNewAlbumType] = useState<'personal' | 'shared' | 'event'>('personal');
   const [newAlbumPrivacy, setNewAlbumPrivacy] = useState<'public' | 'private' | 'friends'>('private');
   const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState<boolean>(false);
+  const [searchResults, setSearchResults] = useState<{ albums: any[]; photos: any[] } | null>(null);
   const [mainFadeAnim] = useState(new Animated.Value(0));
   const [mainSlideAnim] = useState(new Animated.Value(50));
 
@@ -102,7 +105,11 @@ export default function AlbumsScreen() {
   };
 
   const filteredAndSortedAlbums = useMemo(() => {
-    let filtered = albums;
+    // Use search results if available
+    let filtered = searchResults ? searchResults.albums.map(album => {
+      const fullAlbum = albums.find(a => a.id === album.id);
+      return fullAlbum || album;
+    }) : albums;
 
     // Apply search filter
     if (searchQuery.trim()) {
@@ -471,10 +478,41 @@ export default function AlbumsScreen() {
               </Pressable>
             ))}
           </ScrollView>
+          <Pressable 
+            style={styles.round} 
+            onPress={() => {
+              handleHaptic('light');
+              setShowAdvancedSearch(true);
+            }} 
+            testID="advanced-search"
+            accessibilityLabel={getAccessibleLabel('Recherche avancée', 'Ouvre la recherche avec filtres')}
+            accessibilityRole="button"
+          >
+            <Search color={Colors.palette.taupe} size={18} />
+          </Pressable>
           <Pressable style={styles.round} onPress={toggleView} testID="toggle-view">
             {viewMode === 'grid' ? <Grid3X3 color={Colors.palette.taupe} size={18} /> : <List color={Colors.palette.taupe} size={18} />}
           </Pressable>
         </Animated.View>
+
+        {/* Search Results Indicator */}
+        {searchResults && (
+          <View style={styles.searchResultsIndicator}>
+            <Text style={styles.searchResultsText}>
+              Résultats de recherche: {searchResults.albums.length} album(s), {searchResults.photos.length} photo(s)
+            </Text>
+            <Pressable 
+              style={styles.clearSearchBtn} 
+              onPress={() => {
+                setSearchResults(null);
+                handleHaptic('light');
+              }}
+              testID="clear-search"
+            >
+              <Text style={styles.clearSearchText}>Effacer</Text>
+            </Pressable>
+          </View>
+        )}
 
         <Pressable style={styles.createCard} onPress={() => { handleHaptic('medium'); setShowCreate(true); }} testID="create-album">
           <LinearGradient colors={['#1a1a1a', '#2A2D34']} style={styles.createGradient}>
@@ -535,6 +573,21 @@ export default function AlbumsScreen() {
             />
           </View>
         </ScrollView>
+
+        {/* Advanced Search Modal */}
+        {showAdvancedSearch && (
+          <AdvancedSearch
+            onClose={() => {
+              setShowAdvancedSearch(false);
+              setSearchResults(null);
+            }}
+            onResults={(results) => {
+              setSearchResults(results);
+              setShowAdvancedSearch(false);
+              announceForAccessibility(`${results.albums.length + results.photos.length} résultats trouvés`);
+            }}
+          />
+        )}
 
         <Modal visible={showCreate} animationType="slide" transparent onRequestClose={() => setShowCreate(false)}>
           <KeyboardAvoidingView style={styles.modalBackdrop} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -775,4 +828,8 @@ const styles = StyleSheet.create({
   albumInfoList: { flex: 1, marginLeft: 12 },
   albumTitle: { color: Colors.palette.taupeDeep, fontSize: 16, fontWeight: '700' },
   errorText: { color: '#FF4444', fontSize: 14, textAlign: 'center', marginTop: 20 },
+  searchResultsIndicator: { marginHorizontal: 20, marginTop: 8, backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  searchResultsText: { color: '#FFD700', fontSize: 14, fontWeight: '600', flex: 1 },
+  clearSearchBtn: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  clearSearchText: { color: Colors.palette.taupe, fontSize: 12, fontWeight: '700' },
 });
