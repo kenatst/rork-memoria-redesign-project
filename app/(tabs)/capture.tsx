@@ -150,6 +150,40 @@ export default function CaptureScreen() {
     });
   }, [flashAnim]);
 
+  const startStopRecording = useCallback(async () => {
+    try {
+      if (!cameraRef.current) return;
+      if (Platform.OS === 'web') {
+        Alert.alert('Vidéo non disponible sur web', 'Utilisez l’app mobile pour l’enregistrement.');
+        return;
+      }
+      if (!isRecording) {
+        handleHapticFeedback('heavy');
+        setIsRecording(true);
+        setShowCaptureAnimation(false);
+        (cameraRef.current as any).startRecording({
+          maxDuration: 600,
+          onRecordingFinished: (video: { uri: string }) => {
+            console.log('Recording finished', video);
+            setIsRecording(false);
+            setCapturedPhoto(video?.uri ?? null);
+            setShowAlbumSelector(true);
+          },
+          onRecordingError: (e: unknown) => {
+            console.log('Recording error', e);
+            setIsRecording(false);
+            Alert.alert('Erreur', "Impossible d'enregistrer la vidéo");
+          }
+        });
+      } else {
+        (cameraRef.current as any).stopRecording();
+      }
+    } catch (e) {
+      console.log('Video toggle error', e);
+      setIsRecording(false);
+    }
+  }, [isRecording, handleHapticFeedback]);
+
   const takePicture = useCallback(async () => {
     if (!cameraRef.current) return;
     
@@ -462,7 +496,7 @@ export default function CaptureScreen() {
                             styles.captureButton,
                             cameraMode === 'video' && isRecording && styles.recordingButton
                           ]} 
-                          onPress={takePicture} 
+                          onPress={cameraMode === 'video' ? startStopRecording : takePicture} 
                           testID="capture-btn"
                         >
                           <LinearGradient 
@@ -470,7 +504,7 @@ export default function CaptureScreen() {
                             style={styles.captureGradient}
                           >
                             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                              <Camera color="#000000" size={32} strokeWidth={3} />
+                              <Camera color={isRecording ? '#FF3B30' : '#000000'} size={32} strokeWidth={3} />
                             </Animated.View>
                           </LinearGradient>
                         </Pressable>
@@ -518,7 +552,7 @@ export default function CaptureScreen() {
                             style={styles.captureGradient}
                           >
                             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                              <Camera color="#000000" size={32} strokeWidth={3} />
+                              <Camera color={isRecording ? '#FF3B30' : '#000000'} size={32} strokeWidth={3} />
                             </Animated.View>
                           </LinearGradient>
                         </Pressable>
@@ -552,6 +586,12 @@ export default function CaptureScreen() {
               >
                 <Image source={{ uri: lastPhoto }} style={styles.lastThumbImage} contentFit="cover" />
               </Pressable>
+            )}
+            {/* Portrait mode overlay */}
+            {cameraMode === 'portrait' && (
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                <LinearGradient colors={["rgba(0,0,0,0.6)", 'transparent', 'transparent', "rgba(0,0,0,0.6)"]} locations={[0,0.25,0.75,1]} style={StyleSheet.absoluteFillObject} />
+              </View>
             )}
           </CameraView>
         </Animated.View>
@@ -697,6 +737,9 @@ const styles = StyleSheet.create({
   flashOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', zIndex: 100 },
   modeIndicator: { position: 'absolute', top: 80, left: 20, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, zIndex: 20 },
   modeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  recDotRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30' },
+  recText: { color: '#FF3B30', fontSize: 12, fontWeight: '800' },
   captureSection: { alignItems: 'center', gap: 8 },
   modeButton: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   modeButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },

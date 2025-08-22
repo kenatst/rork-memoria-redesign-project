@@ -31,7 +31,7 @@ interface Album {
 export default function AlbumsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName } = useAppState();
+  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum } = useAppState();
 
   const [albums, setAlbums] = useState<Album[]>([]);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
@@ -151,10 +151,10 @@ export default function AlbumsScreen() {
     let list = albums;
     if (filterType === 'recent') list = [...list].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
     if (filterType === 'shared') list = list.filter((a) => a.type === 'shared' || a.privacy === 'friends');
-    if (filterType === 'favorites') list = list.slice(0, 2);
+    if (filterType === 'favorites') list = list.filter((a) => favoriteAlbumIds.includes(a.id));
     if (selectedGroup !== 'all') list = list.filter((a) => a.groupId === selectedGroup);
     return list;
-  }, [albums, filterType, selectedGroup]);
+  }, [albums, filterType, selectedGroup, favoriteAlbumIds]);
 
   const formatDate = (date: Date): string => {
     const now = new Date();
@@ -253,11 +253,11 @@ export default function AlbumsScreen() {
                   <Pressable style={styles.albumPressable} onPress={() => { handleHaptic('medium'); router.push(`/album/${album.id}`); }} testID={`album-${album.id}`}>
                     {Platform.OS !== 'web' ? (
                       <BlurView intensity={12} style={styles.albumBlur}>
-                        <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} />
+                        <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
                       </BlurView>
                     ) : (
                       <View style={[styles.albumBlur, styles.webBlur]}>
-                        <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} />
+                        <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
                       </View>
                     )}
                   </Pressable>
@@ -340,9 +340,11 @@ interface CardInnerProps {
   glow: Animated.Value;
   viewMode: 'grid' | 'list';
   formatDate: (d: Date) => string;
+  onToggleFavorite: () => void;
+  isFavorite: boolean;
 }
 
-function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate }: CardInnerProps) {
+function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onToggleFavorite, isFavorite }: CardInnerProps) {
   const groupBadge = album.groupId ? (
     <View style={styles.groupBadge}>
       <Text style={styles.groupBadgeText}>{album.groupId?.toUpperCase()}</Text>
@@ -355,6 +357,11 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate }: Ca
         <View style={styles.albumImageContainer}>
           <Image source={{ uri: album.coverImage }} style={styles.albumCover} contentFit="cover" />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={styles.albumOverlay} />
+          <View style={styles.favoriteBadgeWrap}>
+            <Pressable style={[styles.favoriteBadge, isFavorite && styles.favoriteBadgeActive]} onPress={onToggleFavorite} testID={`fav-${album.id}`}>
+              <Text style={[styles.favoriteText, isFavorite && styles.favoriteTextActive]}>{isFavorite ? '★' : '☆'}</Text>
+            </Pressable>
+          </View>
           <View style={styles.albumBadges}>
             {album.isActive && (
               <Animated.View style={[styles.liveBadge, { opacity: glow }]}>
@@ -389,6 +396,9 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate }: Ca
         <View style={styles.albumListHeader}>
           <Text style={styles.albumListName} numberOfLines={1}>{album.name}</Text>
           <View style={styles.albumListBadges}>
+            <Pressable style={[styles.listFav, isFavorite && styles.listFavActive]} onPress={onToggleFavorite} testID={`fav-${album.id}`}>
+              <Text style={[styles.listFavText, isFavorite && styles.listFavTextActive]}>{isFavorite ? '★' : '☆'}</Text>
+            </Pressable>
             <Icon size={16} color={color} />
             <PIcon size={14} color={Colors.palette.taupe} />
           </View>
@@ -450,6 +460,11 @@ const styles = StyleSheet.create({
   albumImageContainer: { position: 'relative', height: 140 },
   albumCover: { width: '100%', height: '100%' },
   albumOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  favoriteBadgeWrap: { position: 'absolute', top: 8, left: 8 },
+  favoriteBadge: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
+  favoriteBadgeActive: { backgroundColor: 'rgba(255,215,0,0.9)' },
+  favoriteText: { color: '#FFFFFF', fontWeight: '800' },
+  favoriteTextActive: { color: '#000000', fontWeight: '800' },
   albumBadges: { position: 'absolute', top: 8, right: 8, gap: 6 },
   liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,215,0,0.95)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   liveText: { color: '#000000', fontSize: 10, fontWeight: '800' },
@@ -470,6 +485,10 @@ const styles = StyleSheet.create({
   albumListHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   albumListName: { color: Colors.palette.taupeDeep, fontSize: 16, fontWeight: '700', flex: 1 },
   albumListBadges: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  listFav: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  listFavActive: { backgroundColor: '#FFD700' },
+  listFavText: { color: '#FFFFFF', fontWeight: '800' },
+  listFavTextActive: { color: '#000000' },
   albumListMeta: { color: Colors.palette.taupe, fontSize: 13 },
   albumListDate: { color: Colors.palette.taupe, fontSize: 12 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
