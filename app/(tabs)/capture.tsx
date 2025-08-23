@@ -25,12 +25,13 @@ import ImageCompression from '@/components/ImageCompression';
 import { useImageCompression } from '@/providers/ImageCompressionProvider';
 import { useOfflineQueue } from '@/providers/OfflineQueueProvider';
 import { useAI } from '@/providers/AIProvider';
+import { CloudinaryUploadResult } from '@/lib/cloudinary';
 
 const { height: screenHeight } = Dimensions.get('window');
 
 export default function CaptureScreen() {
   const { albums, addPhotoToAlbum } = useAppState();
-  const { compressImage, isCompressing } = useImageCompression();
+  const { compressImage, isCompressing, compressAndUpload } = useImageCompression();
   const { addToQueue, pendingCount } = useOfflineQueue();
   const { analyzePhotos, isAnalyzing } = useAI();
   const insets = useSafeAreaInsets();
@@ -58,6 +59,8 @@ export default function CaptureScreen() {
   const [showCameraFilters, setShowCameraFilters] = useState<boolean>(false);
   const [showImageCompression, setShowImageCompression] = useState<boolean>(false);
   const [imageToCompress, setImageToCompress] = useState<string | null>(null);
+  const [isUploadingToCloud, setIsUploadingToCloud] = useState<boolean>(false);
+  const [cloudUploadResults, setCloudUploadResults] = useState<CloudinaryUploadResult[]>([]);
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -226,33 +229,89 @@ export default function CaptureScreen() {
       if (photo) {
         const filteredUri = await applyFilter(photo.uri, filterMode);
         
-        // Auto-compress image using AI provider
+        // Auto-compress and upload to Cloudinary
         try {
-          const compressedResult = await compressImage(filteredUri);
-          const finalUri = compressedResult.uri;
+          setIsUploadingToCloud(true);
           
-          if (mediaPermission?.granted) {
-            await MediaLibrary.saveToLibraryAsync(finalUri);
-          } else {
-            // Add to offline queue if no permission
-            addToQueue('photo_upload', { uri: finalUri, timestamp: Date.now() });
-          }
+          // Compress and upload to Cloudinary in one step
+          const cloudResult = await compressAndUpload(filteredUri, {
+            folder: 'memoria/captures',
+            tags: ['capture', 'memoria-app', 'auto-upload'],
+            context: {
+              source: 'camera-capture',
+              timestamp: Date.now().toString(),
+              filter: filterMode,
+              camera_mode: cameraMode
+            }
+          });
           
-          setRecentPhotos(prev => [finalUri, ...prev.slice(0, 9)]);
+          console.log('☁️ [Capture] Photo uploaded to Cloudinary:', cloudResult.secure_url);
           
-          // Analyze photo with AI in background
-          analyzePhotos([finalUri]).catch(console.error);
+          // Store cloud result
+          setCloudUploadResults(prev => [cloudResult, ...prev.slice(0, 9)]);
           
-          setImageToCompress(finalUri);
-          setShowImageCompression(true);
-        } catch (error) {
-          console.error('Compression failed, using original:', error);
+          // Save locally if permission granted
           if (mediaPermission?.granted) {
             await MediaLibrary.saveToLibraryAsync(filteredUri);
+          } else {
+            // Add to offline queue if no permission
+            addToQueue('photo_upload', { 
+              uri: filteredUri, 
+              cloudUrl: cloudResult.secure_url,
+              timestamp: Date.now() 
+            });
           }
+          
           setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
+          
+          // Analyze photo with AI in background
+          analyzePhotos([filteredUri]).catch(console.error);
+          
+          // Show success message
+          Alert.alert(
+            '✅ Photo capturée',
+            `Photo compressée et uploadée vers le cloud avec succès!\n\nURL: ${cloudResult.secure_url.substring(0, 50)}...`,
+            [{ text: 'OK' }]
+          );
+          
           setImageToCompress(filteredUri);
           setShowImageCompression(true);
+        } catch (error) {
+          console.error('❌ [Capture] Cloud upload failed, using local compression:', error);
+          
+          // Fallback to local compression only
+          try {
+            const compressedResult = await compressImage(filteredUri);
+            const finalUri = compressedResult.uri;
+            
+            if (mediaPermission?.granted) {
+              await MediaLibrary.saveToLibraryAsync(finalUri);
+            } else {
+              addToQueue('photo_upload', { uri: finalUri, timestamp: Date.now() });
+            }
+            
+            setRecentPhotos(prev => [finalUri, ...prev.slice(0, 9)]);
+            analyzePhotos([finalUri]).catch(console.error);
+            
+            Alert.alert(
+              '⚠️ Upload cloud échoué',
+              'Photo compressée et sauvegardée localement. L\'upload sera retenté plus tard.',
+              [{ text: 'OK' }]
+            );
+            
+            setImageToCompress(finalUri);
+            setShowImageCompression(true);
+          } catch (compressionError) {
+            console.error('Compression also failed, using original:', compressionError);
+            if (mediaPermission?.granted) {
+              await MediaLibrary.saveToLibraryAsync(filteredUri);
+            }
+            setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
+            setImageToCompress(filteredUri);
+            setShowImageCompression(true);
+          }
+        } finally {
+          setIsUploadingToCloud(false);
         }
       }
     } catch (error) {
@@ -478,6 +537,20 @@ export default function CaptureScreen() {
             {isCompressing && (
               <View style={[styles.compressionIndicator, { top: Math.max(68, insets.top + 64) }]}>
                 <Text style={styles.compressionText}>🗜️ Compression...</Text>
+              </View>
+            )}
+            
+            {/* Cloud Upload Indicator */}
+            {isUploadingToCloud && (
+              <View style={[styles.cloudUploadIndicator, { top: Math.max(96, insets.top + 92) }]}>
+                <Text style={styles.cloudUploadText}>☁️ Upload cloud...</Text>
+              </View>
+            )}
+            
+            {/* Cloud Success Indicator */}
+            {cloudUploadResults.length > 0 && (
+              <View style={[styles.cloudSuccessIndicator, { top: Math.max(124, insets.top + 120) }]}>
+                <Text style={styles.cloudSuccessText}>✅ {cloudUploadResults.length} dans le cloud</Text>
               </View>
             )}
 
@@ -920,6 +993,34 @@ const styles = StyleSheet.create({
     zIndex: 25,
   },
   compressionText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  cloudUploadIndicator: {
+    position: 'absolute',
+    left: 20,
+    backgroundColor: 'rgba(0, 191, 255, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    zIndex: 25,
+  },
+  cloudUploadText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  cloudSuccessIndicator: {
+    position: 'absolute',
+    left: 20,
+    backgroundColor: 'rgba(0, 255, 127, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    zIndex: 25,
+  },
+  cloudSuccessText: {
     color: '#000000',
     fontSize: 12,
     fontWeight: '700',

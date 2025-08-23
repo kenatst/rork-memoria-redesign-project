@@ -96,6 +96,11 @@ function RootLayoutNav() {
         headerStyle: { backgroundColor: '#000000' },
         headerTintColor: '#FFFFFF'
       }} />
+      <Stack.Screen name="cloudinary-test" options={{ 
+        title: "Test Cloudinary",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
     </Stack>
   );
 }

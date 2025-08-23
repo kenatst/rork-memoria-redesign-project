@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Text, Pressable, Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { Camera, Upload, X } from 'lucide-react-native';
+import { Camera, Upload, X, Cloud, Zap } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Colors from '@/constants/colors';
+import { useImageCompression } from '@/providers/ImageCompressionProvider';
+import { CloudinaryUploadResult } from '@/lib/cloudinary';
 
 interface ImagePickerComponentProps {
   currentImage?: string;
@@ -13,6 +15,11 @@ interface ImagePickerComponentProps {
   onRemove?: () => void;
   size?: number;
   placeholder?: string;
+  // Nouvelles props pour Cloudinary
+  enableCloudUpload?: boolean;
+  onCloudUpload?: (result: CloudinaryUploadResult) => void;
+  compressionEnabled?: boolean;
+  cloudinaryFolder?: string;
 }
 
 export default function ImagePickerComponent({
@@ -20,9 +27,15 @@ export default function ImagePickerComponent({
   onImageSelected,
   onRemove,
   size = 120,
-  placeholder = "Ajouter une image"
+  placeholder = "Ajouter une image",
+  enableCloudUpload = false,
+  onCloudUpload,
+  compressionEnabled = true,
+  cloudinaryFolder = 'memoria/photos'
 }: ImagePickerComponentProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const { compressAndUpload, uploadToCloud, isCompressing } = useImageCompression();
 
   const requestPermissions = async () => {
     if (Platform.OS !== 'web') {
@@ -49,7 +62,13 @@ export default function ImagePickerComponent({
       });
 
       if (!result.canceled && result.assets[0]) {
-        onImageSelected(result.assets[0].uri);
+        const selectedUri = result.assets[0].uri;
+        onImageSelected(selectedUri);
+        
+        // Upload automatique vers Cloudinary si activé
+        if (enableCloudUpload && onCloudUpload) {
+          await handleCloudUpload(selectedUri);
+        }
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -80,7 +99,13 @@ export default function ImagePickerComponent({
       });
 
       if (!result.canceled && result.assets[0]) {
-        onImageSelected(result.assets[0].uri);
+        const selectedUri = result.assets[0].uri;
+        onImageSelected(selectedUri);
+        
+        // Upload automatique vers Cloudinary si activé
+        if (enableCloudUpload && onCloudUpload) {
+          await handleCloudUpload(selectedUri);
+        }
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -90,15 +115,72 @@ export default function ImagePickerComponent({
     }
   };
 
+  // Nouvelle méthode pour gérer l'upload vers Cloudinary
+  const handleCloudUpload = async (uri: string) => {
+    if (!onCloudUpload) return;
+    
+    setIsUploading(true);
+    try {
+      console.log('🚀 [ImagePicker] Starting cloud upload for:', uri);
+      
+      let uploadResult: CloudinaryUploadResult;
+      
+      if (compressionEnabled) {
+        // Upload avec compression
+        uploadResult = await compressAndUpload(uri, {
+          folder: cloudinaryFolder,
+          tags: ['memoria-app', 'user-upload'],
+          context: {
+            source: 'image-picker',
+            timestamp: Date.now().toString()
+          }
+        });
+      } else {
+        // Upload direct sans compression
+        uploadResult = await uploadToCloud(uri, {
+          folder: cloudinaryFolder,
+          tags: ['memoria-app', 'user-upload', 'original'],
+          context: {
+            source: 'image-picker',
+            timestamp: Date.now().toString()
+          }
+        });
+      }
+      
+      console.log('✅ [ImagePicker] Cloud upload successful:', uploadResult.secure_url);
+      onCloudUpload(uploadResult);
+    } catch (error) {
+      console.error('❌ [ImagePicker] Cloud upload failed:', error);
+      Alert.alert(
+        'Erreur d\'upload',
+        'Impossible d\'uploader l\'image vers le cloud. L\'image locale a été conservée.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const showOptions = () => {
+    const alertOptions: any[] = [
+      { text: 'Galerie', onPress: pickImage },
+      ...(Platform.OS !== 'web' ? [{ text: 'Caméra', onPress: takePhoto }] : []),
+    ];
+    
+    // Ajouter option d'upload cloud si une image est déjà sélectionnée
+    if (currentImage && enableCloudUpload && onCloudUpload) {
+      alertOptions.unshift({
+        text: '☁️ Upload vers Cloud',
+        onPress: () => handleCloudUpload(currentImage)
+      });
+    }
+    
+    alertOptions.push({ text: 'Annuler', style: 'cancel' });
+    
     Alert.alert(
       'Sélectionner une image',
-      'Choisissez une option',
-      [
-        { text: 'Galerie', onPress: pickImage },
-        ...(Platform.OS !== 'web' ? [{ text: 'Caméra', onPress: takePhoto }] : []),
-        { text: 'Annuler', style: 'cancel' }
-      ]
+      enableCloudUpload ? 'Choisissez une option (upload cloud automatique activé)' : 'Choisissez une option',
+      alertOptions
     );
   };
 
@@ -132,13 +214,57 @@ export default function ImagePickerComponent({
             <BlurView intensity={20} style={styles.placeholderBlur}>
               <Camera color={Colors.palette.accentGold} size={32} />
               <Text style={styles.placeholderText}>{placeholder}</Text>
-              {isLoading && <Text style={styles.loadingText}>Chargement...</Text>}
+              {enableCloudUpload && (
+                <View style={styles.cloudIndicator}>
+                  <Cloud color={Colors.palette.accentGold} size={16} />
+                  <Text style={styles.cloudText}>Cloud activé</Text>
+                </View>
+              )}
+              {(isLoading || isUploading || isCompressing) && (
+                <View style={styles.loadingContainer}>
+                  {isLoading && <Text style={styles.loadingText}>Sélection...</Text>}
+                  {isCompressing && (
+                    <View style={styles.loadingRow}>
+                      <Zap color={Colors.palette.accentGold} size={12} />
+                      <Text style={styles.loadingText}>Compression...</Text>
+                    </View>
+                  )}
+                  {isUploading && (
+                    <View style={styles.loadingRow}>
+                      <Cloud color={Colors.palette.accentGold} size={12} />
+                      <Text style={styles.loadingText}>Upload cloud...</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </BlurView>
           ) : (
             <View style={[styles.placeholderBlur, styles.webBlur]}>
               <Camera color={Colors.palette.accentGold} size={32} />
               <Text style={styles.placeholderText}>{placeholder}</Text>
-              {isLoading && <Text style={styles.loadingText}>Chargement...</Text>}
+              {enableCloudUpload && (
+                <View style={styles.cloudIndicator}>
+                  <Cloud color={Colors.palette.accentGold} size={16} />
+                  <Text style={styles.cloudText}>Cloud activé</Text>
+                </View>
+              )}
+              {(isLoading || isUploading || isCompressing) && (
+                <View style={styles.loadingContainer}>
+                  {isLoading && <Text style={styles.loadingText}>Sélection...</Text>}
+                  {isCompressing && (
+                    <View style={styles.loadingRow}>
+                      <Zap color={Colors.palette.accentGold} size={12} />
+                      <Text style={styles.loadingText}>Compression...</Text>
+                    </View>
+                  )}
+                  {isUploading && (
+                    <View style={styles.loadingRow}>
+                      <Cloud color={Colors.palette.accentGold} size={12} />
+                      <Text style={styles.loadingText}>Upload cloud...</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           )}
         </Pressable>
@@ -214,5 +340,26 @@ const styles = StyleSheet.create({
     color: Colors.palette.taupe,
     fontSize: 10,
     fontStyle: 'italic',
+  },
+  cloudIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  cloudText: {
+    color: Colors.palette.accentGold,
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 4,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
+import { uploadToCloudinary, uploadBatch, CloudinaryUploadResult, CloudinaryUploadOptions } from '@/lib/cloudinary';
 
 interface CompressionSettings {
   maxWidth: number;
@@ -27,6 +28,11 @@ interface ImageCompressionContextValue {
   getOptimalSettings: (width: number, height: number, fileSize?: number) => CompressionSettings;
   defaultSettings: CompressionSettings;
   isCompressing: boolean;
+  // Nouvelles méthodes Cloudinary
+  compressAndUpload: (uri: string, cloudinaryOptions?: CloudinaryUploadOptions, compressionSettings?: Partial<CompressionSettings>) => Promise<CloudinaryUploadResult>;
+  compressAndUploadBatch: (uris: string[], cloudinaryOptions?: CloudinaryUploadOptions, compressionSettings?: Partial<CompressionSettings>) => Promise<CloudinaryUploadResult[]>;
+  uploadToCloud: (uri: string, options?: CloudinaryUploadOptions) => Promise<CloudinaryUploadResult>;
+  uploadBatchToCloud: (uris: string[], options?: CloudinaryUploadOptions) => Promise<CloudinaryUploadResult[]>;
 }
 
 const DEFAULT_SETTINGS: CompressionSettings = {
@@ -229,11 +235,134 @@ export const [ImageCompressionProvider, useImageCompression] = createContextHook
     }
   }, [compressImage]);
 
+  // Nouvelle méthode : Compression + Upload vers Cloudinary
+  const compressAndUpload = useCallback(async (
+    uri: string,
+    cloudinaryOptions?: CloudinaryUploadOptions,
+    compressionSettings?: Partial<CompressionSettings>
+  ): Promise<CloudinaryUploadResult> => {
+    try {
+      console.log('🔄 [ImageCompression] Starting compress and upload for:', uri);
+      setIsCompressing(true);
+      
+      // Étape 1: Compression locale
+      const compressedResult = await compressImage(uri, compressionSettings);
+      console.log('✅ [ImageCompression] Compression completed, uploading to Cloudinary...');
+      
+      // Étape 2: Upload vers Cloudinary
+      const uploadResult = await uploadToCloudinary(compressedResult.uri, {
+        folder: 'memoria/compressed',
+        tags: ['compressed', 'memoria-app'],
+        context: {
+          original_width: compressedResult.width.toString(),
+          original_height: compressedResult.height.toString(),
+          compression_applied: 'true'
+        },
+        ...cloudinaryOptions
+      });
+      
+      console.log('🎉 [ImageCompression] Compress and upload completed successfully');
+      return uploadResult;
+    } catch (error) {
+      console.error('❌ [ImageCompression] Compress and upload failed:', error);
+      throw error;
+    } finally {
+      setIsCompressing(false);
+    }
+  }, [compressImage]);
+
+  // Nouvelle méthode : Compression + Upload batch
+  const compressAndUploadBatch = useCallback(async (
+    uris: string[],
+    cloudinaryOptions?: CloudinaryUploadOptions,
+    compressionSettings?: Partial<CompressionSettings>
+  ): Promise<CloudinaryUploadResult[]> => {
+    try {
+      console.log('📦 [ImageCompression] Starting batch compress and upload for:', uris.length, 'files');
+      setIsCompressing(true);
+      
+      // Étape 1: Compression batch
+      const compressedResults = await compressMultipleImages(uris, compressionSettings);
+      console.log('✅ [ImageCompression] Batch compression completed, uploading to Cloudinary...');
+      
+      // Étape 2: Upload batch vers Cloudinary
+      const compressedUris = compressedResults.map(result => result.uri);
+      const uploadResults = await uploadBatch(compressedUris, {
+        folder: 'memoria/compressed',
+        tags: ['compressed', 'memoria-app', 'batch'],
+        ...cloudinaryOptions
+      });
+      
+      console.log('🎉 [ImageCompression] Batch compress and upload completed successfully');
+      return uploadResults;
+    } catch (error) {
+      console.error('❌ [ImageCompression] Batch compress and upload failed:', error);
+      throw error;
+    } finally {
+      setIsCompressing(false);
+    }
+  }, [compressMultipleImages]);
+
+  // Méthode directe d'upload sans compression
+  const uploadToCloud = useCallback(async (
+    uri: string,
+    options?: CloudinaryUploadOptions
+  ): Promise<CloudinaryUploadResult> => {
+    try {
+      console.log('☁️ [ImageCompression] Direct upload to Cloudinary:', uri);
+      setIsCompressing(true);
+      
+      const result = await uploadToCloudinary(uri, {
+        folder: 'memoria/original',
+        tags: ['original', 'memoria-app'],
+        ...options
+      });
+      
+      console.log('✅ [ImageCompression] Direct upload completed');
+      return result;
+    } catch (error) {
+      console.error('❌ [ImageCompression] Direct upload failed:', error);
+      throw error;
+    } finally {
+      setIsCompressing(false);
+    }
+  }, []);
+
+  // Méthode directe d'upload batch sans compression
+  const uploadBatchToCloud = useCallback(async (
+    uris: string[],
+    options?: CloudinaryUploadOptions
+  ): Promise<CloudinaryUploadResult[]> => {
+    try {
+      console.log('📦☁️ [ImageCompression] Direct batch upload to Cloudinary:', uris.length, 'files');
+      setIsCompressing(true);
+      
+      const results = await uploadBatch(uris, {
+        folder: 'memoria/original',
+        tags: ['original', 'memoria-app', 'batch'],
+        ...options
+      });
+      
+      console.log('✅ [ImageCompression] Direct batch upload completed');
+      return results;
+    } catch (error) {
+      console.error('❌ [ImageCompression] Direct batch upload failed:', error);
+      throw error;
+    } finally {
+      setIsCompressing(false);
+    }
+  }, []);
+
   return useMemo(() => ({
     compressImage,
     compressMultipleImages,
     getOptimalSettings,
     defaultSettings: DEFAULT_SETTINGS,
     isCompressing,
-  }), [compressImage, compressMultipleImages, getOptimalSettings, isCompressing]);
+    // Nouvelles méthodes Cloudinary
+    compressAndUpload,
+    compressAndUploadBatch,
+    uploadToCloud,
+    uploadBatchToCloud,
+  }), [compressImage, compressMultipleImages, getOptimalSettings, isCompressing, compressAndUpload, compressAndUploadBatch, uploadToCloud, uploadBatchToCloud]);
 });
