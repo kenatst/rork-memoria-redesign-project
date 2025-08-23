@@ -508,6 +508,19 @@ export default function CaptureScreen() {
     setRecentPhotos(prev => prev.filter(u => u !== lastPhoto));
   }, [lastPhoto]);
 
+  const currentAspectRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio) || ASPECT_RATIOS[0];
+  const cameraContainerStyle = useMemo(() => {
+    if (aspectRatio !== 'full' && currentAspectRatio.ratio) {
+      return { width: '100%', aspectRatio: currentAspectRatio.ratio } as const;
+    }
+    return styles.ratioFull;
+  }, [aspectRatio, currentAspectRatio]);
+
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
   if (!permission) {
     return (
       <View style={styles.container}>
@@ -535,18 +548,6 @@ export default function CaptureScreen() {
     );
   }
 
-  const currentAspectRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio) || ASPECT_RATIOS[0];
-  const cameraContainerStyle = useMemo(() => {
-    if (aspectRatio !== 'full' && currentAspectRatio.ratio) {
-      return { width: '100%', aspectRatio: currentAspectRatio.ratio } as const;
-    }
-    return styles.ratioFull;
-  }, [aspectRatio, currentAspectRatio]);
-
-  const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
-  });
 
   return (
     <View style={styles.container}>
