@@ -36,9 +36,9 @@ interface ImageCompressionContextValue {
 }
 
 const DEFAULT_SETTINGS: CompressionSettings = {
-  maxWidth: 1920,
-  maxHeight: 1080,
-  quality: 0.8,
+  maxWidth: 1200,
+  maxHeight: 800,
+  quality: 0.7,
   format: 'jpeg',
   enableAutoResize: true,
   enableQualityOptimization: true,
@@ -115,90 +115,56 @@ export const [ImageCompressionProvider, useImageCompression] = createContextHook
 
   const compressImage = useCallback(async (uri: string, customSettings?: Partial<CompressionSettings>): Promise<CompressionResult> => {
     try {
-      console.log('Starting image compression for:', uri);
+      console.log('🔄 Starting fast compression for:', uri.substring(0, 50) + '...');
       
-      // Get image dimensions
-      const imageInfo = await getImageInfo(uri);
+      // Use faster, more aggressive settings for mobile
+      const fastSettings: CompressionSettings = {
+        maxWidth: 800,
+        maxHeight: 600,
+        quality: 0.6,
+        format: 'jpeg',
+        enableAutoResize: true,
+        enableQualityOptimization: false, // Skip optimization for speed
+        ...customSettings
+      };
       
-      // Determine optimal settings
-      const optimalSettings = getOptimalSettings(imageInfo.width, imageInfo.height, imageInfo.size);
-      const settings = { ...optimalSettings, ...customSettings };
-      
-      console.log('Compression settings:', settings);
-      
-      // Prepare manipulations
-      const manipulations: ImageManipulator.Action[] = [];
-      
-      // Resize if needed and auto-resize is enabled
-      if (settings.enableAutoResize) {
-        const needsResize = imageInfo.width > settings.maxWidth || imageInfo.height > settings.maxHeight;
-        
-        if (needsResize) {
-          // Calculate new dimensions maintaining aspect ratio
-          const aspectRatio = imageInfo.width / imageInfo.height;
-          let newWidth = settings.maxWidth;
-          let newHeight = settings.maxHeight;
-          
-          if (aspectRatio > 1) {
-            // Landscape
-            newHeight = newWidth / aspectRatio;
-            if (newHeight > settings.maxHeight) {
-              newHeight = settings.maxHeight;
-              newWidth = newHeight * aspectRatio;
-            }
-          } else {
-            // Portrait or square
-            newWidth = newHeight * aspectRatio;
-            if (newWidth > settings.maxWidth) {
-              newWidth = settings.maxWidth;
-              newHeight = newWidth / aspectRatio;
-            }
-          }
-          
-          manipulations.push({
-            resize: {
-              width: Math.round(newWidth),
-              height: Math.round(newHeight),
-            },
-          });
+      // Skip getting image info for speed, use direct compression
+      const manipulations: ImageManipulator.Action[] = [
+        {
+          resize: {
+            width: fastSettings.maxWidth,
+            height: fastSettings.maxHeight,
+          },
         }
-      }
+      ];
       
-      // Apply compression
+      // Apply fast compression
       const result = await ImageManipulator.manipulateAsync(
         uri,
         manipulations,
         {
-          compress: settings.quality,
-          format: settings.format === 'png' ? ImageManipulator.SaveFormat.PNG : ImageManipulator.SaveFormat.JPEG,
+          compress: fastSettings.quality,
+          format: ImageManipulator.SaveFormat.JPEG,
         }
       );
       
-      console.log('Compression completed:', {
-        original: `${imageInfo.width}x${imageInfo.height}`,
-        compressed: `${result.width}x${result.height}`,
-        quality: settings.quality,
-      });
+      console.log('✅ Fast compression completed:', `${result.width}x${result.height}`);
       
       return {
         uri: result.uri,
         width: result.width,
         height: result.height,
-        originalSize: imageInfo.size,
-        compressedSize: undefined, // Would need additional API to get file size
-        compressionRatio: imageInfo.size ? undefined : undefined,
       };
     } catch (error) {
-      console.error('Image compression failed:', error);
+      console.error('❌ Fast compression failed, using original:', error);
       // Return original if compression fails
-      const imageInfo = await getImageInfo(uri);
       return {
         uri,
-        width: imageInfo.width,
-        height: imageInfo.height,
+        width: 800,
+        height: 600,
       };
     }
-  }, [getOptimalSettings]);
+  }, []);
 
   const compressMultipleImages = useCallback(async (
     uris: string[], 

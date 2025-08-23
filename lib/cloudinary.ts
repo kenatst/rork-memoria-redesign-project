@@ -5,7 +5,8 @@ const CLOUDINARY_CONFIG = {
   cloud_name: 'dh3cdbzxg',
   api_key: '139633441388393',
   api_secret: 'LYi2IArcaO9Dq6TI9dOvLa2AQ_o',
-  secure: true
+  secure: true,
+  upload_preset: 'memoria_unsigned' // Preset à créer dans Cloudinary dashboard
 };
 
 export interface CloudinaryUploadResult {
@@ -64,33 +65,64 @@ export async function uploadToCloudinary(
   options: CloudinaryUploadOptions = {}
 ): Promise<CloudinaryUploadResult> {
   try {
-    console.log('🚀 [Cloudinary] Starting simple upload...', { uri: typeof uri === 'string' ? uri.substring(0, 50) + '...' : 'File object' });
+    console.log('🚀 [Cloudinary] Starting upload...', { uri: typeof uri === 'string' ? uri.substring(0, 50) + '...' : 'File object' });
     
-    // Simplified approach: create a mock result for now
-    // In production, you would set up an unsigned upload preset in Cloudinary dashboard
-    const mockResult: CloudinaryUploadResult = {
-      secure_url: `https://res.cloudinary.com/${CLOUDINARY_CONFIG.cloud_name}/image/upload/v${Date.now()}/memoria/mock_${Date.now()}.jpg`,
-      public_id: `memoria/mock_${Date.now()}`,
-      width: 1920,
-      height: 1080,
-      format: 'jpg',
-      resource_type: 'image',
-      created_at: new Date().toISOString(),
-      bytes: 1024000,
-      url: `https://res.cloudinary.com/${CLOUDINARY_CONFIG.cloud_name}/image/upload/memoria/mock_${Date.now()}.jpg`,
-      folder: options.folder || 'memoria'
-    };
-
-    console.log('✅ [Cloudinary] Mock upload successful:', {
-      url: mockResult.secure_url,
-      public_id: mockResult.public_id,
-      size: mockResult.bytes
+    const formData = new FormData();
+    
+    // Handle file based on platform
+    if (Platform.OS === 'web') {
+      if (uri instanceof File) {
+        formData.append('file', uri);
+      } else {
+        // Convert data URI to blob for web
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append('file', blob);
+      }
+    } else {
+      // Mobile: use the URI directly
+      const filename = `memoria_${Date.now()}.jpg`;
+      formData.append('file', {
+        uri: uri as string,
+        type: 'image/jpeg',
+        name: filename,
+      } as any);
+    }
+    
+    // Add upload parameters
+    formData.append('upload_preset', CLOUDINARY_CONFIG.upload_preset);
+    formData.append('folder', options.folder || 'memoria');
+    
+    if (options.tags) {
+      formData.append('tags', options.tags.join(','));
+    }
+    
+    if (options.public_id) {
+      formData.append('public_id', options.public_id);
+    }
+    
+    // Upload to Cloudinary
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloud_name}/${options.resource_type || 'image'}/upload`;
+    
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
     });
-
-    // Simulate upload delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    return mockResult;
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }));
+      throw new Error(`Upload failed: ${response.status} - ${JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json() as CloudinaryUploadResult;
+    
+    console.log('✅ [Cloudinary] Upload successful:', {
+      url: result.secure_url,
+      public_id: result.public_id,
+      size: result.bytes
+    });
+    
+    return result;
   } catch (error) {
     console.error('❌ [Cloudinary] Upload error:', error);
     throw new Error(`Cloudinary upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

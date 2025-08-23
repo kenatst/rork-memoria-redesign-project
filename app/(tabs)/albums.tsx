@@ -38,7 +38,7 @@ interface Album {
 export default function AlbumsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum, addNotification } = useAppState();
+  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum, addNotification, isOnline } = useAppState();
   const { showError, showSuccess } = useToast();
   const { announceForAccessibility, getAccessibleLabel } = useAccessibility();
 
@@ -423,7 +423,7 @@ export default function AlbumsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>        
         <Animated.View style={[styles.header, { transform: [{ translateY: mainSlideAnim }] }]}>
-          {!useAppState().isOnline && (
+          {!isOnline && (
             <View style={styles.offlineBadge}>
               <Text style={styles.offlineText}>Hors‑ligne</Text>
             </View>

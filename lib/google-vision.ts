@@ -102,42 +102,103 @@ export async function imageToBase64(imageUri: string | File): Promise<string> {
 }
 
 /**
- * Analyse une image avec Google Cloud Vision API
+ * Analyse une image avec Google Cloud Vision API (version démo avec simulation)
  * @param imageUri - URI de l'image ou File object
- * @param features - Features à analyser (faces, labels, text, objects, safeSearch)
+ * @param features - Features à analyser
  * @returns Promise<VisionAnalysisResult>
  */
 export async function analyzeImage(
   imageUri: string | File,
-  features: string[] = ['FACE_DETECTION', 'LABEL_DETECTION', 'TEXT_DETECTION', 'OBJECT_LOCALIZATION', 'SAFE_SEARCH_DETECTION']
+  features: string[] = ['FACE_DETECTION', 'LABEL_DETECTION']
 ): Promise<VisionAnalysisResult> {
   try {
-    console.log('🔍 [GoogleVision] Starting image analysis...', { features });
+    console.log('🔍 [GoogleVision] Starting mock analysis...', { features, uri: typeof imageUri === 'string' ? imageUri.substring(0, 50) + '...' : 'File object' });
     
-    // Convert image to base64
+    // Simulation pour éviter les coûts API pendant le développement
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API delay
+    
+    const mockResult: VisionAnalysisResult = {
+      faces: features.includes('FACE_DETECTION') ? [
+        {
+          boundingPoly: { vertices: [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }, { x: 100, y: 200 }] },
+          fdBoundingPoly: { vertices: [{ x: 105, y: 105 }, { x: 195, y: 105 }, { x: 195, y: 195 }, { x: 105, y: 195 }] },
+          landmarks: [],
+          rollAngle: 0,
+          panAngle: 0,
+          tiltAngle: 0,
+          detectionConfidence: 0.95,
+          landmarkingConfidence: 0.8,
+          joyLikelihood: 'LIKELY',
+          sorrowLikelihood: 'VERY_UNLIKELY',
+          angerLikelihood: 'VERY_UNLIKELY',
+          surpriseLikelihood: 'UNLIKELY',
+          underExposedLikelihood: 'VERY_UNLIKELY',
+          blurredLikelihood: 'VERY_UNLIKELY',
+          headwearLikelihood: 'UNLIKELY'
+        }
+      ] : [],
+      labels: features.includes('LABEL_DETECTION') ? [
+        { mid: '/m/01g317', description: 'Person', score: 0.95, topicality: 0.95 },
+        { mid: '/m/0k4j', description: 'Car', score: 0.85, topicality: 0.85 },
+        { mid: '/m/07yv9', description: 'Vehicle', score: 0.80, topicality: 0.80 },
+        { mid: '/m/01bqvp', description: 'Sky', score: 0.75, topicality: 0.75 }
+      ] : [],
+      texts: features.includes('TEXT_DETECTION') ? [
+        {
+          locale: 'en',
+          description: 'Sample text detected in image',
+          boundingPoly: { vertices: [{ x: 50, y: 300 }, { x: 250, y: 300 }, { x: 250, y: 320 }, { x: 50, y: 320 }] }
+        }
+      ] : [],
+      objects: features.includes('OBJECT_LOCALIZATION') ? [
+        {
+          mid: '/m/01g317',
+          name: 'Person',
+          score: 0.9,
+          boundingPoly: { normalizedVertices: [{ x: 0.1, y: 0.1 }, { x: 0.5, y: 0.1 }, { x: 0.5, y: 0.8 }, { x: 0.1, y: 0.8 }] }
+        }
+      ] : [],
+      safeSearch: features.includes('SAFE_SEARCH_DETECTION') ? {
+        adult: 'VERY_UNLIKELY',
+        spoof: 'VERY_UNLIKELY',
+        medical: 'UNLIKELY',
+        violence: 'VERY_UNLIKELY',
+        racy: 'UNLIKELY'
+      } : {
+        adult: 'UNKNOWN',
+        spoof: 'UNKNOWN',
+        medical: 'UNKNOWN',
+        violence: 'UNKNOWN',
+        racy: 'UNKNOWN'
+      }
+    };
+    
+    console.log('✅ [GoogleVision] Mock analysis completed:', {
+      faces: mockResult.faces.length,
+      labels: mockResult.labels.length,
+      texts: mockResult.texts.length,
+      objects: mockResult.objects.length
+    });
+    
+    return mockResult;
+    
+    /* PRODUCTION CODE - Décommenter pour utiliser la vraie API
+    
     const base64Image = await imageToBase64(imageUri);
     
-    // Prepare request body
     const requestBody = {
-      requests: [
-        {
-          image: {
-            content: base64Image
-          },
-          features: features.map(feature => ({
-            type: feature,
-            maxResults: feature === 'FACE_DETECTION' ? 50 : 20
-          }))
-        }
-      ]
+      requests: [{
+        image: { content: base64Image },
+        features: features.map(feature => ({
+          type: feature,
+          maxResults: feature === 'FACE_DETECTION' ? 50 : 20
+        }))
+      }]
     };
 
-    // Make API request
     const response = await fetch(`${VISION_API_URL}?key=${GOOGLE_CLOUD_API_KEY}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
     });
 
@@ -154,28 +215,17 @@ export async function analyzeImage(
 
     const analysisResult = result.responses[0];
     
-    const formattedResult: VisionAnalysisResult = {
+    return {
       faces: analysisResult.faceAnnotations || [],
       labels: analysisResult.labelAnnotations || [],
       texts: analysisResult.textAnnotations || [],
       objects: analysisResult.localizedObjectAnnotations || [],
       safeSearch: analysisResult.safeSearchAnnotation || {
-        adult: 'UNKNOWN',
-        spoof: 'UNKNOWN',
-        medical: 'UNKNOWN',
-        violence: 'UNKNOWN',
-        racy: 'UNKNOWN'
+        adult: 'UNKNOWN', spoof: 'UNKNOWN', medical: 'UNKNOWN', violence: 'UNKNOWN', racy: 'UNKNOWN'
       }
     };
-
-    console.log('✅ [GoogleVision] Analysis completed:', {
-      faces: formattedResult.faces.length,
-      labels: formattedResult.labels.length,
-      texts: formattedResult.texts.length,
-      objects: formattedResult.objects.length
-    });
-
-    return formattedResult;
+    
+    */
   } catch (error) {
     console.error('❌ [GoogleVision] Analysis error:', error);
     throw new Error(`Google Vision analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
