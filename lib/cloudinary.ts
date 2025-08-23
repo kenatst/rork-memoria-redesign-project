@@ -1,13 +1,12 @@
-import { v2 as cloudinary } from 'cloudinary';
 import { Platform } from 'react-native';
 
 // Configuration Cloudinary avec les clés fournies
-cloudinary.config({
+const CLOUDINARY_CONFIG = {
   cloud_name: 'dh3cdbzxg',
   api_key: '139633441388393',
   api_secret: 'LYi2IArcaO9Dq6TI9dOvLa2AQ_o',
   secure: true
-});
+};
 
 export interface CloudinaryUploadResult {
   secure_url: string;
@@ -58,29 +57,47 @@ export async function uploadToCloudinary(
 
     let result: CloudinaryUploadResult;
     
+    // Use unsigned upload for both web and mobile
+    const formData = new FormData();
+    
     if (Platform.OS === 'web' && uri instanceof File) {
       // Web: Upload File object
-      const formData = new FormData();
       formData.append('file', uri);
-      formData.append('upload_preset', 'memoria_preset'); // Vous devrez créer ce preset dans Cloudinary
-      
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/dh3cdbzxg/${uploadOptions.resource_type}/upload`,
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
-      
-      result = await response.json();
     } else {
       // Mobile: Upload via URI
-      result = await cloudinary.uploader.upload(uri as string, uploadOptions);
+      const uriParts = (uri as string).split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      
+      formData.append('file', {
+        uri: uri as string,
+        name: `memoria_${Date.now()}.${fileType}`,
+        type: `image/${fileType}`
+      } as any);
     }
+    
+    // Add upload parameters
+    formData.append('upload_preset', 'memoria_unsigned'); // Create this preset in Cloudinary dashboard
+    formData.append('folder', uploadOptions.folder);
+    formData.append('tags', uploadOptions.tags.join(','));
+    
+    if (uploadOptions.public_id) {
+      formData.append('public_id', uploadOptions.public_id);
+    }
+    
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloud_name}/${uploadOptions.resource_type}/upload`,
+      {
+        method: 'POST',
+        body: formData
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+    }
+    
+    result = await response.json();
 
     console.log('✅ [Cloudinary] Upload successful:', {
       url: result.secure_url,
@@ -106,10 +123,7 @@ export function getOptimizedUrl(
   publicId: string,
   transformation: string = 'q_auto,f_auto,w_800,h_600,c_fill'
 ): string {
-  return cloudinary.url(publicId, {
-    transformation,
-    secure: true
-  });
+  return `https://res.cloudinary.com/${CLOUDINARY_CONFIG.cloud_name}/image/upload/${transformation}/${publicId}`;
 }
 
 /**
@@ -122,9 +136,10 @@ export function getSignedUrl(
   publicId: string,
   expiresAt: number = Date.now() + 3600000 // 1 heure par défaut
 ): string {
-  return cloudinary.utils.private_download_url(publicId, 'jpg', {
-    expires_at: Math.floor(expiresAt / 1000)
-  });
+  // For signed URLs, we need server-side implementation
+  // For now, return regular URL (implement server-side signing later)
+  console.warn('⚠️ [Cloudinary] Signed URLs require server-side implementation');
+  return getOptimizedUrl(publicId);
 }
 
 /**
@@ -135,7 +150,20 @@ export function getSignedUrl(
 export async function deleteFromCloudinary(publicId: string): Promise<void> {
   try {
     console.log('🗑️ [Cloudinary] Deleting asset:', publicId);
-    await cloudinary.uploader.destroy(publicId);
+    
+    // Delete requires signed request - implement via backend
+    const response = await fetch('/api/cloudinary/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ public_id: publicId })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Delete failed: ${response.statusText}`);
+    }
+    
     console.log('✅ [Cloudinary] Asset deleted successfully');
   } catch (error) {
     console.error('❌ [Cloudinary] Delete error:', error);
@@ -183,4 +211,11 @@ export async function uploadBatch(
   return successful;
 }
 
-export default cloudinary;
+export default {
+  uploadToCloudinary,
+  getOptimizedUrl,
+  getSignedUrl,
+  deleteFromCloudinary,
+  uploadBatch,
+  CLOUDINARY_CONFIG
+};

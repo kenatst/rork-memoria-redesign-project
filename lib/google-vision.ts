@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 // Configuration Google Cloud Vision avec la clé API fournie
-const GOOGLE_CLOUD_API_KEY = 'AIzaSyAb8RN6J7-0OTdprRlQ3SiSkySH1_F9HXk7mzmX7TNdSlDDOhSQ';
+const GOOGLE_CLOUD_API_KEY = 'AQ.Ab8RN6J7-0OTdprRlQ3SiSkySH1_F9HXk7mzmX7TNdSlDDOhSQ';
 const VISION_API_URL = 'https://vision.googleapis.com/v1/images:annotate';
 
 export interface FaceDetection {

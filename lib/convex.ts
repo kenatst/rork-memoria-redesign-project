@@ -1,10 +1,13 @@
 import { ConvexReactClient, useMutation, useQuery } from 'convex/react';
 
-// Configuration Convex - Remplacez par votre URL de déploiement
-const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL || 'https://your-convex-deployment.convex.cloud';
+// Configuration Convex avec l'URL fournie
+const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL || 'https://flexible-otter-858.convex.cloud';
 
 // Client Convex pour les requêtes non-React
 export const convexClient = new ConvexReactClient(CONVEX_URL);
+
+// Initialize Convex client
+console.log('🔗 [Convex] Initializing client with URL:', CONVEX_URL);
 
 // Types pour les données Memoria
 export interface MemoriaPhoto {
