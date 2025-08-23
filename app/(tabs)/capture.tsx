@@ -328,14 +328,11 @@ export default function CaptureScreen() {
           
           console.log('☁️ [Capture] Photo uploaded to Cloudinary:', cloudResult.secure_url);
           
-          // Store cloud result
           setCloudUploadResults(prev => [cloudResult, ...prev.slice(0, 9)]);
           
-          // Save locally if permission granted
           if (mediaPermission?.granted) {
             await MediaLibrary.saveToLibraryAsync(filteredUri);
           } else {
-            // Add to offline queue if no permission
             addToQueue('photo_upload', { 
               uri: filteredUri, 
               cloudUrl: cloudResult.secure_url,
@@ -344,19 +341,10 @@ export default function CaptureScreen() {
           }
           
           setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
-          
-          // Analyze photo with AI in background
           analyzePhotos([filteredUri]).catch(console.error);
           
-          // Show success message
-          Alert.alert(
-            '✅ Photo capturée',
-            `Photo compressée et uploadée vers le cloud avec succès!\n\nURL: ${cloudResult.secure_url.substring(0, 50)}...`,
-            [{ text: 'OK' }]
-          );
-          
-          setImageToCompress(filteredUri);
-          setShowImageCompression(true);
+          setCapturedPhoto(filteredUri);
+          setShowAlbumSelector(true);
         } catch (error) {
           console.error('❌ [Capture] Cloud upload failed, using local compression:', error);
           
@@ -380,16 +368,16 @@ export default function CaptureScreen() {
               [{ text: 'OK' }]
             );
             
-            setImageToCompress(finalUri);
-            setShowImageCompression(true);
+            setCapturedPhoto(finalUri);
+            setShowAlbumSelector(true);
           } catch (compressionError) {
             console.error('Compression also failed, using original:', compressionError);
             if (mediaPermission?.granted) {
               await MediaLibrary.saveToLibraryAsync(filteredUri);
             }
             setRecentPhotos(prev => [filteredUri, ...prev.slice(0, 9)]);
-            setImageToCompress(filteredUri);
-            setShowImageCompression(true);
+            setCapturedPhoto(filteredUri);
+            setShowAlbumSelector(true);
           }
         } finally {
           setIsUploadingToCloud(false);
@@ -548,6 +536,12 @@ export default function CaptureScreen() {
   }
 
   const currentAspectRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio) || ASPECT_RATIOS[0];
+  const cameraContainerStyle = useMemo(() => {
+    if (aspectRatio !== 'full' && currentAspectRatio.ratio) {
+      return { width: '100%', aspectRatio: currentAspectRatio.ratio } as const;
+    }
+    return styles.ratioFull;
+  }, [aspectRatio, currentAspectRatio]);
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -557,7 +551,7 @@ export default function CaptureScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.cameraWrapper, { paddingTop: Math.max(0, insets.top), paddingBottom: Math.max(0, insets.bottom) }]}>
-        <Animated.View style={[styles.ratioFull, { transform: [{ scale: scaleAnim }] }]}> 
+        <Animated.View style={[cameraContainerStyle, { alignSelf: 'center', justifyContent: 'center', transform: [{ scale: scaleAnim }] }]}> 
           <CameraView
             ref={cameraRef}
             style={StyleSheet.absoluteFillObject}
