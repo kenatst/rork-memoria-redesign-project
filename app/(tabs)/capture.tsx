@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Text, Pressable, Alert, Platform, Animated, Dimensions, ScrollView, Modal, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Alert, Platform, Animated, Dimensions, ScrollView, Modal, KeyboardAvoidingView, PanResponder, GestureResponderEvent, PanResponderGestureState } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -16,7 +16,29 @@ import {
   ZapOff, 
   Grid3X3, 
   Palette,
-  Wand2
+  Wand2,
+  Settings,
+  Timer,
+  Square,
+  Video,
+  Contrast,
+  Aperture,
+  Sun,
+  Moon,
+  Sliders,
+  Focus,
+  Sparkles,
+  Filter,
+  X,
+  Check,
+  Download,
+  Share2,
+  Trash2,
+  MoreHorizontal,
+  Maximize,
+  Minimize,
+  Volume2,
+  VolumeX
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
@@ -27,7 +49,45 @@ import { useOfflineQueue } from '@/providers/OfflineQueueProvider';
 import { useAI } from '@/providers/AIProvider';
 import { CloudinaryUploadResult } from '@/lib/cloudinary';
 
-const { height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+
+// Filtres avancés disponibles
+const CAMERA_FILTERS = [
+  { id: 'none', name: 'Original', icon: '🔄' },
+  { id: 'vivid', name: 'Vivid', icon: '🌈' },
+  { id: 'dramatic', name: 'Dramatic', icon: '🎭' },
+  { id: 'noir', name: 'Noir', icon: '⚫' },
+  { id: 'vintage', name: 'Vintage', icon: '📸' },
+  { id: 'warm', name: 'Warm', icon: '🔥' },
+  { id: 'cool', name: 'Cool', icon: '❄️' },
+  { id: 'sepia', name: 'Sepia', icon: '🟤' },
+  { id: 'mono', name: 'Mono', icon: '⚪' },
+  { id: 'fade', name: 'Fade', icon: '🌫️' },
+  { id: 'chrome', name: 'Chrome', icon: '✨' },
+  { id: 'instant', name: 'Instant', icon: '⚡' },
+  { id: 'process', name: 'Process', icon: '🔬' },
+  { id: 'transfer', name: 'Transfer', icon: '🎨' },
+  { id: 'tonal', name: 'Tonal', icon: '🎵' }
+];
+
+const CAMERA_MODES = [
+  { id: 'photo', name: 'Photo', icon: Camera },
+  { id: 'video', name: 'Video', icon: Video },
+  { id: 'portrait', name: 'Portrait', icon: Contrast },
+  { id: 'square', name: 'Square', icon: Square },
+  { id: 'pano', name: 'Pano', icon: Maximize },
+  { id: 'slo-mo', name: 'Slo-Mo', icon: Timer },
+  { id: 'time-lapse', name: 'Time-Lapse', icon: Aperture }
+];
+
+const ASPECT_RATIOS = [
+  { id: 'full', name: 'Full', ratio: null },
+  { id: '1:1', name: '1:1', ratio: 1 },
+  { id: '4:3', name: '4:3', ratio: 4/3 },
+  { id: '16:9', name: '16:9', ratio: 16/9 },
+  { id: '3:2', name: '3:2', ratio: 3/2 },
+  { id: '9:16', name: '9:16', ratio: 9/16 }
+];
 
 export default function CaptureScreen() {
   const { albums, addPhotoToAlbum } = useAppState();
@@ -35,32 +95,53 @@ export default function CaptureScreen() {
   const { addToQueue, pendingCount } = useOfflineQueue();
   const { analyzePhotos, isAnalyzing } = useAI();
   const insets = useSafeAreaInsets();
+  // États de base de la caméra
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
   const [grid, setGrid] = useState<boolean>(false);
-
   const [zoom, setZoom] = useState<number>(0);
-  const [ratio, setRatio] = useState<'full' | '3:4' | '16:9'>('full'); // UI crop only, camera stays full screen
-
+  const [aspectRatio, setAspectRatio] = useState<string>('full');
+  const [cameraMode, setCameraMode] = useState<string>('photo');
+  const [timer, setTimer] = useState<0 | 3 | 10>(0);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordingDuration, setRecordingDuration] = useState<number>(0);
+  
+  // États des filtres et effets
   const [filterMode, setFilterMode] = useState<string>('none');
   const [exposure, setExposure] = useState<number>(0);
   const [brightness, setBrightness] = useState<number>(0);
   const [contrast, setContrast] = useState<number>(1);
   const [saturation, setSaturation] = useState<number>(1);
+  const [highlights, setHighlights] = useState<number>(0);
+  const [shadows, setShadows] = useState<number>(0);
+  const [warmth, setWarmth] = useState<number>(0);
+  const [tint, setTint] = useState<number>(0);
+  const [sharpness, setSharpness] = useState<number>(0);
+  const [vignette, setVignette] = useState<number>(0);
+  
+  // États de l'interface
   const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
-  const [cameraMode, setCameraMode] = useState<'photo' | 'video' | 'portrait' | 'square'>('photo');
-  const [timer, setTimer] = useState<0 | 3 | 10>(0);
-  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [showFiltersPanel, setShowFiltersPanel] = useState<boolean>(false);
+  const [showModesPanel, setShowModesPanel] = useState<boolean>(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState<boolean>(false);
   const [showCaptureAnimation, setShowCaptureAnimation] = useState<boolean>(false);
-  const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
   const [showGallery, setShowGallery] = useState<boolean>(false);
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [showCameraFilters, setShowCameraFilters] = useState<boolean>(false);
   const [showImageCompression, setShowImageCompression] = useState<boolean>(false);
+  const [isUIVisible, setIsUIVisible] = useState<boolean>(true);
+  const [focusPoint, setFocusPoint] = useState<{x: number, y: number} | null>(null);
+  
+  // États des médias
+  const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [imageToCompress, setImageToCompress] = useState<string | null>(null);
   const [isUploadingToCloud, setIsUploadingToCloud] = useState<boolean>(false);
   const [cloudUploadResults, setCloudUploadResults] = useState<CloudinaryUploadResult[]>([]);
+  
+  // États audio/son
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -383,7 +464,7 @@ export default function CaptureScreen() {
   
   const cycleCameraMode = useCallback(() => {
     handleHapticFeedback('light');
-    const modes: Array<'photo' | 'video' | 'portrait' | 'square'> = ['photo', 'video', 'portrait', 'square'];
+    const modes = ['photo', 'video', 'portrait', 'square', 'pano', 'slo-mo', 'time-lapse'];
     const currentIndex = modes.indexOf(cameraMode);
     const nextIndex = (currentIndex + 1) % modes.length;
     setCameraMode(modes[nextIndex]);
@@ -466,7 +547,7 @@ export default function CaptureScreen() {
     );
   }
 
-  const ratioBoxStyle = ratio === '3:4' ? styles.ratio34 : ratio === '16:9' ? styles.ratio169 : styles.ratioFull;
+  const currentAspectRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio) || ASPECT_RATIOS[0];
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -493,10 +574,10 @@ export default function CaptureScreen() {
               />
             )}
 
-            {/* Letterboxing mask for stable preview when ratio != full */}
+            {/* Letterboxing mask for stable preview when aspectRatio != full */}
             <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-              {ratio !== 'full' && (
-                <RatioMask ratio={ratio} />
+              {aspectRatio !== 'full' && currentAspectRatio.ratio && (
+                <AspectRatioMask aspectRatio={currentAspectRatio.ratio} />
               )}
             </View>
 
@@ -575,8 +656,12 @@ export default function CaptureScreen() {
                         {timer > 0 ? `${timer}s` : '⏱'}
                       </Text>
                     </Pressable>
-                    <Pressable style={styles.controlButton} onPress={() => setRatio(prev => prev === 'full' ? '3:4' : prev === '3:4' ? '16:9' : 'full')} testID="ratio-btn">
-                      <Text style={styles.ratioText}>{ratio}</Text>
+                    <Pressable style={styles.controlButton} onPress={() => {
+                      const currentIndex = ASPECT_RATIOS.findIndex(r => r.id === aspectRatio);
+                      const nextIndex = (currentIndex + 1) % ASPECT_RATIOS.length;
+                      setAspectRatio(ASPECT_RATIOS[nextIndex].id);
+                    }} testID="ratio-btn">
+                      <Text style={styles.ratioText}>{currentAspectRatio.name}</Text>
                     </Pressable>
                   </View>
                 </BlurView>
@@ -600,8 +685,12 @@ export default function CaptureScreen() {
                         {timer > 0 ? `${timer}s` : '⏱'}
                       </Text>
                     </Pressable>
-                    <Pressable style={styles.controlButton} onPress={() => setRatio(prev => prev === 'full' ? '3:4' : prev === '3:4' ? '16:9' : 'full')}>
-                      <Text style={styles.ratioText}>{ratio}</Text>
+                    <Pressable style={styles.controlButton} onPress={() => {
+                      const currentIndex = ASPECT_RATIOS.findIndex(r => r.id === aspectRatio);
+                      const nextIndex = (currentIndex + 1) % ASPECT_RATIOS.length;
+                      setAspectRatio(ASPECT_RATIOS[nextIndex].id);
+                    }}>
+                      <Text style={styles.ratioText}>{currentAspectRatio.name}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -617,12 +706,12 @@ export default function CaptureScreen() {
               {Platform.OS !== 'web' ? (
                 <BlurView intensity={30} style={styles.bottomBlur}>
                   <View style={styles.bottomContent}>
-                    <Pressable style={styles.sideButton} onPress={cycleFilter} testID="filter-btn">
+                    <Pressable style={styles.sideButton} onPress={() => setShowFiltersPanel(true)} testID="filter-btn">
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
 
                     <View style={styles.captureSection}>
-                      <Pressable style={styles.modeButton} onPress={cycleCameraMode} testID="mode-btn">
+                      <Pressable style={styles.modeButton} onPress={() => setShowModesPanel(true)} testID="mode-btn">
                         <Text style={styles.modeButtonText}>{cameraMode}</Text>
                       </Pressable>
                       
@@ -666,12 +755,12 @@ export default function CaptureScreen() {
               ) : (
                 <View style={[styles.bottomBlur, styles.webBlur]}>
                   <View style={styles.bottomContent}>
-                    <Pressable style={styles.sideButton} onPress={cycleFilter}>
+                    <Pressable style={styles.sideButton} onPress={() => setShowFiltersPanel(true)}>
                       <Wand2 color={filterMode !== 'none' ? '#FFD700' : '#FFFFFF'} size={28} />
                     </Pressable>
                     
                     <View style={styles.captureSection}>
-                      <Pressable style={styles.modeButton} onPress={cycleCameraMode}>
+                      <Pressable style={styles.modeButton} onPress={() => setShowModesPanel(true)}>
                         <Text style={styles.modeButtonText}>{cameraMode}</Text>
                       </Pressable>
                       
@@ -797,6 +886,110 @@ export default function CaptureScreen() {
 
 
 
+        {/* Panneau des Filtres Avancés */}
+        <Modal visible={showFiltersPanel} transparent animationType="slide" onRequestClose={() => setShowFiltersPanel(false)}>
+          <View style={styles.filtersModalBackdrop}>
+            <View style={styles.filtersPanel}>
+              <View style={styles.filtersPanelHeader}>
+                <Text style={styles.filtersPanelTitle}>Filtres & Effets</Text>
+                <Pressable onPress={() => setShowFiltersPanel(false)} style={styles.closeFiltersPanelBtn}>
+                  <X color="#FFFFFF" size={24} />
+                </Pressable>
+              </View>
+              
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+                {CAMERA_FILTERS.map((filter) => (
+                  <Pressable 
+                    key={filter.id} 
+                    style={[styles.filterItem, filterMode === filter.id && styles.filterItemActive]} 
+                    onPress={() => {
+                      setFilterMode(filter.id);
+                      handleHapticFeedback('light');
+                    }}
+                  >
+                    <Text style={styles.filterIcon}>{filter.icon}</Text>
+                    <Text style={[styles.filterName, filterMode === filter.id && styles.filterNameActive]}>{filter.name}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              
+              <View style={styles.advancedControls}>
+                <Text style={styles.advancedControlsTitle}>Réglages Avancés</Text>
+                
+                <View style={styles.sliderRow}>
+                  <Sun color="#FFD700" size={20} />
+                  <Text style={styles.sliderLabel}>Exposition</Text>
+                  <View style={styles.sliderContainer}>
+                    <Text style={styles.sliderValue}>{exposure.toFixed(1)}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.sliderRow}>
+                  <Sparkles color="#FFD700" size={20} />
+                  <Text style={styles.sliderLabel}>Luminosité</Text>
+                  <View style={styles.sliderContainer}>
+                    <Text style={styles.sliderValue}>{brightness.toFixed(1)}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.sliderRow}>
+                  <Contrast color="#FFD700" size={20} />
+                  <Text style={styles.sliderLabel}>Contraste</Text>
+                  <View style={styles.sliderContainer}>
+                    <Text style={styles.sliderValue}>{contrast.toFixed(1)}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.sliderRow}>
+                  <Palette color="#FFD700" size={20} />
+                  <Text style={styles.sliderLabel}>Saturation</Text>
+                  <View style={styles.sliderContainer}>
+                    <Text style={styles.sliderValue}>{saturation.toFixed(1)}</Text>
+                  </View>
+                </View>
+                
+                <Pressable style={styles.resetBtn} onPress={resetAdvancedSettings}>
+                  <Text style={styles.resetBtnText}>Réinitialiser</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        
+        {/* Panneau des Modes Caméra */}
+        <Modal visible={showModesPanel} transparent animationType="slide" onRequestClose={() => setShowModesPanel(false)}>
+          <View style={styles.modesModalBackdrop}>
+            <View style={styles.modesPanel}>
+              <View style={styles.modesPanelHeader}>
+                <Text style={styles.modesPanelTitle}>Modes de Capture</Text>
+                <Pressable onPress={() => setShowModesPanel(false)} style={styles.closeModesPanelBtn}>
+                  <X color="#FFFFFF" size={24} />
+                </Pressable>
+              </View>
+              
+              <ScrollView style={styles.modesGrid}>
+                {CAMERA_MODES.map((mode) => {
+                  const IconComponent = mode.icon;
+                  return (
+                    <Pressable 
+                      key={mode.id} 
+                      style={[styles.modeItem, cameraMode === mode.id && styles.modeItemActive]} 
+                      onPress={() => {
+                        setCameraMode(mode.id);
+                        setShowModesPanel(false);
+                        handleHapticFeedback('medium');
+                      }}
+                    >
+                      <IconComponent color={cameraMode === mode.id ? '#000000' : '#FFFFFF'} size={32} />
+                      <Text style={[styles.modeName, cameraMode === mode.id && styles.modeNameActive]}>{mode.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+        
         {/* Camera Filters Modal */}
         <CameraFilters 
           isVisible={showCameraFilters}
@@ -834,10 +1027,10 @@ export default function CaptureScreen() {
   );
 }
 
-// Stable letterbox mask component
-function RatioMask({ ratio }: { ratio: '3:4' | '16:9' }) {
+// Aspect ratio mask component
+function AspectRatioMask({ aspectRatio }: { aspectRatio: number }) {
   const { width, height } = Dimensions.get('window');
-  const contentHeight = ratio === '3:4' ? (width * 4) / 3 : (width * 9) / 16;
+  const contentHeight = width / aspectRatio;
   const topBottom = Math.max(0, (height - contentHeight) / 2);
   return (
     <View style={{ flex: 1 }}>
@@ -1024,5 +1217,178 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 12,
     fontWeight: '700',
+  },
+  
+  // Styles pour les panneaux de filtres et modes
+  filtersModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'flex-end',
+  },
+  filtersPanel: {
+    backgroundColor: '#0B0B0D',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  filtersPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  filtersPanelTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  closeFiltersPanelBtn: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  filtersScroll: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  filterItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 80,
+    height: 100,
+    marginRight: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  filterItemActive: {
+    backgroundColor: 'rgba(255,215,0,0.2)',
+    borderColor: '#FFD700',
+  },
+  filterIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  filterName: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  filterNameActive: {
+    color: '#FFD700',
+    fontWeight: '800',
+  },
+  advancedControls: {
+    paddingHorizontal: 20,
+  },
+  advancedControlsTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  sliderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+  },
+  sliderLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 12,
+    flex: 1,
+  },
+  sliderContainer: {
+    alignItems: 'flex-end',
+  },
+  sliderValue: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '700',
+    minWidth: 40,
+    textAlign: 'right',
+  },
+  resetBtn: {
+    backgroundColor: 'rgba(255,69,58,0.2)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  resetBtnText: {
+    color: '#FF453A',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  
+  // Styles pour le panneau des modes
+  modesModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'flex-end',
+  },
+  modesPanel: {
+    backgroundColor: '#0B0B0D',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '70%',
+  },
+  modesPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  modesPanelTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  closeModesPanelBtn: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  modesGrid: {
+    paddingHorizontal: 20,
+  },
+  modeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  modeItemActive: {
+    backgroundColor: 'rgba(255,215,0,0.2)',
+    borderColor: '#FFD700',
+  },
+  modeName: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 16,
+  },
+  modeNameActive: {
+    color: '#000000',
+    fontWeight: '800',
   },
 });
