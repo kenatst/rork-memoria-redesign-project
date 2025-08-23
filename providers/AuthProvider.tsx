@@ -54,6 +54,8 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       const mockUser: AuthUser = { id: "u_" + Date.now().toString(), email, displayName: email.split("@")[0] };
       setUser(mockUser);
       await persist(mockUser);
+    } catch (error) {
+      console.error('Sign in error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -66,6 +68,8 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       const mockUser: AuthUser = { id: "u_" + Date.now().toString(), email, displayName };
       setUser(mockUser);
       await persist(mockUser);
+    } catch (error) {
+      console.error('Sign up error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +81,8 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       await new Promise((r) => setTimeout(r, 300));
       setUser(null);
       await persist(null);
+    } catch (error) {
+      console.error('Sign out error:', error);
     } finally {
       setIsLoading(false);
     }

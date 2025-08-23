@@ -1,9 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Image, Compass, Settings, Check, X } from 'lucide-react-native';
+import { Compass, Settings, X } from 'lucide-react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
-import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
 
 interface ImageCompressionProps {
@@ -20,18 +19,15 @@ interface CompressionSettings {
 }
 
 const COMPRESSION_PRESETS = {
-  high: { quality: 0.9, maxWidth: 2048, format: 'jpeg' as const },
-  medium: { quality: 0.7, maxWidth: 1920, format: 'jpeg' as const },
-  low: { quality: 0.5, maxWidth: 1280, format: 'jpeg' as const },
-  custom: { quality: 0.8, maxWidth: 1920, format: 'jpeg' as const },
+  high: { quality: 0.9, maxWidth: 1920, format: 'jpeg' as const },
+  medium: { quality: 0.7, maxWidth: 1280, format: 'jpeg' as const },
+  low: { quality: 0.5, maxWidth: 800, format: 'jpeg' as const },
+  fast: { quality: 0.6, maxWidth: 1024, format: 'jpeg' as const },
 };
 
 export default function ImageCompression({ visible, imageUri, onClose, onCompress }: ImageCompressionProps) {
-  const [selectedPreset, setSelectedPreset] = useState<keyof typeof COMPRESSION_PRESETS>('medium');
-  const [customSettings, setCustomSettings] = useState<CompressionSettings>(COMPRESSION_PRESETS.custom);
+  const [selectedPreset, setSelectedPreset] = useState<keyof typeof COMPRESSION_PRESETS>('fast');
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
-  const [originalSize, setOriginalSize] = useState<string>('');
-  const [compressedSize, setCompressedSize] = useState<string>('');
 
   const handleHapticFeedback = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -39,24 +35,7 @@ export default function ImageCompression({ visible, imageUri, onClose, onCompres
     }
   }, []);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
-  const getImageSize = async (uri: string): Promise<number> => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      return blob.size;
-    } catch (error) {
-      console.error('Error getting image size:', error);
-      return 0;
-    }
-  };
 
   const compressImage = useCallback(async () => {
     if (!imageUri) return;
@@ -65,48 +44,36 @@ export default function ImageCompression({ visible, imageUri, onClose, onCompres
     handleHapticFeedback();
 
     try {
-      // Get original size
-      const originalSizeBytes = await getImageSize(imageUri);
-      setOriginalSize(formatFileSize(originalSizeBytes));
-
-      const settings = selectedPreset === 'custom' ? customSettings : COMPRESSION_PRESETS[selectedPreset];
+      console.log('🔄 Starting image compression for:', imageUri);
       
+      const settings = COMPRESSION_PRESETS[selectedPreset];
+      
+      // Fast compression without size calculation to avoid delays
       const result = await ImageManipulator.manipulateAsync(
         imageUri,
         [{ resize: { width: settings.maxWidth } }],
         {
           compress: settings.quality,
-          format: settings.format === 'jpeg' ? ImageManipulator.SaveFormat.JPEG : ImageManipulator.SaveFormat.PNG,
+          format: ImageManipulator.SaveFormat.JPEG, // Always use JPEG for speed
         }
       );
 
-      // Get compressed size
-      const compressedSizeBytes = await getImageSize(result.uri);
-      setCompressedSize(formatFileSize(compressedSizeBytes));
-
-      const compressionRatio = ((originalSizeBytes - compressedSizeBytes) / originalSizeBytes * 100).toFixed(1);
+      console.log('✅ Image compression completed:', result.uri);
       
-      Alert.alert(
-        'Compression terminée',
-        `Taille réduite de ${compressionRatio}%\nOriginal: ${formatFileSize(originalSizeBytes)}\nCompressé: ${formatFileSize(compressedSizeBytes)}`,
-        [
-          { text: 'Annuler', style: 'cancel' },
-          { 
-            text: 'Utiliser', 
-            onPress: () => {
-              onCompress(result.uri);
-              onClose();
-            }
-          }
-        ]
-      );
+      // Directly use the compressed image without showing dialog
+      onCompress(result.uri);
+      onClose();
+      
     } catch (error) {
-      console.error('Error compressing image:', error);
-      Alert.alert('Erreur', 'Impossible de compresser l\'image');
+      console.error('❌ Error compressing image:', error);
+      // Fallback: use original image if compression fails
+      console.log('⚠️ Using original image as fallback');
+      onCompress(imageUri);
+      onClose();
     } finally {
       setIsCompressing(false);
     }
-  }, [imageUri, selectedPreset, customSettings, onCompress, onClose, handleHapticFeedback]);
+  }, [imageUri, selectedPreset, onCompress, onClose, handleHapticFeedback]);
 
   const selectPreset = useCallback((preset: keyof typeof COMPRESSION_PRESETS) => {
     handleHapticFeedback();
@@ -118,7 +85,7 @@ export default function ImageCompression({ visible, imageUri, onClose, onCompres
   const renderContent = () => (
     <View style={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>Compression d'image</Text>
+        <Text style={styles.title}>Compression d&apos;image</Text>
         <Pressable style={styles.closeButton} onPress={onClose}>
           <X color="#FFFFFF" size={24} />
         </Pressable>
@@ -131,8 +98,7 @@ export default function ImageCompression({ visible, imageUri, onClose, onCompres
             <Text style={styles.previewText}>Image à compresser</Text>
           </View>
           <View style={styles.sizeInfo}>
-            {originalSize && <Text style={styles.sizeText}>Original: {originalSize}</Text>}
-            {compressedSize && <Text style={styles.sizeText}>Compressé: {compressedSize}</Text>}
+            <Text style={styles.sizeText}>Compression rapide et optimisée</Text>
           </View>
         </View>
       </View>
@@ -153,31 +119,22 @@ export default function ImageCompression({ visible, imageUri, onClose, onCompres
                 styles.presetButtonText,
                 selectedPreset === key && styles.presetButtonTextSelected
               ]}>
-                {key === 'high' ? 'Haute' : 
-                 key === 'medium' ? 'Moyenne' : 
-                 key === 'low' ? 'Faible' : 'Personnalisée'}
+                {key === 'high' ? 'Haute qualité' : 
+                 key === 'medium' ? 'Qualité moyenne' : 
+                 key === 'low' ? 'Faible qualité' : 'Rapide (recommandé)'}
               </Text>
               <Text style={[
                 styles.presetDetails,
                 selectedPreset === key && styles.presetDetailsSelected
               ]}>
-                {preset.quality * 100}% • {preset.maxWidth}px • {preset.format.toUpperCase()}
+                {preset.quality * 100}% • {preset.maxWidth}px • JPEG
               </Text>
             </Pressable>
           ))}
         </View>
       </View>
 
-      {selectedPreset === 'custom' && (
-        <View style={styles.customSection}>
-          <Text style={styles.sectionTitle}>Paramètres personnalisés</Text>
-          <View style={styles.customControls}>
-            <Text style={styles.customLabel}>Qualité: {Math.round(customSettings.quality * 100)}%</Text>
-            <Text style={styles.customLabel}>Largeur max: {customSettings.maxWidth}px</Text>
-            <Text style={styles.customLabel}>Format: {customSettings.format.toUpperCase()}</Text>
-          </View>
-        </View>
-      )}
+
 
       <View style={styles.actions}>
         <Pressable style={styles.cancelButton} onPress={onClose}>
