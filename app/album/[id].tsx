@@ -86,7 +86,7 @@ export default function AlbumDetailScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission requise', 'Autorisez l\'accès à la galerie pour ajouter des photos.');
+        Alert.alert('Permission requise', "Autorisez l'accès à la galerie pour ajouter des photos.");
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -108,12 +108,11 @@ export default function AlbumDetailScreen() {
       setImporting(false);
       Alert.alert('Succès', `${done} photo(s) ajoutée(s) à l'album`);
       
-      // Haptic feedback
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (e) {
-      Alert.alert('Erreur', 'Impossible d\'ajouter les photos.');
+      Alert.alert('Erreur', "Impossible d'ajouter les photos.");
     }
   };
 
@@ -122,7 +121,6 @@ export default function AlbumDetailScreen() {
       const photoId = `${album?.id}-${idx}`;
       batchSelectPhotos([photoId]);
       
-      // Haptic feedback
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
@@ -132,7 +130,6 @@ export default function AlbumDetailScreen() {
     }
   };
 
-  // Prefetch next images
   useEffect(() => {
     if (!album) return;
     const nextUris = album.photos.slice(0, 30);
@@ -147,7 +144,6 @@ export default function AlbumDetailScreen() {
     }
     setSelectionMode(!selectionMode);
     
-    // Haptic feedback
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -159,19 +155,18 @@ export default function AlbumDetailScreen() {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission requise', 'Autorisez l\'accès à la galerie pour exporter l\'album.');
+        Alert.alert('Permission requise', "Autorisez l'accès à la galerie pour exporter l'album.");
         return;
       }
       
       await exportAlbum(album.id);
       Alert.alert('Export terminé', `L'album "${album.name}" a été exporté vers votre galerie.`);
       
-      // Haptic feedback
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'exporter l\'album.');
+      Alert.alert('Erreur', "Impossible d'exporter l'album.");
     }
   };
 
@@ -193,26 +188,28 @@ export default function AlbumDetailScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} />
 
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]>
-        <Pressable style={styles.backBtn} onPress={() => router.back()} testID="back-btn">
-          <ArrowLeft color="#FFD700" size={24} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{album.name}</Text>
-        <View style={styles.headerActions}>
-          <Pressable style={styles.actionBtn} onPress={handleToggleFavorite} testID="favorite-album-btn">
-            <Star color={isFavorite ? '#000' : '#FFD700'} size={20} fill={isFavorite ? '#FFD700' : 'transparent'} />
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
+        <View style={styles.headerContent}>
+          <Pressable style={styles.backBtn} onPress={() => router.back()} testID="back-btn">
+            <ArrowLeft color="#FFD700" size={24} />
           </Pressable>
-          <Pressable style={styles.actionBtn} onPress={() => setShowSearch(true)} testID="search-btn">
-            <Search color="#FFD700" size={20} />
-          </Pressable>
-          <Pressable style={styles.actionBtn} onPress={toggleSelectionMode} testID="select-btn">
-            <Text style={[styles.actionText, selectionMode && styles.activeActionText]}>
-              {selectionMode ? 'Annuler' : 'Sélectionner'}
-            </Text>
-          </Pressable>
-          <Pressable style={styles.actionBtn} onPress={() => setShowOptions(true)} testID="options-btn">
-            <MoreVertical color="#FFD700" size={20} />
-          </Pressable>
+          <Text style={styles.headerTitle}>{album.name}</Text>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.actionBtn} onPress={handleToggleFavorite} testID="favorite-album-btn">
+              <Star color={isFavorite ? '#000' : '#FFD700'} size={20} fill={isFavorite ? '#FFD700' : 'transparent'} />
+            </Pressable>
+            <Pressable style={styles.actionBtn} onPress={() => setShowSearch(true)} testID="search-btn">
+              <Search color="#FFD700" size={20} />
+            </Pressable>
+            <Pressable style={styles.actionBtn} onPress={toggleSelectionMode} testID="select-btn">
+              <Text style={[styles.actionText, selectionMode && styles.activeActionText]}>
+                {selectionMode ? 'Annuler' : 'Sélectionner'}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.actionBtn} onPress={() => setShowOptions(true)} testID="options-btn">
+              <MoreVertical color="#FFD700" size={20} />
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -261,7 +258,6 @@ export default function AlbumDetailScreen() {
                   }
                   batchSelectPhotos([photoId]);
                   
-                  // Haptic feedback
                   if (Platform.OS !== 'web') {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                   }
@@ -347,11 +343,6 @@ export default function AlbumDetailScreen() {
             <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); setShowAlbumComments(true); }}>
               <MessageCircle color={Colors.palette.accentGold} size={20} />
               <Text style={styles.optionText}>Commentaires de l'album</Text>
-            </Pressable>
-            
-            <Pressable style={styles.optionItem} onPress={() => { setShowOptions(false); router.push(`/album/${id}/mini-film`); }} testID="open-mini-film">
-              <Clapperboard color="#FF8A00" size={20} />
-              <Text style={styles.optionText}>Mini film (3s/transitions + musique)</Text>
             </Pressable>
             
             <Pressable style={styles.optionItem}>
@@ -451,6 +442,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   loadingText: { color: '#fff', textAlign: 'center', marginTop: '50%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800', flex: 1, marginLeft: 12 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
