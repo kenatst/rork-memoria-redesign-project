@@ -15,6 +15,8 @@ import ProgressToast from '@/components/ProgressToast';
 import { useToast } from '@/providers/ToastProvider';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import AdvancedSearch from '@/components/AdvancedSearch';
+import ImageCacheOptimizer from '@/components/ImageCacheOptimizer';
+import OfflineSync from '@/components/OfflineSync';
 
 import { AlbumCard } from '@/components/AlbumCard';
 
@@ -40,7 +42,8 @@ interface Album {
 export default function AlbumsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum, addNotification, isOnline } = useAppState();
+  const appState = useAppState();
+  const { albums: persistedAlbums, groups: persistedGroups, createAlbum, displayName, favoriteAlbums: favoriteAlbumIds, toggleFavoriteAlbum, addNotification, isOnline } = appState;
   const { showError, showSuccess } = useToast();
   const { announceForAccessibility, getAccessibleLabel } = useAccessibility();
 
@@ -433,11 +436,7 @@ export default function AlbumsScreen() {
               <Text style={styles.offlineText}>Hors‑ligne</Text>
             </View>
           )}
-          {!user && (
-            <View style={styles.offlineBadge}>
-              <Text style={styles.offlineText}>Utilisateur non connecté</Text>
-            </View>
-          )}
+          <OfflineSync showIndicator={true} autoSync={true} syncInterval={30000} />
           <View style={styles.userRow}>
             <Image source={{ uri: avatarUri }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" transition={150} />
             <View style={styles.userInfo}>
@@ -661,6 +660,13 @@ export default function AlbumsScreen() {
       </Animated.View>
       </SafeAreaView>
       <ProgressToast visible={toastVisible} label={toastLabel} progress={toastProgress} />
+      
+      {/* Image Cache Optimizer */}
+      <ImageCacheOptimizer 
+        imageUris={albums.map(a => a.coverImage).filter(Boolean)}
+        priority="high"
+        maxCacheSize={150}
+      />
     </View>
   );
 }

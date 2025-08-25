@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,9 +30,12 @@ interface Props {
 }
 
 function AlbumCardImpl({ album, viewMode, isFavorite, color, Icon, PIcon, glow, formatDate, onPress, onToggleFavorite, testID }: Props) {
+  const handlePress = useCallback(() => onPress(album.id), [onPress, album.id]);
+  const handleToggleFavorite = useCallback(() => onToggleFavorite(album.id), [onToggleFavorite, album.id]);
+  
   if (viewMode === 'list') {
     return (
-      <Pressable style={styles.listRoot} onPress={() => onPress(album.id)} testID={testID} accessibilityRole="button">
+      <Pressable style={styles.listRoot} onPress={handlePress} testID={testID} accessibilityRole="button">
         <View style={styles.listImageWrap}>
           <Image source={{ uri: album.coverImage }} style={styles.listCover} contentFit="cover" cachePolicy="memory-disk" transition={150} />
           {album.isActive && (
@@ -45,7 +48,7 @@ function AlbumCardImpl({ album, viewMode, isFavorite, color, Icon, PIcon, glow, 
           <View style={styles.listHeader}>
             <Text numberOfLines={1} style={styles.listName}>{album.name}</Text>
             <View style={styles.listBadges}>
-              <Pressable style={[styles.favBtn, isFavorite && styles.favBtnActive]} onPress={() => onToggleFavorite(album.id)} testID={`fav-${album.id}`}>
+              <Pressable style={[styles.favBtn, isFavorite && styles.favBtnActive]} onPress={handleToggleFavorite} testID={`fav-${album.id}`}>
                 <Text style={[styles.favText, isFavorite && styles.favTextActive]}>{isFavorite ? '★' : '☆'}</Text>
               </Pressable>
               <Icon size={16} color={color} />
@@ -60,7 +63,7 @@ function AlbumCardImpl({ album, viewMode, isFavorite, color, Icon, PIcon, glow, 
   }
 
   return (
-    <Pressable style={styles.gridRoot} onPress={() => onPress(album.id)} testID={testID} accessibilityRole="button">
+    <Pressable style={styles.gridRoot} onPress={handlePress} testID={testID} accessibilityRole="button">
       <View style={styles.gridImageWrap}>
         <Image source={{ uri: album.coverImage }} style={styles.gridCover} contentFit="cover" cachePolicy="memory-disk" transition={200} />
         <LinearGradient colors={["transparent", "rgba(0,0,0,0.6)"]} style={StyleSheet.absoluteFillObject} />
@@ -78,7 +81,7 @@ function AlbumCardImpl({ album, viewMode, isFavorite, color, Icon, PIcon, glow, 
             <PIcon size={12} color="#E8EAF0" />
           </View>
         </View>
-        <Pressable style={[styles.favPill, isFavorite && styles.favPillActive]} onPress={() => onToggleFavorite(album.id)} testID={`fav-${album.id}`}>
+        <Pressable style={[styles.favPill, isFavorite && styles.favPillActive]} onPress={handleToggleFavorite} testID={`fav-${album.id}`}>
           <Text style={[styles.favPillText, isFavorite && styles.favPillTextActive]}>{isFavorite ? '★' : '☆'}</Text>
         </Pressable>
       </View>

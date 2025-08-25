@@ -5,6 +5,7 @@ import { trpcClient } from "@/lib/trpc";
 import { Platform } from 'react-native';
 import { useSupabase } from './SupabaseProvider';
 import { useAlbums, usePhotos, useGroups, useComments } from '@/lib/supabase-hooks';
+import React from "react";
 
 interface Photo {
   id: string;
@@ -150,10 +151,24 @@ const KEY = "memoria_app_state_v2";
 
 export const [AppStateProvider, useAppState] = createContextHook<AppState>(() => {
   const { user } = useSupabase();
-  const { albums: supabaseAlbums, createAlbum: createSupabaseAlbum } = useAlbums();
-  const { photos: supabasePhotos, addPhoto: addSupabasePhoto } = usePhotos();
-  const { groups: supabaseGroups, createGroup: createSupabaseGroup } = useGroups();
-  const { comments: supabaseComments, addComment: addSupabaseComment, deleteComment: deleteSupabaseComment } = useComments();
+  const supabaseHooks = React.useMemo(() => {
+    try {
+      return {
+        albums: useAlbums(),
+        photos: usePhotos(),
+        groups: useGroups(),
+        comments: useComments()
+      };
+    } catch (error) {
+      console.warn('Supabase hooks not available:', error);
+      return {
+        albums: { albums: [], createAlbum: null },
+        photos: { photos: [], addPhoto: null },
+        groups: { groups: [], createGroup: null },
+        comments: { comments: [], addComment: null, deleteComment: null }
+      };
+    }
+  }, []);
   const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(false);
   const [displayName, setDisplayNameState] = useState<string>("Memoria");
   const [points, setPoints] = useState<number>(120);
@@ -272,9 +287,9 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   }, [persist, points]);
 
   const createAlbum = useCallback(async (name: string, groupId?: string) => {
-    if (user && createSupabaseAlbum) {
+    if (user && supabaseHooks.albums.createAlbum) {
       try {
-        const supabaseAlbum = await createSupabaseAlbum({
+        const supabaseAlbum = await supabaseHooks.albums.createAlbum({
           name,
           description: '',
           is_public: false,
@@ -322,7 +337,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     setAlbums(updatedAlbums);
     persist({ albums: updatedAlbums });
     return newAlbum;
-  }, [albums, persist, user, createSupabaseAlbum]);
+  }, [albums, persist, user, supabaseHooks.albums.createAlbum]);
 
   const deleteAlbum = useCallback((albumId: string) => {
     const updatedAlbums = albums.filter(album => album.id !== albumId);
@@ -418,8 +433,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
 
     (async () => {
       try {
-        if (user && addSupabaseComment) {
-          const created = await addSupabaseComment(text);
+        if (user && supabaseHooks.comments.addComment) {
+          const created = await supabaseHooks.comments.addComment(text);
           const mapped: Comment = {
             id: created.id,
             text: created.text,
@@ -440,7 +455,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     })();
 
     return optimistic;
-  }, [comments, displayName, persist, user, addSupabaseComment]);
+  }, [comments, displayName, persist, user, supabaseHooks.comments.addComment]);
 
   const deleteComment = useCallback((commentId: string) => {
     const prev = comments;
@@ -450,8 +465,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
 
     (async () => {
       try {
-        if (user && deleteSupabaseComment && !commentId.startsWith('temp-')) {
-          await deleteSupabaseComment(commentId);
+        if (user && supabaseHooks.comments.deleteComment && !commentId.startsWith('temp-')) {
+          await supabaseHooks.comments.deleteComment(commentId);
         }
       } catch (e) {
         console.error('deleteComment sync failed', e);
@@ -459,7 +474,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         persist({ comments: prev });
       }
     })();
-  }, [comments, persist, user, deleteSupabaseComment]);
+  }, [comments, persist, user, supabaseHooks.comments.deleteComment]);
 
   const likePhoto = useCallback((photoId: string) => {
     const prev = photos;

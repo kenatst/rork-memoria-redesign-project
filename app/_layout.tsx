@@ -16,6 +16,7 @@ import { AIProvider } from "@/providers/AIProvider";
 import { AccessibilityProvider } from "@/components/AccessibilityProvider";
 import PerformanceProvider from "@/providers/PerformanceProvider";
 import { SupabaseProvider } from "@/providers/SupabaseProvider";
+import NavigationOptimizer from "@/components/NavigationOptimizer";
 import Toast from 'react-native-toast-message';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -140,13 +141,18 @@ export default function RootLayout() {
                     <OfflineQueueProvider>
                       <ImageCompressionProvider>
                         <AIProvider>
-                          <GestureHandlerRootView style={{ flex: 1 }}>
-                            <StatusBar style="light" backgroundColor="#000000" />
-                            <ErrorBoundary>
-                              <RootLayoutNav />
-                            </ErrorBoundary>
-                            <Toast />
-                          </GestureHandlerRootView>
+                          <NavigationOptimizer 
+                            enableHaptics={true}
+                            preloadRoutes={['/(tabs)/albums', '/(tabs)/capture', '/settings']}
+                          >
+                            <GestureHandlerRootView style={{ flex: 1 }}>
+                              <StatusBar style="light" backgroundColor="#000000" />
+                              <ErrorBoundary>
+                                <RootLayoutNav />
+                              </ErrorBoundary>
+                              <Toast />
+                            </GestureHandlerRootView>
+                          </NavigationOptimizer>
                         </AIProvider>
                       </ImageCompressionProvider>
                     </OfflineQueueProvider>
