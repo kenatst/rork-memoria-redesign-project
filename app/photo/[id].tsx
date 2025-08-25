@@ -48,7 +48,7 @@ export default function PhotoDetailScreen() {
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
   const [commentText, setCommentText] = useState<string>('');
-  const [showComments] = useState<boolean>(false);
+  const [showComments, setShowComments] = useState<boolean>(false);
   const [slideshowMode, setSlideshowMode] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
@@ -439,7 +439,12 @@ export default function PhotoDetailScreen() {
                     <Text style={styles.actionCount}>{likes.length}</Text>
                   </Pressable>
                   
-                  <Pressable style={styles.actionButton} onPress={() => setShowUniversalComments(true)}>
+                  <Pressable style={styles.actionButton} onPress={() => {
+                    setShowComments(!showComments);
+                    if (Platform.OS !== 'web') {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }
+                  }}>
                     <MessageCircle color="#FFFFFF" size={28} />
                     <Text style={styles.actionCount}>{photoComments.length}</Text>
                   </Pressable>
@@ -468,7 +473,12 @@ export default function PhotoDetailScreen() {
                     <Text style={styles.actionCount}>{likes.length}</Text>
                   </Pressable>
                   
-                  <Pressable style={styles.actionButton} onPress={() => setShowUniversalComments(true)}>
+                  <Pressable style={styles.actionButton} onPress={() => {
+                    setShowComments(!showComments);
+                    if (Platform.OS !== 'web') {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }
+                  }}>
                     <MessageCircle color="#FFFFFF" size={28} />
                     <Text style={styles.actionCount}>{photoComments.length}</Text>
                   </Pressable>
@@ -873,9 +883,10 @@ const styles = StyleSheet.create({
   },
   commentsContainer: {
     position: 'absolute',
+    bottom: 120,
     left: 0,
     right: 0,
-    maxHeight: '50%',
+    maxHeight: '60%',
     zIndex: 15,
   },
   commentsBlur: {

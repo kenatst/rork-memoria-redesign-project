@@ -432,54 +432,28 @@ export default function AlbumsScreen() {
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>        
-        <Animated.View style={[styles.header, { transform: [{ translateY: mainSlideAnim }] }]}>
-          {!isOnline && (
-            <View style={styles.offlineBadge}>
-              <Text style={styles.offlineText}>Hors‑ligne</Text>
-            </View>
-          )}
-          <OfflineSync showIndicator={true} autoSync={true} syncInterval={30000} />
-          <View style={styles.userRow}>
-            <Image source={{ uri: avatarUri }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" transition={150} />
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{displayName}</Text>
-              <Text style={styles.userBio}>Créateur de souvenirs authentiques</Text>
-              <Text style={styles.userEmail}>{user?.email ?? 'invité@exemple.com'}</Text>
-            </View>
-            <Pressable 
-              style={[styles.round, styles.cameraBtn]} 
-              onPress={() => { handleHaptic('medium'); router.push('/(tabs)/capture'); }} 
-              testID="albums-camera-btn"
-              accessibilityLabel={getAccessibleLabel('Ouvrir l\'appareil photo', 'Appuyez pour capturer de nouvelles photos')}
-              accessibilityRole="button"
-            >
-              <Camera color="#000" size={22} />
-            </Pressable>
-          </View>
-          <Pressable 
-            style={styles.linkCard} 
-            onPress={() => handleHaptic('light')} 
-            testID="universal-link"
-            accessibilityLabel={getAccessibleLabel('Lien universel', 'Partagez votre profil avec ce lien')}
-            accessibilityRole="button"
-          >
-            <View style={styles.linkLeft}><Link2 color={Colors.palette.taupe} size={18} /></View>
-            <Text style={styles.linkText}>{universalLink}</Text>
-          </Pressable>
-        </Animated.View>
+
 
         <Animated.View style={[styles.filtersBar, { transform: [{ translateY: mainSlideAnim }] }]}>
-          {(['all', 'recent', 'shared', 'favorites', 'mostViewed', 'lastActivity'] as const).map((key) => {
-            const active = filterType === key;
-            return (
-              <Pressable key={key} style={[styles.chip, active && styles.chipActive]} onPress={() => setFilterType(key)} testID={`chip-${key}`}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {key === 'all' ? 'Tous' : key === 'recent' ? 'Récents' : key === 'shared' ? 'Partagés' : key === 'favorites' ? 'Favoris' : key === 'mostViewed' ? 'Top vues' : 'Activité'}
-                </Text>
-              </Pressable>
-            );
-          })}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.groupChipsRow}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.filtersScrollContent}
+            style={styles.filtersScroll}
+          >
+            {(['all', 'recent', 'shared', 'favorites', 'mostViewed', 'lastActivity'] as const).map((key) => {
+              const active = filterType === key;
+              return (
+                <Pressable key={key} style={[styles.chip, active && styles.chipActive]} onPress={() => setFilterType(key)} testID={`chip-${key}`}>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {key === 'all' ? 'Tous' : key === 'recent' ? 'Récents' : key === 'shared' ? 'Partagés' : key === 'favorites' ? 'Favoris' : key === 'mostViewed' ? 'Top vues' : 'Activité'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            
+            <View style={styles.separator} />
+            
             <Pressable onPress={() => setSelectedGroup('all')} style={[styles.groupChip, selectedGroup === 'all' && styles.groupChipActive]} testID="group-all">
               <Text style={[styles.groupChipText, selectedGroup === 'all' && styles.groupChipTextActive]}>Tous groupes</Text>
             </Pressable>
@@ -489,21 +463,24 @@ export default function AlbumsScreen() {
               </Pressable>
             ))}
           </ScrollView>
-          <Pressable 
-            style={styles.round} 
-            onPress={() => {
-              handleHaptic('light');
-              setShowAdvancedSearch(true);
-            }} 
-            testID="advanced-search"
-            accessibilityLabel={getAccessibleLabel('Recherche avancée', 'Ouvre la recherche avec filtres')}
-            accessibilityRole="button"
-          >
-            <Search color={Colors.palette.taupe} size={18} />
-          </Pressable>
-          <Pressable style={styles.round} onPress={toggleView} testID="toggle-view">
-            {viewMode === 'grid' ? <Grid3X3 color={Colors.palette.taupe} size={18} /> : <List color={Colors.palette.taupe} size={18} />}
-          </Pressable>
+          
+          <View style={styles.filtersActions}>
+            <Pressable 
+              style={styles.round} 
+              onPress={() => {
+                handleHaptic('light');
+                setShowAdvancedSearch(true);
+              }} 
+              testID="advanced-search"
+              accessibilityLabel={getAccessibleLabel('Recherche avancée', 'Ouvre la recherche avec filtres')}
+              accessibilityRole="button"
+            >
+              <Search color={Colors.palette.taupe} size={18} />
+            </Pressable>
+            <Pressable style={styles.round} onPress={toggleView} testID="toggle-view">
+              {viewMode === 'grid' ? <Grid3X3 color={Colors.palette.taupe} size={18} /> : <List color={Colors.palette.taupe} size={18} />}
+            </Pressable>
+          </View>
         </Animated.View>
 
         {/* Search Results Indicator */}
@@ -525,15 +502,27 @@ export default function AlbumsScreen() {
           </View>
         )}
 
-        <Pressable style={styles.createCard} onPress={() => { handleHaptic('medium'); setShowCreate(true); }} testID="create-album">
-          <LinearGradient colors={['#1a1a1a', '#2A2D34']} style={styles.createGradient}>
-            <View style={styles.createLeft}><Plus color={Colors.palette.taupeDeep} size={20} /></View>
-            <View style={styles.createRight}>
-              <Text style={styles.createTitle}>Créer un album</Text>
-              <Text style={styles.createSub}>Organisez vos souvenirs</Text>
-            </View>
-          </LinearGradient>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable 
+            style={[styles.round, styles.cameraBtn]} 
+            onPress={() => { handleHaptic('medium'); router.push('/(tabs)/capture'); }} 
+            testID="albums-camera-btn"
+            accessibilityLabel={getAccessibleLabel('Ouvrir l\'appareil photo', 'Appuyez pour capturer de nouvelles photos')}
+            accessibilityRole="button"
+          >
+            <Camera color="#000" size={22} />
+          </Pressable>
+          
+          <Pressable style={styles.createCard} onPress={() => { handleHaptic('medium'); setShowCreate(true); }} testID="create-album">
+            <LinearGradient colors={['#1a1a1a', '#2A2D34']} style={styles.createGradient}>
+              <View style={styles.createLeft}><Plus color={Colors.palette.taupeDeep} size={20} /></View>
+              <View style={styles.createRight}>
+                <Text style={styles.createTitle}>Créer un album</Text>
+                <Text style={styles.createSub}>Organisez vos souvenirs</Text>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </View>
 
         <ScrollView
           style={styles.albumsContainer}
@@ -541,14 +530,7 @@ export default function AlbumsScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefreshAlbums} tintColor="#FFD700" colors={["#FFD700"]} progressBackgroundColor="#1a1a1a" />}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
-            {filteredAlbums.slice(0, 6).map((a) => (
-              <Pressable key={a.id} style={styles.quickItem} onPress={() => router.push(`/album/${a.id}`)} testID={`quick-${a.id}`}>
-                <Image source={{ uri: a.coverImage }} style={styles.quickImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
-                <Text numberOfLines={1} style={styles.quickLabel}>{a.name}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+
 
           {/* Skeleton grid for perceived performance */}
           {!filteredAlbums.length && (
@@ -768,28 +750,30 @@ const styles = StyleSheet.create({
   linkCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.06)', padding: 12, borderRadius: 14 },
   linkLeft: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
   linkText: { color: Colors.palette.taupeDeep, fontSize: 14, fontWeight: '700' },
-  filtersBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 10 },
+  filtersBar: { paddingHorizontal: 20, paddingVertical: 16 },
+  filtersScroll: { flex: 1 },
+  filtersScrollContent: { alignItems: 'center', gap: 10, paddingRight: 20 },
+  filtersActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 10 },
+  separator: { width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)' },
   chipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
   chipText: { color: Colors.palette.taupe, fontWeight: '700' },
   chipTextActive: { color: '#FFD700' },
   offlineBadge: { alignSelf: 'flex-end', backgroundColor: '#FF4444', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginBottom: 8 },
   offlineText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  groupChipsRow: { gap: 8, paddingLeft: 8, alignItems: 'center' },
+
   groupChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)', marginRight: 8 },
   groupChipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
   groupChipText: { color: Colors.palette.taupe, fontSize: 12, fontWeight: '700' },
   groupChipTextActive: { color: '#FFD700' },
-  createCard: { marginHorizontal: 20, marginTop: 6, borderRadius: 16, overflow: 'hidden' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 16 },
+  createCard: { flex: 1, borderRadius: 16, overflow: 'hidden' },
   createGradient: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   createLeft: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   createRight: { flex: 1 },
   createTitle: { fontSize: 16, fontWeight: '800', color: Colors.palette.taupeDeep },
   createSub: { fontSize: 12, color: Colors.palette.taupe },
-  quickRow: { paddingHorizontal: 20, paddingVertical: 16, gap: 12 },
-  quickItem: { width: 88 },
-  quickImage: { width: 88, height: 88, borderRadius: 16, marginBottom: 8, backgroundColor: '#1a1a1a' },
-  quickLabel: { color: Colors.palette.taupeDeep, fontSize: 12, fontWeight: '700' },
+
   albumsContainer: { flex: 1, paddingHorizontal: 20 },
   albumsContent: { paddingBottom: 140 },
   webBlur: { backgroundColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' as any },
