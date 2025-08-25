@@ -6,7 +6,6 @@ import {
   Brain, 
   MapPin, 
   Shield, 
-  Database, 
   Camera, 
   Zap,
   CheckCircle,
@@ -20,7 +19,7 @@ import ImagePickerComponent from '@/components/ImagePicker';
 import { analyzeImage } from '@/lib/google-vision';
 import { getCurrentLocation, reverseGeocode, findNearbyPlaces } from '@/lib/google-maps';
 import { authenticateWithGoogle, isAuthenticated, getCurrentUser, AuthUser } from '@/lib/auth';
-import { uploadPhotoDirectly, createAlbumDirectly, subscribeToRealtimeUpdates } from '@/lib/convex';
+// Convex supprimé: importations retirées
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface TestResult {
@@ -37,11 +36,10 @@ export default function IntegrationsTestScreen() {
     { name: 'Google Vision Analysis', status: 'idle' },
     { name: 'Google Maps Location', status: 'idle' },
     { name: 'Auth0 Authentication', status: 'idle' },
-    { name: 'Convex Database', status: 'idle' },
   ]);
   
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [realtimeData, setRealtimeData] = useState<any>(null);
+  const [realtimeData, setRealtimeData] = useState<null>(null);
 
   useEffect(() => {
     checkAuthStatus();
@@ -163,66 +161,7 @@ export default function IntegrationsTestScreen() {
     }
   };
 
-  const testConvex = async () => {
-    updateTestResult('Convex Database', 'loading');
-    
-    try {
-      // Test upload photo
-      const photoId = await uploadPhotoDirectly({
-        userId: currentUser?.id || 'test-user',
-        cloudinaryUrl: 'https://example.com/test.jpg',
-        cloudinaryPublicId: 'test-photo',
-        originalUri: selectedImage || 'test-uri',
-        metadata: {
-          width: 800,
-          height: 600,
-          format: 'jpg',
-          size: 1024000,
-          timestamp: Date.now()
-        },
-        isPrivate: false,
-        tags: ['test']
-      });
-
-      // Test create album
-      const albumId = await createAlbumDirectly({
-        userId: currentUser?.id || 'test-user',
-        title: 'Test Album',
-        description: 'Album de test pour les intégrations',
-        photoIds: [photoId],
-        isPrivate: false,
-        tags: ['test'],
-        collaborators: [],
-        settings: {
-          allowComments: true,
-          allowDownload: true,
-          autoAddPhotos: false
-        }
-      });
-
-      // Test realtime subscription
-      const unsubscribe = subscribeToRealtimeUpdates(
-        currentUser?.id || 'test-user',
-        (data) => {
-          setRealtimeData(data);
-        }
-      );
-
-      // Cleanup after 5 seconds
-      setTimeout(unsubscribe, 5000);
-      
-      updateTestResult('Convex Database', 'success', {
-        photoId: photoId.substring(0, 20) + '...',
-        albumId: albumId.substring(0, 20) + '...',
-        realtime: 'Subscribed'
-      });
-      
-      Alert.alert('✅ Convex', 'Base de données testée avec succès !');
-    } catch (error) {
-      updateTestResult('Convex Database', 'error', null, error instanceof Error ? error.message : 'Unknown error');
-      Alert.alert('❌ Convex', 'Erreur lors du test de la base de données');
-    }
-  };
+  // Convex supprimé: test de base de données retiré
 
   const runAllTests = async () => {
     if (!selectedImage) {
@@ -248,7 +187,6 @@ export default function IntegrationsTestScreen() {
               await testAuth0();
               await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            await testConvex();
           }
         }
       ]
@@ -373,9 +311,7 @@ export default function IntegrationsTestScreen() {
                         case 'Auth0 Authentication':
                           testAuth0();
                           break;
-                        case 'Convex Database':
-                          testConvex();
-                          break;
+
                       }
                     }}
                   >
@@ -437,11 +373,7 @@ export default function IntegrationsTestScreen() {
               <Text style={styles.integrationText}>Auth0</Text>
               <Text style={styles.integrationStatus}>Configuré</Text>
             </View>
-            <View style={styles.integrationItem}>
-              <Database color={Colors.palette.accentGold} size={24} />
-              <Text style={styles.integrationText}>Convex</Text>
-              <Text style={styles.integrationStatus}>Prêt</Text>
-            </View>
+
             <View style={styles.integrationItem}>
               <Camera color={Colors.palette.accentGold} size={24} />
               <Text style={styles.integrationText}>Cloudinary</Text>
