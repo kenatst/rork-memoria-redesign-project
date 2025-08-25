@@ -93,7 +93,7 @@ CLIENT_ID: '689a0da1d84288186ef798d1'
 
 ---
 
-## ✅ Phase 5 - Base de Données Temps Réel avec Convex
+## ✅ Phase 5 - Backend Temps Réel (tRPC, Convex retiré)
 **Status: ✅ PRÉPARÉ (Hooks et types prêts)**
 
 ### Fonctionnalités préparées :
@@ -105,13 +105,10 @@ CLIENT_ID: '689a0da1d84288186ef798d1'
 - ✅ Gestion des photos, albums, groupes, utilisateurs
 
 ### Fichiers créés :
-- `lib/convex.ts` - Client Convex avec hooks et types
+- Backend tRPC déjà en place
 
 ### Configuration :
-```typescript
-// Convex prêt pour déploiement
-// URL à configurer : process.env.EXPO_PUBLIC_CONVEX_URL
-```
+
 
 ---
 
@@ -138,7 +135,7 @@ CLIENT_ID: '689a0da1d84288186ef798d1'
 | **Google Vision** | ✅ | IA/Reconnaissance | ✅ Oui |
 | **Google Maps** | ✅ | Géolocalisation | ✅ Oui |
 | **Auth0** | ✅ | Authentification | ✅ Oui |
-| **Convex** | 🟡 | Base de données | 🟡 Prêt (à déployer) |
+| **Convex** | ❌ | Retiré | — |
 
 ---
 
@@ -166,7 +163,7 @@ const API_KEYS = {
 
 ### Pour finaliser l'app "du siècle" :
 
-1. **Déployer Convex Backend**
+1. **Déployer backend tRPC**
    - Créer compte Convex
    - Déployer les fonctions backend
    - Configurer l'URL dans l'app
@@ -197,7 +194,7 @@ const API_KEYS = {
 L'app est conçue pour supporter **millions d'utilisateurs** avec :
 
 - ✅ **CDN Global** (Cloudinary)
-- ✅ **Base de données temps réel** (Convex)
+- ✅ Backend tRPC en place
 - ✅ **Authentification robuste** (Auth0)
 - ✅ **IA intégrée** (Google Cloud)
 - ✅ **Géolocalisation précise** (Google Maps)

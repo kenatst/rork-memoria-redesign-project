@@ -56,15 +56,6 @@ const analysis = await analyzeImageForMemoria(imageUri);
 console.log(`Détecté: ${analysis.faceCount} visages, ${analysis.topLabels.length} labels`);
 ```
 
-### 3. Convex (Backend Realtime)
-```typescript
-// Configuration
-const CONVEX_URL = 'https://flexible-otter-858.convex.cloud';
-
-// Usage (hooks prêts, backend à configurer)
-const photos = useUserPhotos(userId);
-const uploadMutation = useUploadPhoto();
-```
 
 ### 4. Compression d'Images Optimisée
 ```typescript
@@ -177,7 +168,6 @@ const uploaded = await compressAndUpload(uri);
    - Activer Vision API
    - Configurer quotas et facturation
 
-3. **Convex Backend**
    - Déployer les fonctions backend
    - Configurer les schémas de données
 
@@ -213,7 +203,7 @@ const uploaded = await compressAndUpload(uri);
 ### ⚠️ Points d'Attention
 - **Configuration externe** : Presets Cloudinary à créer
 - **Coûts API** : Mode démo pour éviter les frais
-- **Backend Convex** : Fonctions à déployer
+- Backend tRPC: déjà en place
 - **Tests utilisateurs** : Validation sur vrais appareils
 
 ### 🏆 Memoria est Prête pour la Production
