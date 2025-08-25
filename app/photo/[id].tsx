@@ -40,7 +40,8 @@ export default function PhotoDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = params.id;
-  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
+  const appState = useAppState();
+  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = appState;
   
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -93,6 +94,7 @@ export default function PhotoDetailScreen() {
   
   // Get photo tags - using useMemo to prevent infinite loops
   const photoTags = useMemo(() => {
+    if (!targetUri || !photos) return [];
     const photoData = photos.find(p => p.uri === targetUri);
     return photoData?.tags ?? [];
   }, [photos, targetUri]);

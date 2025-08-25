@@ -4,7 +4,11 @@ const palette = {
   taupe: "#A9AFBC",
   taupeSoft: "#2A2D34",
   taupeDeep: "#E8EAF0",
-  accentGold: "#FFFFFF",
+  accentGold: "#FFD700",
+  error: "#FF6B6B",
+  success: "#4ADE80",
+  warning: "#FFA500",
+  info: "#3B82F6",
 } as const;
 
 export default {

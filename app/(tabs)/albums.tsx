@@ -110,6 +110,8 @@ export default function AlbumsScreen() {
   };
 
   const filteredAndSortedAlbums = useMemo(() => {
+    if (!albums || albums.length === 0) return [];
+    
     // Use search results if available
     let filtered = searchResults ? searchResults.albums.map(album => {
       const fullAlbum = albums.find(a => a.id === album.id);
@@ -173,7 +175,7 @@ export default function AlbumsScreen() {
     });
 
     return filtered;
-  }, [albums, searchQuery, filterType, selectedGroup, sortBy, sortOrder, favoriteAlbumIds]);
+  }, [albums, searchQuery, filterType, selectedGroup, sortBy, sortOrder, favoriteAlbumIds, searchResults]);
 
 
 

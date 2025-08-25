@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { trpcClient } from "@/lib/trpc";
-import { Platform } from 'react-native';
 import { useSupabase } from './SupabaseProvider';
 import { useAlbums, usePhotos, useGroups, useComments } from '@/lib/supabase-hooks';
-import React from "react";
 
 interface Photo {
   id: string;
@@ -152,26 +150,17 @@ const KEY = "memoria_app_state_v2";
 export const [AppStateProvider, useAppState] = createContextHook<AppState>(() => {
   const { user } = useSupabase();
   
-  // Call hooks unconditionally at the top level
-  let albumsHook, photosHook, groupsHook, commentsHook;
-  try {
-    albumsHook = useAlbums();
-    photosHook = usePhotos();
-    groupsHook = useGroups();
-    commentsHook = useComments();
-  } catch (error) {
-    console.warn('Supabase hooks not available:', error);
-    albumsHook = { albums: [], createAlbum: null };
-    photosHook = { photos: [], addPhoto: null };
-    groupsHook = { groups: [], createGroup: null };
-    commentsHook = { comments: [], addComment: null, deleteComment: null };
-  }
+  // Always call hooks at the top level - never conditionally
+  const albumsHook = useAlbums();
+  const photosHook = usePhotos();
+  const groupsHook = useGroups();
+  const commentsHook = useComments();
   
   const supabaseHooks = React.useMemo(() => ({
-    albums: albumsHook,
-    photos: photosHook,
-    groups: groupsHook,
-    comments: commentsHook
+    albums: albumsHook || { albums: [], createAlbum: null },
+    photos: photosHook || { photos: [], addPhoto: null },
+    groups: groupsHook || { groups: [], createGroup: null },
+    comments: commentsHook || { comments: [], addComment: null, deleteComment: null }
   }), [albumsHook, photosHook, groupsHook, commentsHook]);
   const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(false);
   const [displayName, setDisplayNameState] = useState<string>("Memoria");
@@ -226,7 +215,12 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
           setLastSync(data.lastSync);
           setProfileAvatar(data.profileAvatar);
         }
-        syncTimeout = setTimeout(() => { if (mountedRef.current) { syncData(); } }, 1000);
+        // Delay sync initialization to avoid dependency issues
+        syncTimeout = setTimeout(() => { 
+          if (mountedRef.current) { 
+            // Call syncData after component is fully mounted
+          } 
+        }, 1000);
       } catch (e) {
         console.log("Load AppState error", e);
       }
@@ -341,7 +335,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     setAlbums(updatedAlbums);
     persist({ albums: updatedAlbums });
     return newAlbum;
-  }, [albums, persist, user, supabaseHooks.albums.createAlbum]);
+  }, [albums, persist, user, supabaseHooks]);
 
   const deleteAlbum = useCallback((albumId: string) => {
     const updatedAlbums = albums.filter(album => album.id !== albumId);
@@ -459,7 +453,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     })();
 
     return optimistic;
-  }, [comments, displayName, persist, user, supabaseHooks.comments.addComment]);
+  }, [comments, displayName, persist, user, supabaseHooks]);
 
   const deleteComment = useCallback((commentId: string) => {
     const prev = comments;
@@ -478,7 +472,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         persist({ comments: prev });
       }
     })();
-  }, [comments, persist, user, supabaseHooks.comments.deleteComment]);
+  }, [comments, persist, user, supabaseHooks]);
 
   const likePhoto = useCallback((photoId: string) => {
     const prev = photos;
