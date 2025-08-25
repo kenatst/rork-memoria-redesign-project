@@ -91,7 +91,7 @@ const ASPECT_RATIOS = [
 
 export default function CaptureScreen() {
   const { albums, addPhotoToAlbum } = useAppState();
-  const { compressImage, isCompressing, compressAndUpload } = useImageCompression();
+  const { compressImage, isCompressing, compressAndUpload, uploadToCloud } = useImageCompression();
   const { addToQueue, pendingCount } = useOfflineQueue();
   const { analyzePhotos, isAnalyzing } = useAI();
   const insets = useSafeAreaInsets();
@@ -301,10 +301,10 @@ export default function CaptureScreen() {
 
     try {
       const photo = await cameraRef.current.takePictureAsync({ 
-        quality: 0.9, 
+        quality: 0.85, 
         base64: false, 
         exif: true,
-        skipProcessing: false
+        skipProcessing: true
       });
       
       if (photo) {
@@ -315,7 +315,7 @@ export default function CaptureScreen() {
           setIsUploadingToCloud(true);
           
           // Compress and upload to Cloudinary in one step
-          const cloudResult = await compressAndUpload(filteredUri, {
+          const cloudResult = await uploadToCloud(filteredUri, {
             folder: 'memoria/captures',
             tags: ['capture', 'memoria-app', 'auto-upload'],
             context: {
@@ -323,7 +323,8 @@ export default function CaptureScreen() {
               timestamp: Date.now().toString(),
               filter: filterMode,
               camera_mode: cameraMode
-            }
+            },
+            resource_type: 'image'
           });
           
           console.log('☁️ [Capture] Photo uploaded to Cloudinary:', cloudResult.secure_url);
@@ -347,6 +348,9 @@ export default function CaptureScreen() {
           setShowAlbumSelector(true);
         } catch (error) {
           console.error('❌ [Capture] Cloud upload failed, using local compression:', error);
+          if (error instanceof Error && error.message.includes('Upload preset not found')) {
+            Alert.alert('Cloudinary', "Le preset d'upload est introuvable. Créez un preset unsigned nommé 'memoria_unsigned' et autorisez 'unsigned'.");
+          }
           
           // Fallback to local compression only
           try {
