@@ -399,13 +399,23 @@ export default function GroupDetailScreen() {
                   </Pressable>
                   <Pressable
                     style={[styles.modalBtn, styles.createBtn]}
-                    onPress={() => {
+                    onPress={async () => {
                       if (!newAlbumName.trim()) return;
-                      const a = createAlbum(newAlbumName.trim(), group.id);
-                      setShowCreateAlbum(false);
-                      setNewAlbumName('');
-                      handleHaptic('medium');
-                      router.push(`/album/${(a as any).id}`);
+                      try {
+                        const newAlbum = await createAlbum(newAlbumName.trim(), group.id);
+                        setShowCreateAlbum(false);
+                        setNewAlbumName('');
+                        handleHaptic('medium');
+                        
+                        // Wait a bit for the album to be created and added to state
+                        setTimeout(() => {
+                          if (newAlbum && newAlbum.id) {
+                            router.push(`/album/${newAlbum.id}`);
+                          }
+                        }, 100);
+                      } catch (error) {
+                        console.error('Error creating album:', error);
+                      }
                     }}
                     testID="confirm-create-album"
                   >

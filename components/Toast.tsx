@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, StyleSheet, Text, Animated, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { AlertTriangle, CheckCircle, Info, X } from 'lucide-react-native';
@@ -20,9 +20,35 @@ export default function Toast({ type, title, message, duration = 4000, onDismiss
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+
+  const hideToast = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -100,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 0.9,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsVisible(false);
+      onDismiss?.();
+    });
+  }, [translateY, opacity, scale, onDismiss]);
 
   useEffect(() => {
-    if (visible) {
+    if (visible && !isVisible) {
+      setIsVisible(true);
+      
       // Haptic feedback
       if (Platform.OS !== 'web') {
         switch (type) {
@@ -67,32 +93,12 @@ export default function Toast({ type, title, message, duration = 4000, onDismiss
       }, duration);
 
       return () => clearTimeout(timer);
-    } else {
+    } else if (!visible && isVisible) {
       hideToast();
     }
-  }, [visible, type, duration]);
+  }, [visible, isVisible, type, duration, hideToast]);
 
-  const hideToast = () => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: -100,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
-        toValue: 0.9,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onDismiss?.();
-    });
-  };
+
 
   const getIcon = () => {
     switch (type) {
@@ -147,7 +153,7 @@ export default function Toast({ type, title, message, duration = 4000, onDismiss
   const Icon = getIcon();
   const colors = getColors();
 
-  if (!visible) return null;
+  if (!isVisible) return null;
 
   return (
     <Animated.View

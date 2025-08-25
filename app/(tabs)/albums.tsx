@@ -316,14 +316,19 @@ export default function AlbumsScreen() {
       coverTransform: (album as any).coverTransform ?? { scale: 1, offsetX: 0, offsetY: 0 },
     }));
     setAlbums(normalized);
+  }, [persistedAlbums]);
 
-    Animated.loop(
+  useEffect(() => {
+    const glowAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
         Animated.timing(glowAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
-    ).start();
-  }, [persistedAlbums, glowAnim]);
+    );
+    glowAnimation.start();
+    
+    return () => glowAnimation.stop();
+  }, [glowAnim]);
 
   useEffect(() => {
     console.log('AlbumsScreen state', {

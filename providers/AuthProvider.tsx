@@ -22,8 +22,11 @@ const AUTH_KEY = "memoria_auth_v1";
 export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   useEffect(() => {
+    if (isInitialized) return;
+    
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(AUTH_KEY);
@@ -35,9 +38,10 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         console.log("Load auth error", e);
       } finally {
         setIsLoading(false);
+        setIsInitialized(true);
       }
     })();
-  }, []);
+  }, [isInitialized]);
 
   const persist = useCallback(async (nextUser: AuthUser | null) => {
     try {
