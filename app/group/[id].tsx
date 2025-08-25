@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Modal, TextInput, Alert, Share, Linking, KeyboardAvoidingView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Users, Plus, Settings, Share2, QrCode, Mail, MessageSquare, Camera, UserPlus, UserMinus, Crown, Shield, Heart, Download } from 'lucide-react-native';
@@ -14,7 +13,6 @@ import QRCodeGenerator from '@/components/QRCodeGenerator';
 import ImagePickerComponent from '@/components/ImagePicker';
 import { GroupPermissions, GroupMember, UserRole } from '@/components/GroupPermissions';
 
-
 interface Member {
   id: string;
   name: string;
@@ -22,6 +20,8 @@ interface Member {
   role: 'owner' | 'admin' | 'member';
   joinedAt: Date;
 }
+
+interface CommentItem { id: string; text: string; author: string; createdAt: Date }
 
 interface Photo {
   id: string;
@@ -31,46 +31,38 @@ interface Photo {
   uploadedBy: string;
   uploadedAt: Date;
   likes: string[];
-  comments: { id: string; text: string; author: string; createdAt: Date }[];
+  comments: CommentItem[];
 }
 
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { groups, albums, createAlbum, updateGroupCover } = useAppState();
-  
-  const [group, setGroup] = useState<any>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [showInvite, setShowInvite] = useState(false);
-  const [showCreateAlbum, setShowCreateAlbum] = useState(false);
-  const [showQR, setShowQR] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
-  const [showPermissions, setShowPermissions] = useState(false);
-  const [newAlbumName, setNewAlbumName] = useState('');
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [newComment, setNewComment] = useState('');
-  const [showChangeCover, setShowChangeCover] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    const foundGroup = groups.find(g => g.id === id);
-    if (!foundGroup) return;
-    setGroup(foundGroup);
+  const group = useMemo(() => groups.find(g => g.id === id) ?? null, [groups, id]);
 
-    const computedMembers: Member[] = foundGroup.members.map((name, idx) => ({
+  const baseMembers = useMemo<Member[]>(() => {
+    if (!group) return [] as Member[];
+    return group.members.map((name: string, idx: number) => ({
       id: String(idx + 1),
       name,
       avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
       role: idx === 0 ? 'owner' : 'member',
       joinedAt: new Date(),
     }));
-    setMembers(computedMembers);
+  }, [group]);
 
-    const groupAlbums = albums.filter(a => a.groupId === foundGroup.id);
+  const [members, setMembers] = useState<Member[]>(baseMembers);
+  React.useEffect(() => {
+    setMembers(baseMembers);
+  }, [baseMembers]);
+
+  const basePhotos = useMemo<Photo[]>(() => {
+    if (!group) return [] as Photo[];
+    const groupAlbums = albums.filter(a => a.groupId === group.id);
     const recent: Photo[] = [];
     groupAlbums.forEach(a => {
-      a.photos.forEach((uri, pi) => {
+      a.photos.forEach((uri: string, pi: number) => {
         recent.unshift({
           id: `${a.id}-${pi}`,
           uri,
@@ -83,10 +75,35 @@ export default function GroupDetailScreen() {
         });
       });
     });
-    setPhotos(recent.slice(0, 30));
-  }, [id, groups, albums]);
+    return recent.slice(0, 30);
+  }, [albums, group]);
 
-  const handleHaptic = (style: 'light' | 'medium' | 'heavy' = 'medium') => {
+  const [likesMap, setLikesMap] = useState<Record<string, string[]>>({});
+  const [commentsMap, setCommentsMap] = useState<Record<string, CommentItem[]>>({});
+  const [showInvite, setShowInvite] = useState<boolean>(false);
+  const [showCreateAlbum, setShowCreateAlbum] = useState<boolean>(false);
+  const [showQR, setShowQR] = useState<boolean>(false);
+  const [showMembers, setShowMembers] = useState<boolean>(false);
+  const [showPermissions, setShowPermissions] = useState<boolean>(false);
+  const [newAlbumName, setNewAlbumName] = useState<string>('');
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState<string>('');
+  const [showChangeCover, setShowChangeCover] = useState<boolean>(false);
+
+  const photos = useMemo<Photo[]>(() => {
+    return basePhotos.map(p => ({
+      ...p,
+      likes: likesMap[p.id] ?? p.likes,
+      comments: commentsMap[p.id] ?? p.comments,
+    }));
+  }, [basePhotos, likesMap, commentsMap]);
+
+  const selectedPhoto = useMemo<Photo | null>(() => {
+    if (!selectedPhotoId) return null;
+    return photos.find(p => p.id === selectedPhotoId) ?? null;
+  }, [selectedPhotoId, photos]);
+
+  const handleHaptic = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
     if (Platform.OS !== 'web') {
       const map = {
         light: (Haptics.ImpactFeedbackStyle as any).Light,
@@ -95,9 +112,9 @@ export default function GroupDetailScreen() {
       } as const;
       Haptics.impactAsync(map[style]);
     }
-  };
+  }, []);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     handleHaptic('light');
     const inviteLink = `https://memoria.app/join/${group?.id}`;
     try {
@@ -108,28 +125,27 @@ export default function GroupDetailScreen() {
     } catch (error) {
       console.log('Share error:', error);
     }
-  };
+  }, [group, handleHaptic]);
 
-  const handleInviteEmail = async () => {
+  const handleInviteEmail = useCallback(async () => {
     const inviteLink = `https://memoria.app/join/${group?.id}`;
     const subject = `Invitation au groupe ${group?.name}`;
-    const body = `Salut !\\n\\nTu es invité(e) à rejoindre notre groupe "${group?.name}" sur Memoria.\\n\\nClique sur ce lien pour nous rejoindre : ${inviteLink}\\n\\nÀ bientôt !`;
-    
+    const body = `Salut !\n\nTu es invité(e) à rejoindre notre groupe "${group?.name}" sur Memoria.\n\nClique sur ce lien pour nous rejoindre : ${inviteLink}\n\nÀ bientôt !`;
     try {
       await Linking.openURL(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     } catch (error) {
       console.log('Email error:', error);
     }
-  };
+  }, [group]);
 
-  const handleRemoveMember = (memberId: string) => {
+  const handleRemoveMember = useCallback((memberId: string) => {
     Alert.alert(
       'Supprimer le membre',
       'Êtes-vous sûr de vouloir retirer ce membre du groupe ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Supprimer', 
+        {
+          text: 'Supprimer',
           style: 'destructive',
           onPress: () => {
             setMembers(prev => prev.filter(m => m.id !== memberId));
@@ -138,46 +154,35 @@ export default function GroupDetailScreen() {
         }
       ]
     );
-  };
+  }, [handleHaptic]);
 
-  const handleLikePhoto = (photoId: string) => {
+  const handleLikePhoto = useCallback((photoId: string) => {
     handleHaptic('light');
-    setPhotos(prev => prev.map(photo => {
-      if (photo.id === photoId) {
-        const isLiked = photo.likes.includes('current-user');
-        return {
-          ...photo,
-          likes: isLiked 
-            ? photo.likes.filter(id => id !== 'current-user')
-            : [...photo.likes, 'current-user']
-        };
-      }
-      return photo;
-    }));
-  };
+    setLikesMap(prev => {
+      const current = prev[photoId] ?? [];
+      const isLiked = current.includes('current-user');
+      const next = { ...prev, [photoId]: isLiked ? current.filter(i => i !== 'current-user') : [...current, 'current-user'] };
+      return next;
+    });
+  }, [handleHaptic]);
 
-  const handleAddComment = (photoId: string) => {
+  const handleAddComment = useCallback((photoId: string) => {
     if (!newComment.trim()) return;
-    
-    const comment = {
+    const comment: CommentItem = {
       id: Date.now().toString(),
       text: newComment.trim(),
       author: 'Vous',
       createdAt: new Date()
     };
-    
-    setPhotos(prev => prev.map(photo => {
-      if (photo.id === photoId) {
-        return { ...photo, comments: [...photo.comments, comment] };
-      }
-      return photo;
-    }));
-    
+    setCommentsMap(prev => {
+      const list = prev[photoId] ?? [];
+      return { ...prev, [photoId]: [...list, comment] };
+    });
     setNewComment('');
     handleHaptic('light');
-  };
+  }, [newComment, handleHaptic]);
 
-  const handleSavePhoto = async (photoUri: string) => {
+  const handleSavePhoto = useCallback(async (photoUri: string) => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status === 'granted') {
@@ -188,16 +193,16 @@ export default function GroupDetailScreen() {
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
     }
-  };
+  }, [handleHaptic]);
 
-  const handleExportAlbum = async () => {
+  const handleExportAlbum = useCallback(async () => {
     Alert.alert(
-      'Exporter l\'album',
+      "Exporter l'album",
       'Toutes les photos de ce groupe seront sauvegardées dans votre galerie.',
       [
         { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Exporter', 
+        {
+          text: 'Exporter',
           onPress: async () => {
             try {
               const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -209,13 +214,13 @@ export default function GroupDetailScreen() {
                 handleHaptic('medium');
               }
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible d\'exporter les photos');
+              Alert.alert('Erreur', "Impossible d'exporter les photos");
             }
           }
         }
       ]
     );
-  };
+  }, [photos, handleHaptic]);
 
   if (!group) {
     return (
@@ -232,8 +237,6 @@ export default function GroupDetailScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        
-        {/* Header */}
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => router.back()} testID="back-btn">
             <ArrowLeft color="#FFD700" size={24} />
@@ -245,12 +248,11 @@ export default function GroupDetailScreen() {
         </View>
 
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Group Info */}
           <View style={styles.groupInfo}>
-            <Image 
-              source={{ uri: group.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop' }} 
-              style={styles.groupCover} 
-              contentFit="cover" 
+            <Image
+              source={{ uri: group.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop' }}
+              style={styles.groupCover}
+              contentFit="cover"
             />
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.coverOverlay} />
             <View style={styles.groupDetails}>
@@ -260,7 +262,6 @@ export default function GroupDetailScreen() {
             </View>
           </View>
 
-          {/* Action Buttons */}
           <View style={styles.actionRow}>
             <Pressable style={styles.actionBtn} onPress={() => setShowInvite(true)} testID="invite-btn">
               <UserPlus color="#FFD700" size={20} />
@@ -284,7 +285,6 @@ export default function GroupDetailScreen() {
             </Pressable>
           </View>
 
-          {/* Recent Photos */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Photos récentes</Text>
@@ -294,7 +294,7 @@ export default function GroupDetailScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photosRow}>
               {photos.map(photo => (
-                <Pressable key={photo.id} style={styles.photoCard} onPress={() => setSelectedPhoto(photo)} testID={`photo-${photo.id}`}>
+                <Pressable key={photo.id} style={styles.photoCard} onPress={() => setSelectedPhotoId(photo.id)} testID={`photo-${photo.id}`}>
                   <Image source={{ uri: photo.uri }} style={styles.photoImage} contentFit="cover" />
                   <View style={styles.photoOverlay}>
                     <View style={styles.photoMeta}>
@@ -312,7 +312,6 @@ export default function GroupDetailScreen() {
             </ScrollView>
           </View>
 
-          {/* Members Preview */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Membres ({members.length})</Text>
@@ -333,30 +332,25 @@ export default function GroupDetailScreen() {
           </View>
         </ScrollView>
 
-        {/* Invite Modal */}
         <Modal visible={showInvite} transparent animationType="slide" onRequestClose={() => setShowInvite(false)}>
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Inviter des membres</Text>
               <Text style={styles.modalSubtitle}>Partagez ce groupe avec vos proches</Text>
-              
               <View style={styles.inviteOptions}>
                 <Pressable style={styles.inviteOption} onPress={handleShare} testID="share-invite">
                   <Share2 color="#FFD700" size={24} />
                   <Text style={styles.inviteOptionText}>Partager le lien</Text>
                 </Pressable>
-                
                 <Pressable style={styles.inviteOption} onPress={handleInviteEmail} testID="email-invite">
                   <Mail color="#FFD700" size={24} />
                   <Text style={styles.inviteOptionText}>Inviter par email</Text>
                 </Pressable>
-                
                 <Pressable style={styles.inviteOption} onPress={() => { setShowInvite(false); setShowQR(true); }} testID="qr-invite">
                   <QrCode color="#FFD700" size={24} />
                   <Text style={styles.inviteOptionText}>Code QR</Text>
                 </Pressable>
               </View>
-              
               <Pressable style={styles.modalCloseBtn} onPress={() => setShowInvite(false)} testID="close-invite">
                 <Text style={styles.modalCloseText}>Fermer</Text>
               </Pressable>
@@ -364,16 +358,15 @@ export default function GroupDetailScreen() {
           </View>
         </Modal>
 
-        {/* QR Code Modal */}
         <Modal visible={showQR} transparent animationType="fade" onRequestClose={() => setShowQR(false)}>
           <View style={styles.modalBackdrop}>
             <View style={styles.qrModal}>
               <Text style={styles.modalTitle}>Code QR du groupe</Text>
-              <QRCodeGenerator 
-                value={`https://memoria.app/join/${group.id}`} 
-                size={200} 
-                backgroundColor="#FFFFFF" 
-                color="#000000" 
+              <QRCodeGenerator
+                value={`https://memoria.app/join/${group.id}`}
+                size={200}
+                backgroundColor="#FFFFFF"
+                color="#000000"
               />
               <Text style={styles.qrText}>Scannez pour rejoindre le groupe</Text>
               <Pressable style={styles.modalCloseBtn} onPress={() => setShowQR(false)} testID="close-qr">
@@ -383,46 +376,44 @@ export default function GroupDetailScreen() {
           </View>
         </Modal>
 
-        {/* Create Album Modal */}
         <Modal visible={showCreateAlbum} transparent animationType="slide" onRequestClose={() => setShowCreateAlbum(false)}>
           <View style={styles.modalBackdrop}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
               <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Créer un album</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nom de l'album"
-                placeholderTextColor="#A9AFBC"
-                value={newAlbumName}
-                onChangeText={setNewAlbumName}
-                testID="album-name-input"
-                returnKeyType="done"
-              />
-              <View style={styles.modalActions}>
-                <Pressable style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setShowCreateAlbum(false)} testID="cancel-create-album">
-                  <Text style={styles.cancelText}>Annuler</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.modalBtn, styles.createBtn]}
-                  onPress={() => {
-                    if (!newAlbumName.trim()) return;
-                    const a = createAlbum(newAlbumName.trim(), group.id);
-                    setShowCreateAlbum(false);
-                    setNewAlbumName('');
-                    handleHaptic('medium');
-                    router.push(`/album/${a.id}`);
-                  }}
-                  testID="confirm-create-album"
-                >
-                  <Text style={styles.createText}>Créer</Text>
-                </Pressable>
-              </View>
+                <Text style={styles.modalTitle}>Créer un album</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nom de l'album"
+                  placeholderTextColor="#A9AFBC"
+                  value={newAlbumName}
+                  onChangeText={setNewAlbumName}
+                  testID="album-name-input"
+                  returnKeyType="done"
+                />
+                <View style={styles.modalActions}>
+                  <Pressable style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setShowCreateAlbum(false)} testID="cancel-create-album">
+                    <Text style={styles.cancelText}>Annuler</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.modalBtn, styles.createBtn]}
+                    onPress={() => {
+                      if (!newAlbumName.trim()) return;
+                      const a = createAlbum(newAlbumName.trim(), group.id);
+                      setShowCreateAlbum(false);
+                      setNewAlbumName('');
+                      handleHaptic('medium');
+                      router.push(`/album/${a.id}`);
+                    }}
+                    testID="confirm-create-album"
+                  >
+                    <Text style={styles.createText}>Créer</Text>
+                  </Pressable>
+                </View>
               </View>
             </KeyboardAvoidingView>
           </View>
         </Modal>
 
-        {/* Group Permissions Modal */}
         <Modal visible={showPermissions} transparent animationType="slide" onRequestClose={() => setShowPermissions(false)}>
           <View style={styles.modalBackdrop}>
             <View style={styles.permissionsModal}>
@@ -444,7 +435,7 @@ export default function GroupDetailScreen() {
                 } as GroupMember))}
                 currentUserRole="owner"
                 onUpdateMemberRole={(memberId, newRole) => {
-                  setMembers(prev => prev.map(m => 
+                  setMembers(prev => prev.map(m =>
                     m.id === memberId ? { ...m, role: newRole as 'owner' | 'admin' | 'member' } : m
                   ));
                   handleHaptic('medium');
@@ -465,7 +456,6 @@ export default function GroupDetailScreen() {
           </View>
         </Modal>
 
-        {/* Members Management Modal */}
         <Modal visible={showMembers} transparent animationType="slide" onRequestClose={() => setShowMembers(false)}>
           <View style={styles.modalBackdrop}>
             <View style={styles.membersModal}>
@@ -485,8 +475,8 @@ export default function GroupDetailScreen() {
                       {member.role === 'owner' && <Crown color="#FFD700" size={16} />}
                       {member.role === 'admin' && <Shield color="#E67E22" size={16} />}
                       {member.role === 'member' && (
-                        <Pressable 
-                          style={styles.removeBtn} 
+                        <Pressable
+                          style={styles.removeBtn}
                           onPress={() => handleRemoveMember(member.id)}
                           testID={`remove-member-${member.id}`}
                         >
@@ -504,60 +494,29 @@ export default function GroupDetailScreen() {
           </View>
         </Modal>
 
-        {/* Change Cover Modal */}
-        <Modal visible={showChangeCover} transparent animationType="slide" onRequestClose={() => setShowChangeCover(false)}>
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Changer la couverture</Text>
-              <Text style={styles.modalSubtitle}>Sélectionnez une nouvelle image de couverture pour le groupe</Text>
-              
-              <View style={styles.coverPickerContainer}>
-                <ImagePickerComponent
-                  currentImage={group?.coverImage}
-                  onImageSelected={(uri) => {
-                    if (group) {
-                      updateGroupCover(group.id, uri);
-                      setShowChangeCover(false);
-                      handleHaptic('medium');
-                    }
-                  }}
-                  size={200}
-                  placeholder="Sélectionner une couverture"
-                />
-              </View>
-              
-              <Pressable style={styles.modalCloseBtn} onPress={() => setShowChangeCover(false)} testID="close-change-cover">
-                <Text style={styles.modalCloseText}>Annuler</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Photo Detail Modal */}
-        <Modal visible={!!selectedPhoto} transparent animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>
+        <Modal visible={!!selectedPhoto} transparent animationType="fade" onRequestClose={() => setSelectedPhotoId(null)}>
           {selectedPhoto && (
             <View style={styles.photoModal}>
               <View style={styles.photoModalHeader}>
-                <Pressable style={styles.backButton} onPress={() => setSelectedPhoto(null)} testID="close-photo">
+                <Pressable style={styles.backButton} onPress={() => setSelectedPhotoId(null)} testID="close-photo">
                   <ArrowLeft color="#FFD700" size={24} />
                 </Pressable>
                 <Text style={styles.photoModalTitle}>Photo</Text>
                 <View style={styles.photoModalActions}>
-                  <Pressable 
-                    style={styles.photoModalAction} 
+                  <Pressable
+                    style={styles.photoModalAction}
                     onPress={() => handleLikePhoto(selectedPhoto.id)}
                     testID="like-photo"
                   >
-                    <Heart 
-                      color={selectedPhoto.likes.includes('current-user') ? '#FF6B6B' : '#fff'} 
-                      size={20} 
-                      fill={selectedPhoto.likes.includes('current-user') ? '#FF6B6B' : 'none'} 
+                    <Heart
+                      color={selectedPhoto.likes.includes('current-user') ? '#FF6B6B' : '#fff'}
+                      size={20}
+                      fill={selectedPhoto.likes.includes('current-user') ? '#FF6B6B' : 'none'}
                     />
                     <Text style={styles.photoModalActionText}>{selectedPhoto.likes.length}</Text>
                   </Pressable>
-                  
-                  <Pressable 
-                    style={styles.photoModalAction} 
+                  <Pressable
+                    style={styles.photoModalAction}
                     onPress={() => handleSavePhoto(selectedPhoto.uri)}
                     testID="save-photo"
                   >
@@ -565,15 +524,11 @@ export default function GroupDetailScreen() {
                   </Pressable>
                 </View>
               </View>
-              
               <View style={styles.photoModalContent}>
                 <Image source={{ uri: selectedPhoto.uri }} style={styles.photoModalImage} contentFit="contain" />
-                
                 <View style={styles.photoModalInfo}>
                   <Text style={styles.photoModalAlbum}>{selectedPhoto.albumName}</Text>
                   <Text style={styles.photoModalMeta}>Par {selectedPhoto.uploadedBy} • {selectedPhoto.uploadedAt.toLocaleDateString('fr-FR')}</Text>
-                  
-                  {/* Comments */}
                   <ScrollView style={styles.commentsList}>
                     {selectedPhoto.comments.map(comment => (
                       <View key={comment.id} style={styles.commentItem}>
@@ -583,8 +538,6 @@ export default function GroupDetailScreen() {
                       </View>
                     ))}
                   </ScrollView>
-                  
-                  {/* Add Comment */}
                   <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                     <View style={styles.addCommentRow}>
                       <TextInput
@@ -595,8 +548,8 @@ export default function GroupDetailScreen() {
                         onChangeText={setNewComment}
                         testID="comment-input"
                       />
-                      <Pressable 
-                        style={styles.sendCommentBtn} 
+                      <Pressable
+                        style={styles.sendCommentBtn}
                         onPress={() => handleAddComment(selectedPhoto.id)}
                         testID="send-comment"
                       >

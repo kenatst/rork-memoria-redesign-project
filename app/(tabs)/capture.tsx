@@ -5,8 +5,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as Sharing from 'expo-sharing';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import {
@@ -16,25 +14,18 @@ import {
   ZapOff,
   Grid3X3,
   Wand2,
-  Timer,
   Square,
   Video,
   Contrast,
   Aperture,
   Maximize,
-  Sun,
   X,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import { CameraFilters } from '@/components/CameraFilters';
-import ImageCompression from '@/components/ImageCompression';
-import { useImageCompression } from '@/providers/ImageCompressionProvider';
-import { useOfflineQueue } from '@/providers/OfflineQueueProvider';
-import { useAI } from '@/providers/AIProvider';
-import { CloudinaryUploadResult } from '@/lib/cloudinary';
 
-const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get('window');
 
 const CAMERA_MODES = [
   { id: 'photo', name: 'PHOTO', icon: Camera },
@@ -62,9 +53,6 @@ const ASPECT_RATIOS: ReadonlyArray<{ id: AspectId; name: string; ratio: number |
 
 export default function CaptureScreen() {
   const { albums, addPhotoToAlbum } = useAppState();
-  const { compressImage, isCompressing, uploadToCloud } = useImageCompression();
-  const { addToQueue, pendingCount } = useOfflineQueue();
-  const { analyzePhotos, isAnalyzing } = useAI();
   const insets = useSafeAreaInsets();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -84,13 +72,8 @@ export default function CaptureScreen() {
   const [showGallery, setShowGallery] = useState<boolean>(false);
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
   const [showCameraFilters, setShowCameraFilters] = useState<boolean>(false);
-  const [showImageCompression, setShowImageCompression] = useState<boolean>(false);
-
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [imageToCompress, setImageToCompress] = useState<string | null>(null);
-  const [isUploadingToCloud, setIsUploadingToCloud] = useState<boolean>(false);
-  const [cloudUploadResults, setCloudUploadResults] = useState<CloudinaryUploadResult[]>([]);
 
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
   const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
@@ -204,56 +187,20 @@ export default function CaptureScreen() {
         Animated.timing(scaleAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
       ]).start();
 
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.85, base64: false, exif: true, skipProcessing: true });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9, base64: false, exif: true, skipProcessing: true });
       if (!photo?.uri) return;
 
-      const filtered = await ImageManipulator.manipulateAsync(photo.uri, [], { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG });
-
-      try {
-        setIsUploadingToCloud(true);
-        const cloud = await uploadToCloud(filtered.uri, {
-          folder: 'memoria/captures',
-          tags: ['capture', 'memoria-app'],
-          context: { source: 'camera-capture', ts: Date.now().toString(), mode: cameraMode },
-          resource_type: 'image',
-        });
-        setCloudUploadResults((p) => [cloud, ...p.slice(0, 9)]);
-        if (mediaPermission?.granted) {
-          await MediaLibrary.saveToLibraryAsync(filtered.uri);
-        } else {
-          addToQueue('photo_upload', { uri: filtered.uri, cloudUrl: cloud.secure_url, timestamp: Date.now() });
-        }
-        setRecentPhotos((p) => [filtered.uri, ...p.slice(0, 9)]);
-        analyzePhotos([filtered.uri]).catch(console.error);
-        setCapturedPhoto(filtered.uri);
-        setShowAlbumSelector(true);
-      } catch (err) {
-        console.error('[Capture] Upload error, fallback to local compression:', err);
-        try {
-          const compressed = await compressImage(filtered.uri);
-          const finalUri = compressed.uri;
-          if (mediaPermission?.granted) await MediaLibrary.saveToLibraryAsync(finalUri);
-          else addToQueue('photo_upload', { uri: finalUri, timestamp: Date.now() });
-          setRecentPhotos((p) => [finalUri, ...p.slice(0, 9)]);
-          analyzePhotos([finalUri]).catch(console.error);
-          Alert.alert('Upload différé', 'Photo sauvegardée, upload retenté plus tard.');
-          setCapturedPhoto(finalUri);
-          setShowAlbumSelector(true);
-        } catch (e2) {
-          console.error('Local compression failed, saving original:', e2);
-          if (mediaPermission?.granted) await MediaLibrary.saveToLibraryAsync(filtered.uri);
-          setRecentPhotos((p) => [filtered.uri, ...p.slice(0, 9)]);
-          setCapturedPhoto(filtered.uri);
-          setShowAlbumSelector(true);
-        }
-      } finally {
-        setIsUploadingToCloud(false);
+      if (mediaPermission?.granted) {
+        await MediaLibrary.saveToLibraryAsync(photo.uri);
       }
+      setRecentPhotos((p) => [photo.uri, ...p.slice(0, 9)]);
+      setCapturedPhoto(photo.uri);
+      setShowAlbumSelector(true);
     } catch (e) {
       console.log('Capture error', e);
       Alert.alert('Erreur', "Impossible de prendre la photo");
     }
-  }, [handleHaptic, playFlash, captureAnim, scaleAnim, cameraMode, mediaPermission, uploadToCloud, analyzePhotos, compressImage, addToQueue]);
+  }, [handleHaptic, playFlash, captureAnim, scaleAnim, mediaPermission]);
 
   const startStopRecording = useCallback(async () => {
     try {
@@ -294,8 +241,7 @@ export default function CaptureScreen() {
       addPhotoToAlbum(albumId, capturedPhoto);
       Alert.alert('Succès', "Photo ajoutée à l'album");
     } catch {
-      addToQueue('photo_upload', { albumId, photoUri: capturedPhoto, timestamp: Date.now() });
-      Alert.alert('Ajouté à la file', 'Synchronisation plus tard');
+      Alert.alert('Hors ligne', 'Impossible de synchroniser maintenant.');
     }
     setShowAlbumSelector(false);
     setCapturedPhoto(null);
@@ -359,26 +305,7 @@ export default function CaptureScreen() {
               <View style={[styles.focusRing, { left: focusPoint.x - 30, top: focusPoint.y - 30 }]} pointerEvents="none" />
             )}
 
-            {pendingCount > 0 && (
-              <View style={[styles.banner, { top: Math.max(8, insets.top + 6), backgroundColor: 'rgba(255,165,0,0.92)' }]}>
-                <Text style={styles.bannerText}>📤 {pendingCount} en attente</Text>
-              </View>
-            )}
-            {isAnalyzing && (
-              <View style={[styles.banner, { top: Math.max(36, insets.top + 34), backgroundColor: 'rgba(255,215,0,0.95)' }]}>
-                <Text style={styles.bannerText}>🧠 Analyse IA…</Text>
-              </View>
-            )}
-            {isCompressing && (
-              <View style={[styles.banner, { top: Math.max(64, insets.top + 62), backgroundColor: 'rgba(0,255,0,0.92)' }]}>
-                <Text style={styles.bannerText}>🗜️ Compression…</Text>
-              </View>
-            )}
-            {isUploadingToCloud && (
-              <View style={[styles.banner, { top: Math.max(92, insets.top + 90), backgroundColor: 'rgba(0,191,255,0.95)' }]}>
-                <Text style={styles.bannerText}>☁️ Upload cloud…</Text>
-              </View>
-            )}
+
 
             <View style={[styles.topBar, { top: Math.max(16, insets.top + 6) }]}>
               {Platform.OS !== 'web' ? (
@@ -501,28 +428,15 @@ export default function CaptureScreen() {
                 onPhotoTaken={(uri) => {
                   if (mediaPermission?.granted) MediaLibrary.saveToLibraryAsync(uri);
                   setRecentPhotos((p) => [uri, ...p.slice(0, 9)]);
-                  setImageToCompress(uri);
-                  setShowImageCompression(true);
+                  setCapturedPhoto(uri);
+                  setShowAlbumSelector(true);
                 }}
               />
             </View>
           </View>
         </Modal>
 
-        <ImageCompression
-          visible={showImageCompression}
-          imageUri={imageToCompress || ''}
-          onClose={() => {
-            setShowImageCompression(false);
-            setImageToCompress(null);
-          }}
-          onCompress={(compressedUri) => {
-            setCapturedPhoto(compressedUri);
-            setShowAlbumSelector(true);
-            setShowImageCompression(false);
-            setImageToCompress(null);
-          }}
-        />
+
       </SafeAreaView>
     </View>
   );
