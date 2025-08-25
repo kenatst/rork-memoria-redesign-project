@@ -1,37 +1,77 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, Tables, Inserts, Updates } from '@/lib/supabase';
 import { useSupabase } from '@/providers/SupabaseProvider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Hook pour les albums
-export function useAlbums() {
+// Hook pour les albums avec pagination
+export function useAlbums(options?: { limit?: number; offset?: number }) {
   const { user } = useSupabase();
   const [albums, setAlbums] = useState<Tables<'albums'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const cacheRef = useRef<Map<string, Tables<'albums'>[]>>(new Map());
 
-  const fetchAlbums = useCallback(async () => {
+  const fetchAlbums = useCallback(async (loadMore = false) => {
     if (!user) return;
 
+    const limit = options?.limit || 20;
+    const offset = loadMore ? albums.length : (options?.offset || 0);
+    const cacheKey = `${user.id}-${limit}-${offset}`;
+
+    // Vérifier le cache d'abord
+    if (cacheRef.current.has(cacheKey) && !loadMore) {
+      setAlbums(cacheRef.current.get(cacheKey) || []);
+      setLoading(false);
+      return;
+    }
+
     try {
-      setLoading(true);
-      const { data, error } = await supabase
+      if (!loadMore) setLoading(true);
+      
+      // Requête avec pagination optimisée
+      const { data, error, count } = await supabase
         .from('albums')
         .select(`
           *,
           photos:photos(count)
-        `)
+        `, { count: 'exact' })
         .or(`owner_id.eq.${user.id},group_id.in.(${await getUserGroupIds(user.id)})`)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
       if (error) throw error;
-      setAlbums(data || []);
+      
+      const newAlbums = data || [];
+      
+      if (loadMore) {
+        const updatedAlbums = [...albums, ...newAlbums];
+        setAlbums(updatedAlbums);
+        cacheRef.current.set(cacheKey, updatedAlbums);
+      } else {
+        setAlbums(newAlbums);
+        cacheRef.current.set(cacheKey, newAlbums);
+      }
+      
+      setTotalCount(count || 0);
+      setHasMore(newAlbums.length === limit);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, options?.limit, options?.offset]);
+
+  const loadMore = useCallback(() => {
+    if (!loading && hasMore) {
+      fetchAlbums(true);
+    }
+  }, [fetchAlbums, loading, hasMore]);
+
+  const clearCache = useCallback(() => {
+    cacheRef.current.clear();
+  }, []);
 
   const createAlbum = useCallback(async (albumData: Omit<Inserts<'albums'>, 'owner_id'>) => {
     if (!user) throw new Error('User not authenticated');
@@ -87,29 +127,49 @@ export function useAlbums() {
     albums,
     loading,
     error,
+    hasMore,
+    totalCount,
     createAlbum,
     updateAlbum,
     deleteAlbum,
     refetch: fetchAlbums,
+    loadMore,
+    clearCache,
   };
 }
 
-// Hook pour les photos
-export function usePhotos(albumId?: string) {
+// Hook pour les photos avec lazy loading
+export function usePhotos(albumId?: string, options?: { limit?: number; offset?: number }) {
   const { user } = useSupabase();
   const [photos, setPhotos] = useState<Tables<'photos'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const cacheRef = useRef<Map<string, Tables<'photos'>[]>>(new Map());
 
-  const fetchPhotos = useCallback(async () => {
+  const fetchPhotos = useCallback(async (loadMore = false) => {
     if (!user) return;
 
+    const limit = options?.limit || 50;
+    const offset = loadMore ? photos.length : (options?.offset || 0);
+    const cacheKey = `${user.id}-${albumId || 'all'}-${limit}-${offset}`;
+
+    // Vérifier le cache d'abord
+    if (cacheRef.current.has(cacheKey) && !loadMore) {
+      setPhotos(cacheRef.current.get(cacheKey) || []);
+      setLoading(false);
+      return;
+    }
+
     try {
-      setLoading(true);
+      if (!loadMore) setLoading(true);
+      
       let query = supabase
         .from('photos')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
       if (albumId) {
         query = query.eq('album_id', albumId);
@@ -117,16 +177,39 @@ export function usePhotos(albumId?: string) {
         query = query.eq('owner_id', user.id);
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      setPhotos(data || []);
+      
+      const newPhotos = data || [];
+      
+      if (loadMore) {
+        const updatedPhotos = [...photos, ...newPhotos];
+        setPhotos(updatedPhotos);
+        cacheRef.current.set(cacheKey, updatedPhotos);
+      } else {
+        setPhotos(newPhotos);
+        cacheRef.current.set(cacheKey, newPhotos);
+      }
+      
+      setTotalCount(count || 0);
+      setHasMore(newPhotos.length === limit);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
-  }, [user, albumId]);
+  }, [user, albumId, options?.limit, options?.offset]);
+
+  const loadMore = useCallback(() => {
+    if (!loading && hasMore) {
+      fetchPhotos(true);
+    }
+  }, [fetchPhotos, loading, hasMore]);
+
+  const clearCache = useCallback(() => {
+    cacheRef.current.clear();
+  }, []);
 
   const addPhoto = useCallback(async (photoData: Omit<Inserts<'photos'>, 'owner_id'>) => {
     if (!user) throw new Error('User not authenticated');
@@ -182,10 +265,14 @@ export function usePhotos(albumId?: string) {
     photos,
     loading,
     error,
+    hasMore,
+    totalCount,
     addPhoto,
     updatePhoto,
     deletePhoto,
     refetch: fetchPhotos,
+    loadMore,
+    clearCache,
   };
 }
 

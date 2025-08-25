@@ -1,21 +1,30 @@
-import React, { useEffect, useCallback } from 'react';
-import { useRouter, useSegments } from 'expo-router';
-import { Platform } from 'react-native';
+import React, { useEffect, useCallback, useRef } from 'react';
+import { useRouter, useSegments, useFocusEffect } from 'expo-router';
+import { Platform, Animated, InteractionManager } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface NavigationOptimizerProps {
   children: React.ReactNode;
   enableHaptics?: boolean;
+  enableTransitions?: boolean;
   preloadRoutes?: string[];
+  onScreenFocus?: () => void;
+  onScreenBlur?: () => void;
 }
 
 export const NavigationOptimizer: React.FC<NavigationOptimizerProps> = ({
   children,
   enableHaptics = true,
-  preloadRoutes = []
+  enableTransitions = true,
+  preloadRoutes = [],
+  onScreenFocus,
+  onScreenBlur
 }) => {
   const router = useRouter();
   const segments = useSegments();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const isFirstRender = useRef(true);
 
   const triggerHaptic = useCallback((type: 'light' | 'medium' | 'heavy' = 'light') => {
     if (!enableHaptics || Platform.OS === 'web') return;
@@ -78,7 +87,116 @@ export const NavigationOptimizer: React.FC<NavigationOptimizerProps> = ({
     (router as any).optimizedBack = optimizedBack;
   }, [router, optimizedPush, optimizedReplace, optimizedBack]);
 
+  // Animation d'entrée optimisée
+  const animateIn = useCallback(() => {
+    if (!enableTransitions) {
+      fadeAnim.setValue(1);
+      scaleAnim.setValue(1);
+      return;
+    }
+
+    InteractionManager.runAfterInteractions(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: isFirstRender.current ? 300 : 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  }, [fadeAnim, scaleAnim, enableTransitions]);
+
+  // Gestion du focus/blur de l'écran
+  useFocusEffect(
+    useCallback(() => {
+      animateIn();
+      onScreenFocus?.();
+      
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+      }
+
+      return () => {
+        onScreenBlur?.();
+      };
+    }, [animateIn, onScreenFocus, onScreenBlur])
+  );
+
+  if (enableTransitions) {
+    return (
+      <Animated.View 
+        style={{ 
+          flex: 1, 
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }]
+        }}
+      >
+        {children}
+      </Animated.View>
+    );
+  }
+
   return <>{children}</>;
+};
+
+// Hook pour les transitions de page
+export const usePageTransition = (enabled = true) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+
+  const animateIn = useCallback(() => {
+    if (!enabled) {
+      fadeAnim.setValue(1);
+      translateY.setValue(0);
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, translateY, enabled]);
+
+  const animateOut = useCallback((callback?: () => void) => {
+    if (!enabled) {
+      callback?.();
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: -20,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(callback);
+  }, [fadeAnim, translateY, enabled]);
+
+  const animatedStyle = {
+    opacity: fadeAnim,
+    transform: [{ translateY }]
+  };
+
+  return { animateIn, animateOut, animatedStyle };
 };
 
 export default NavigationOptimizer;
