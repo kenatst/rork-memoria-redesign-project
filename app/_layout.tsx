@@ -113,6 +113,11 @@ function RootLayoutNav() {
         headerStyle: { backgroundColor: '#000000' },
         headerTintColor: '#FFFFFF'
       }} />
+      <Stack.Screen name="supabase-test" options={{ 
+        title: "Test Supabase",
+        headerStyle: { backgroundColor: '#000000' },
+        headerTintColor: '#FFFFFF'
+      }} />
     </Stack>
   );
 }

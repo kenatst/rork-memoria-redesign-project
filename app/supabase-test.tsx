@@ -17,7 +17,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useSupabase } from '@/providers/SupabaseProvider';
-import { useAlbums, usePhotos, useGroups, useComments } from '@/lib/supabase-hooks';
+import { useAlbums, usePhotos, useGroups, useComments, useLikes, useRealtimeSync } from '@/lib/supabase-hooks';
 
 export default function SupabaseTestScreen() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useSupabase();
@@ -25,6 +25,10 @@ export default function SupabaseTestScreen() {
   const { photos, loading: photosLoading, addPhoto } = usePhotos();
   const { groups, loading: groupsLoading, createGroup, joinGroup } = useGroups();
   const { comments, loading: commentsLoading, addComment } = useComments();
+  const { likes, toggleLike, isLiked, likesCount, loading: likesLoading } = useLikes(
+    photos.length > 0 ? photos[0].id : undefined
+  );
+  const { isConnected } = useRealtimeSync();
 
   const [email, setEmail] = useState('test@memoria.app');
   const [password, setPassword] = useState('testpassword123');
@@ -40,6 +44,7 @@ export default function SupabaseTestScreen() {
     photos: 'idle',
     groups: 'idle',
     comments: 'idle',
+    likes: 'idle',
   });
 
   const updateTestResult = (test: string, status: 'idle' | 'loading' | 'success' | 'error') => {
@@ -183,6 +188,23 @@ export default function SupabaseTestScreen() {
     } catch (error) {
       updateTestResult('comments', 'error');
       Alert.alert('❌ Erreur', error instanceof Error ? error.message : 'Erreur ajout commentaire');
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!user || photos.length === 0) {
+      Alert.alert('Erreur', 'Vous devez être connecté et avoir au moins une photo');
+      return;
+    }
+
+    updateTestResult('likes', 'loading');
+    try {
+      await toggleLike();
+      updateTestResult('likes', 'success');
+      Alert.alert('✅ Like', isLiked ? 'Like retiré !' : 'Photo likée !');
+    } catch (error) {
+      updateTestResult('likes', 'error');
+      Alert.alert('❌ Erreur', error instanceof Error ? error.message : 'Erreur toggle like');
     }
   };
 
@@ -413,6 +435,31 @@ export default function SupabaseTestScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Likes Test */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>❤️ Likes ({likesCount})</Text>
+                {getStatusIcon(testResults.likes)}
+              </View>
+              <TouchableOpacity 
+                style={[styles.testButton, photos.length === 0 && styles.disabledButton]} 
+                onPress={handleToggleLike}
+                disabled={likesLoading || photos.length === 0}
+              >
+                <Heart 
+                  color={isLiked ? '#FF5252' : '#000000'} 
+                  fill={isLiked ? '#FF5252' : 'transparent'} 
+                  size={16} 
+                />
+                <Text style={styles.testButtonText}>
+                  {likesLoading ? 'Chargement...' : isLiked ? 'Retirer le like' : 'Liker la photo'}
+                </Text>
+              </TouchableOpacity>
+              {photos.length === 0 && (
+                <Text style={styles.warningText}>Ajoutez d'abord une photo</Text>
+              )}
+            </View>
+
             {/* Database Status */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>📊 État de la base de données</Text>
@@ -441,6 +488,18 @@ export default function SupabaseTestScreen() {
                   <MessageCircle color={Colors.palette.accentGold} size={20} />
                   <Text style={styles.statusText}>Commentaires</Text>
                   <Text style={styles.statusValue}>{comments.length}</Text>
+                </View>
+                <View style={styles.statusItem}>
+                  <Heart color={Colors.palette.accentGold} size={20} />
+                  <Text style={styles.statusText}>Likes</Text>
+                  <Text style={styles.statusValue}>{likesCount}</Text>
+                </View>
+                <View style={styles.statusItem}>
+                  <Database color={isConnected ? '#4CAF50' : '#FF5252'} size={20} />
+                  <Text style={styles.statusText}>Sync temps réel</Text>
+                  <Text style={[styles.statusValue, { color: isConnected ? '#4CAF50' : '#FF5252' }]}>
+                    {isConnected ? 'Connecté' : 'Déconnecté'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -586,12 +645,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   testButton: {
+    flexDirection: 'row',
     backgroundColor: Colors.palette.accentGold,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
+    gap: 8,
   },
   disabledButton: {
     backgroundColor: 'rgba(255, 215, 0, 0.3)',
