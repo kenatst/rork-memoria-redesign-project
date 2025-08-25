@@ -274,13 +274,6 @@ export default function AlbumsScreen() {
     );
   }, [viewMode, favoriteAlbumIds, mainFadeAnim, mainSlideAnim, router, toggleFavoriteAlbum, getAccessibleLabel, announceForAccessibility]);
 
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Utilisateur non connecté</Text>
-      </View>
-    );
-  }
   const [toastVisible, setToastVisible] = useState<boolean>(false);
   const [toastLabel, setToastLabel] = useState<string>('');
   const [toastProgress, setToastProgress] = useState<number>(0);
@@ -293,6 +286,8 @@ export default function AlbumsScreen() {
       translateY: new Animated.Value(30),
     }))
   );
+
+
 
   // Groups come from provider; no mocks
   useEffect(() => {
@@ -322,6 +317,14 @@ export default function AlbumsScreen() {
       ])
     ).start();
   }, [persistedAlbums, glowAnim]);
+
+  useEffect(() => {
+    console.log('AlbumsScreen state', {
+      userEmail: user?.email ?? null,
+      albumsCount: albums.length,
+      groupsCount: groups.length,
+    });
+  }, [user?.email, albums.length, groups.length]);
 
   const loadAlbums = async () => {
     const mock: Album[] = [
@@ -426,6 +429,11 @@ export default function AlbumsScreen() {
           {!isOnline && (
             <View style={styles.offlineBadge}>
               <Text style={styles.offlineText}>Hors‑ligne</Text>
+            </View>
+          )}
+          {!user && (
+            <View style={styles.offlineBadge}>
+              <Text style={styles.offlineText}>Utilisateur non connecté</Text>
             </View>
           )}
           <View style={styles.userRow}>
