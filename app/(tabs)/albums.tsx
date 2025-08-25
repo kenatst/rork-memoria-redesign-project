@@ -16,6 +16,8 @@ import { useToast } from '@/providers/ToastProvider';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import AdvancedSearch from '@/components/AdvancedSearch';
 
+import { AlbumCard } from '@/components/AlbumCard';
+
 const { width: screenWidth } = Dimensions.get('window');
 
 interface GroupRef { id: string; name: string; color: string }
@@ -547,6 +549,15 @@ export default function AlbumsScreen() {
             ))}
           </ScrollView>
 
+          {/* Skeleton grid for perceived performance */}
+          {!filteredAlbums.length && (
+            <View style={styles.skeletonGrid}>
+              {Array.from({ length: viewMode === 'grid' ? 6 : 4 }).map((_, i) => (
+                <View key={i} style={[viewMode === 'grid' ? styles.skeletonCard : styles.skeletonList]} testID={`album-skeleton-${i}`} />
+              ))}
+            </View>
+          )}
+
           <View style={styles.flashListContainer}>
             <FlashList
               data={filteredAlbums}
@@ -555,25 +566,34 @@ export default function AlbumsScreen() {
                 const PIcon = PrivacyIcon(album.privacy);
                 const anim = albumAnimations[index % albumAnimations.length];
                 const color = (typeColor as any)[album.type] as string;
+                const card = (
+                  <AlbumCard
+                    album={{ id: album.id, name: album.name, coverImage: album.coverImage, photoCount: album.photoCount, lastUpdated: album.lastUpdated, isActive: album.isActive, coverTransform: album.coverTransform }}
+                    viewMode={viewMode}
+                    isFavorite={favoriteAlbumIds.includes(album.id)}
+                    color={color}
+                    Icon={Icon}
+                    PIcon={PIcon}
+                    glow={glowAnim}
+                    formatDate={formatDate}
+                    onPress={(id) => { handleHaptic('medium'); router.push(`/album/${id}`); }}
+                    onToggleFavorite={(id) => toggleFavoriteAlbum(id)}
+                    testID={`album-${album.id}`}
+                  />
+                );
                 return (
                   <Animated.View style={[viewMode === 'grid' ? styles.albumCard : styles.albumListItem, { opacity: anim.opacity, transform: [{ scale: anim.scale }, { translateY: anim.translateY }] }]}>
-                    <Pressable style={styles.albumPressable} onPress={() => { handleHaptic('medium'); router.push(`/album/${album.id}`); }} testID={`album-${album.id}`}>
-                      {Platform.OS !== 'web' ? (
-                        <BlurView intensity={12} style={styles.albumBlur}>
-                          <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
-                        </BlurView>
-                      ) : (
-                        <View style={[styles.albumBlur, styles.webBlur]}>
-                          <CardInner album={album} Icon={Icon} PIcon={PIcon} color={color} glow={glowAnim} viewMode={viewMode} formatDate={formatDate} onToggleFavorite={() => toggleFavoriteAlbum(album.id)} isFavorite={favoriteAlbumIds.includes(album.id)} />
-                        </View>
-                      )}
-                    </Pressable>
+                    {Platform.OS !== 'web' ? (
+                      <BlurView intensity={12} style={styles.albumBlur}>{card}</BlurView>
+                    ) : (
+                      <View style={[styles.albumBlur, styles.webBlur]}>{card}</View>
+                    )}
                   </Animated.View>
                 );
               }}
               keyExtractor={(item) => item.id}
               numColumns={viewMode === 'grid' ? 2 : 1}
-              key={viewMode} // Force re-render when view mode changes
+              key={viewMode}
               estimatedItemSize={viewMode === 'grid' ? 200 : 100}
               contentContainerStyle={styles.flashListContent}
               showsVerticalScrollIndicator={false}
@@ -836,6 +856,9 @@ const styles = StyleSheet.create({
   albumInfoList: { flex: 1, marginLeft: 12 },
   albumTitle: { color: Colors.palette.taupeDeep, fontSize: 16, fontWeight: '700' },
   errorText: { color: '#FF4444', fontSize: 14, textAlign: 'center', marginTop: 20 },
+  skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingHorizontal: 4, paddingVertical: 8 },
+  skeletonCard: { width: (screenWidth - 56) / 2, height: 200, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' },
+  skeletonList: { width: '100%', height: 84, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' },
   searchResultsIndicator: { marginHorizontal: 20, marginTop: 8, backgroundColor: 'rgba(255,215,0,0.1)', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   searchResultsText: { color: '#FFD700', fontSize: 14, fontWeight: '600', flex: 1 },
   clearSearchBtn: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },

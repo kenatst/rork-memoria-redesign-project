@@ -153,7 +153,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const { albums: supabaseAlbums, createAlbum: createSupabaseAlbum } = useAlbums();
   const { photos: supabasePhotos, addPhoto: addSupabasePhoto } = usePhotos();
   const { groups: supabaseGroups, createGroup: createSupabaseGroup } = useGroups();
-  const { comments: supabaseComments, addComment: addSupabaseComment } = useComments();
+  const { comments: supabaseComments, addComment: addSupabaseComment, deleteComment: deleteSupabaseComment } = useComments();
   const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(false);
   const [displayName, setDisplayNameState] = useState<string>("Memoria");
   const [points, setPoints] = useState<number>(120);
@@ -402,65 +402,196 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   }, [groups, persist]);
 
   const addComment = useCallback((text: string, photoId?: string, albumId?: string) => {
-    const newComment: Comment = {
-      id: Date.now().toString(),
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: Comment = {
+      id: tempId,
       text,
       author: displayName,
       createdAt: new Date().toISOString(),
       photoId,
       albumId
     };
-    const updatedComments = [...comments, newComment];
-    setComments(updatedComments);
-    persist({ comments: updatedComments });
-    return newComment;
-  }, [comments, displayName, persist]);
+    const prev = comments;
+    const next = [...comments, optimistic];
+    setComments(next);
+    persist({ comments: next });
+
+    (async () => {
+      try {
+        if (user && addSupabaseComment) {
+          const created = await addSupabaseComment(text);
+          const mapped: Comment = {
+            id: created.id,
+            text: created.text,
+            author: created.profiles?.display_name ?? displayName,
+            createdAt: created.created_at,
+            photoId: created.photo_id ?? undefined,
+            albumId: created.album_id ?? undefined,
+          };
+          const replaced = (curr: Comment[]) => curr.map(c => c.id === tempId ? mapped : c);
+          setComments(replaced);
+          persist({ comments: replaced(next) });
+        }
+      } catch (e) {
+        console.error('addComment sync failed', e);
+        setComments(prev);
+        persist({ comments: prev });
+      }
+    })();
+
+    return optimistic;
+  }, [comments, displayName, persist, user, addSupabaseComment]);
 
   const deleteComment = useCallback((commentId: string) => {
-    const updatedComments = comments.filter(comment => comment.id !== commentId);
-    setComments(updatedComments);
-    persist({ comments: updatedComments });
-  }, [comments, persist]);
+    const prev = comments;
+    const next = comments.filter(comment => comment.id !== commentId);
+    setComments(next);
+    persist({ comments: next });
+
+    (async () => {
+      try {
+        if (user && deleteSupabaseComment && !commentId.startsWith('temp-')) {
+          await deleteSupabaseComment(commentId);
+        }
+      } catch (e) {
+        console.error('deleteComment sync failed', e);
+        setComments(prev);
+        persist({ comments: prev });
+      }
+    })();
+  }, [comments, persist, user, deleteSupabaseComment]);
 
   const likePhoto = useCallback((photoId: string) => {
-    const updatedPhotos = photos.map(photo => 
+    const prev = photos;
+    const optimistic = photos.map(photo => 
       photo.id === photoId && !photo.likes.includes(displayName)
         ? { ...photo, likes: [...photo.likes, displayName] }
         : photo
     );
-    setPhotos(updatedPhotos);
-    persist({ photos: updatedPhotos });
-  }, [photos, displayName, persist]);
+    setPhotos(optimistic);
+    persist({ photos: optimistic });
+
+    (async () => {
+      try {
+        if (user) {
+          const { data, error } = await (await import('@/lib/supabase')).supabase
+            .from('likes')
+            .insert({ user_id: user.id, photo_id: photoId })
+            .select()
+            .single();
+          if (error) throw error;
+          await (await import('@/lib/supabase')).supabase
+            .from('photos')
+            .update({ likes: (optimistic.find(p => p.id === photoId)?.likes.length ?? 0) })
+            .eq('id', photoId);
+        }
+      } catch (e) {
+        console.error('likePhoto sync failed', e);
+        setPhotos(prev);
+        persist({ photos: prev });
+      }
+    })();
+  }, [photos, displayName, persist, user]);
 
   const unlikePhoto = useCallback((photoId: string) => {
-    const updatedPhotos = photos.map(photo => 
+    const prev = photos;
+    const optimistic = photos.map(photo => 
       photo.id === photoId
-        ? { ...photo, likes: photo.likes.filter(user => user !== displayName) }
+        ? { ...photo, likes: photo.likes.filter(u => u !== displayName) }
         : photo
     );
-    setPhotos(updatedPhotos);
-    persist({ photos: updatedPhotos });
-  }, [photos, displayName, persist]);
+    setPhotos(optimistic);
+    persist({ photos: optimistic });
+
+    (async () => {
+      try {
+        if (user) {
+          const { supabase } = await import('@/lib/supabase');
+          const { data: existing } = await supabase
+            .from('likes')
+            .select('id')
+            .eq('photo_id', photoId)
+            .limit(1);
+          if (existing && existing[0]) {
+            await supabase.from('likes').delete().eq('id', existing[0].id);
+            await supabase
+              .from('photos')
+              .update({ likes: (optimistic.find(p => p.id === photoId)?.likes.length ?? 0) })
+              .eq('id', photoId);
+          }
+        }
+      } catch (e) {
+        console.error('unlikePhoto sync failed', e);
+        setPhotos(prev);
+        persist({ photos: prev });
+      }
+    })();
+  }, [photos, displayName, persist, user]);
 
   const likeAlbum = useCallback((albumId: string) => {
-    const updatedAlbums = albums.map(album => 
+    const prev = albums;
+    const optimistic = albums.map(album => 
       album.id === albumId && !album.likes.includes(displayName)
         ? { ...album, likes: [...album.likes, displayName] }
         : album
     );
-    setAlbums(updatedAlbums);
-    persist({ albums: updatedAlbums });
-  }, [albums, displayName, persist]);
+    setAlbums(optimistic);
+    persist({ albums: optimistic });
+
+    (async () => {
+      try {
+        if (user) {
+          const { supabase } = await import('@/lib/supabase');
+          await supabase
+            .from('likes')
+            .insert({ user_id: user.id, album_id: albumId });
+          await supabase
+            .from('albums')
+            .update({ likes: (optimistic.find(a => a.id === albumId)?.likes.length ?? 0) })
+            .eq('id', albumId);
+        }
+      } catch (e) {
+        console.error('likeAlbum sync failed', e);
+        setAlbums(prev);
+        persist({ albums: prev });
+      }
+    })();
+  }, [albums, displayName, persist, user]);
 
   const unlikeAlbum = useCallback((albumId: string) => {
-    const updatedAlbums = albums.map(album => 
+    const prev = albums;
+    const optimistic = albums.map(album => 
       album.id === albumId
-        ? { ...album, likes: album.likes.filter(user => user !== displayName) }
+        ? { ...album, likes: album.likes.filter(u => u !== displayName) }
         : album
     );
-    setAlbums(updatedAlbums);
-    persist({ albums: updatedAlbums });
-  }, [albums, displayName, persist]);
+    setAlbums(optimistic);
+    persist({ albums: optimistic });
+
+    (async () => {
+      try {
+        if (user) {
+          const { supabase } = await import('@/lib/supabase');
+          const { data: existing } = await supabase
+            .from('likes')
+            .select('id')
+            .eq('album_id', albumId)
+            .limit(1);
+          if (existing && existing[0]) {
+            await supabase.from('likes').delete().eq('id', existing[0].id);
+            await supabase
+              .from('albums')
+              .update({ likes: (optimistic.find(a => a.id === albumId)?.likes.length ?? 0) })
+              .eq('id', albumId);
+          }
+        }
+      } catch (e) {
+        console.error('unlikeAlbum sync failed', e);
+        setAlbums(prev);
+        persist({ albums: prev });
+      }
+    })();
+  }, [albums, displayName, persist, user]);
 
   const updateGroupCover = useCallback((groupId: string, coverImage: string) => {
     const updatedGroups = groups.map(group => 
