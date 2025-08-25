@@ -19,7 +19,7 @@ import ImagePickerComponent from '@/components/ImagePicker';
 import { analyzeImage } from '@/lib/google-vision';
 import { getCurrentLocation, reverseGeocode, findNearbyPlaces } from '@/lib/google-maps';
 import { authenticateWithGoogle, isAuthenticated, getCurrentUser, AuthUser } from '@/lib/auth';
-// Convex removed
+
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface TestResult {
@@ -161,7 +161,7 @@ export default function IntegrationsTestScreen() {
     }
   };
 
-  // Convex supprimé: test de base de données retiré
+
 
   const runAllTests = async () => {
     if (!selectedImage) {

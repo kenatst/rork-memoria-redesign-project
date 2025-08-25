@@ -53,7 +53,7 @@ export default function AlbumDetailScreen() {
   useEffect(() => {
     if (!album) return;
     incrementAlbumView(album.id);
-  }, [album, incrementAlbumView]);
+  }, [album?.id, incrementAlbumView]);
 
   const albumComments = useMemo(() => comments.filter(c => c.albumId === id), [comments, id]);
   const isFavorite = useMemo(() => Boolean(album && favoriteAlbums.includes(album.id)), [favoriteAlbums, album]);

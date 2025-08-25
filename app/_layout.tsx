@@ -15,6 +15,7 @@ import { ImageCompressionProvider } from "@/providers/ImageCompressionProvider";
 import { AIProvider } from "@/providers/AIProvider";
 import { AccessibilityProvider } from "@/components/AccessibilityProvider";
 import PerformanceProvider from "@/providers/PerformanceProvider";
+import { SupabaseProvider } from "@/providers/SupabaseProvider";
 import Toast from 'react-native-toast-message';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -124,9 +125,10 @@ export default function RootLayout() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <PerformanceProvider>
-          <AccessibilityProvider>
-            <AuthProvider>
+        <SupabaseProvider>
+          <PerformanceProvider>
+            <AccessibilityProvider>
+              <AuthProvider>
               <AppStateProvider>
                 <NotificationsProvider>
                   <ToastProvider>
@@ -146,9 +148,10 @@ export default function RootLayout() {
                   </ToastProvider>
                 </NotificationsProvider>
               </AppStateProvider>
-            </AuthProvider>
-          </AccessibilityProvider>
-        </PerformanceProvider>
+              </AuthProvider>
+            </AccessibilityProvider>
+          </PerformanceProvider>
+        </SupabaseProvider>
       </QueryClientProvider>
     </trpc.Provider>
   );
