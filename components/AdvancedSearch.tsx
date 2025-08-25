@@ -12,6 +12,10 @@ interface SearchFilters {
   location?: boolean;
   tags?: string[];
   author?: string;
+  fileType?: 'image' | 'video' | 'all';
+  quality?: 'high' | 'medium' | 'low' | 'all';
+  favorites?: boolean;
+  shared?: boolean;
 }
 
 interface AdvancedSearchProps {
@@ -59,6 +63,23 @@ export default function AdvancedSearch({ onClose, onResults }: AdvancedSearchPro
       );
     }
 
+    if (filters.favorites) {
+      filteredPhotos = filteredPhotos.filter(photo => (photo as any).isFavorite);
+      filteredAlbums = filteredAlbums.filter(album => (album as any).isFavorite);
+    }
+
+    if (filters.shared) {
+      filteredPhotos = filteredPhotos.filter(photo => (photo as any).isShared);
+      filteredAlbums = filteredAlbums.filter(album => (album as any).isShared);
+    }
+
+    if (filters.fileType && filters.fileType !== 'all') {
+      filteredPhotos = filteredPhotos.filter(photo => {
+        const isVideo = photo.uri.includes('.mp4') || photo.uri.includes('.mov');
+        return filters.fileType === 'video' ? isVideo : !isVideo;
+      });
+    }
+
     return { albums: filteredAlbums, photos: filteredPhotos };
   }, [query, filters, albums, photos, searchAlbums, searchPhotos]);
 
@@ -71,8 +92,16 @@ export default function AdvancedSearch({ onClose, onResults }: AdvancedSearchPro
       const newFilters = { ...prev };
       if (filterType === 'location') {
         newFilters.location = !prev.location;
+      } else if (filterType === 'favorites') {
+        newFilters.favorites = !prev.favorites;
+      } else if (filterType === 'shared') {
+        newFilters.shared = !prev.shared;
       } else if (filterType === 'dateRange' && value) {
         newFilters.dateRange = value;
+      } else if (filterType === 'fileType' && value) {
+        newFilters.fileType = value;
+      } else if (filterType === 'quality' && value) {
+        newFilters.quality = value;
       }
       return newFilters;
     });
@@ -172,10 +201,27 @@ export default function AdvancedSearch({ onClose, onResults }: AdvancedSearchPro
                 <Text style={styles.filterOptionText}>Période</Text>
               </View>
 
-              {/* Tags Filter */}
+              {/* Favorites Filter */}
+              <Pressable 
+                style={[styles.filterOption, filters.favorites && styles.filterOptionActive]}
+                onPress={() => toggleFilter('favorites')}
+              >
+                <Tag color={filters.favorites ? '#000000' : Colors.palette.taupe} size={20} />
+                <Text style={[styles.filterOptionText, filters.favorites && styles.filterOptionTextActive]}>
+                  Favoris uniquement
+                </Text>
+              </Pressable>
+
+              {/* File Type Filter */}
               <View style={styles.filterOption}>
-                <Tag color={Colors.palette.taupe} size={20} />
-                <Text style={styles.filterOptionText}>Tags</Text>
+                <User color={Colors.palette.taupe} size={20} />
+                <Text style={styles.filterOptionText}>Type de fichier</Text>
+              </View>
+
+              {/* Quality Filter */}
+              <View style={styles.filterOption}>
+                <Filter color={Colors.palette.taupe} size={20} />
+                <Text style={styles.filterOptionText}>Qualité</Text>
               </View>
 
             </LinearGradient>

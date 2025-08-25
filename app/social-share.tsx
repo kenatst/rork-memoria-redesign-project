@@ -143,6 +143,46 @@ export default function SocialShareScreen() {
     announceForAccessibility(`Template ${template?.name} sélectionné`);
   }, [templates, announceForAccessibility]);
 
+  const handleNativeShare = useCallback(async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          await navigator.share({
+            title: 'Mes souvenirs - MemoryShare',
+            text: 'Découvrez mes photos de l\'album "Soirée Plage 2024"',
+            url: 'https://app.memoryshare.com/album/beach2024'
+          });
+        } else {
+          // Fallback to copy link
+          await handleCopyLink();
+        }
+      } else {
+        const Sharing = await import('expo-sharing');
+        const shareOptions = {
+          message: 'Découvrez mes photos de l\'album "Soirée Plage 2024" sur MemoryShare',
+          url: 'https://app.memoryshare.com/album/beach2024'
+        };
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync('https://app.memoryshare.com/album/beach2024', shareOptions);
+        } else {
+          await handleCopyLink();
+        }
+      }
+      
+      showSuccess('Partage réussi', 'Contenu partagé avec succès');
+      announceForAccessibility('Partage natif réussi');
+    } catch (error) {
+      console.error('Native share error:', error);
+      // Fallback to copy link
+      await handleCopyLink();
+    }
+  }, [handleCopyLink, showSuccess, announceForAccessibility]);
+
   const handleShare = useCallback(async () => {
     if (selectedPlatforms.length === 0) {
       showError('Sélection requise', 'Veuillez sélectionner au moins une plateforme');
@@ -199,11 +239,24 @@ export default function SocialShareScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    // Simulate copying to clipboard
-    
-    showSuccess('Lien copié', 'Le lien a été copié dans le presse-papiers');
-    announceForAccessibility('Lien universel copié dans le presse-papiers');
-  }, [showSuccess, announceForAccessibility]);
+    try {
+      const shareUrl = 'https://app.memoryshare.com/album/beach2024?ref=social';
+      
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        // Use Expo Clipboard for native
+        const Clipboard = await import('expo-clipboard');
+        await Clipboard.setStringAsync(shareUrl);
+      }
+      
+      showSuccess('Lien copié', 'Le lien a été copié dans le presse-papiers');
+      announceForAccessibility('Lien universel copié dans le presse-papiers');
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      showError('Erreur', 'Impossible de copier le lien');
+    }
+  }, [showSuccess, showError, announceForAccessibility]);
 
   return (
     <View style={styles.container}>
@@ -369,14 +422,15 @@ export default function SocialShareScreen() {
               
               <Pressable 
                 style={styles.quickActionCard}
-                accessibilityLabel="Télécharger pour partage"
+                onPress={handleNativeShare}
+                accessibilityLabel="Partage natif"
                 accessibilityRole="button"
-                testID="download"
+                testID="native-share"
               >
                 <View style={styles.quickActionIcon}>
                   <Download size={20} color={Colors.palette.accentGold} />
                 </View>
-                <Text style={styles.quickActionText}>Télécharger</Text>
+                <Text style={styles.quickActionText}>Partage natif</Text>
               </Pressable>
             </View>
           </View>

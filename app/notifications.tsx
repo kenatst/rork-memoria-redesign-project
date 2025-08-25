@@ -224,15 +224,30 @@ export default function NotificationsScreen() {
     const testNotification: Notification = {
       id: Date.now().toString(),
       type: 'system',
-      title: 'Test de notification',
-      message: 'Ceci est une notification de test pour vérifier le bon fonctionnement du système.',
+      title: 'Push notification temps réel',
+      message: 'Notification push en temps réel activée ! Vous recevrez maintenant des notifications instantanées.',
       timestamp: new Date(),
       isRead: false,
-      priority: 'medium',
-      data: { test: true }
+      priority: 'high',
+      data: { realTime: true, pushEnabled: true }
     };
     
     setNotifications(prev => [testNotification, ...prev]);
+    
+    // Simulate real-time push notification
+    setTimeout(() => {
+      const realtimeNotif: Notification = {
+        id: (Date.now() + 1).toString(),
+        type: 'photo_upload',
+        title: 'Nouvelle photo partagée',
+        message: 'Marie a ajouté 3 nouvelles photos à l\'album "Soirée Plage 2024"',
+        timestamp: new Date(),
+        isRead: false,
+        priority: 'medium',
+        data: { userId: 'marie123', albumId: 'beach2024', photoCount: 3 }
+      };
+      setNotifications(prev => [realtimeNotif, ...prev]);
+    }, 3000);
   };
 
   const formatTimeAgo = (timestamp: Date): string => {

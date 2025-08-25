@@ -294,3 +294,50 @@ export const watchLocation = (
 ): Promise<() => void> => {
   return geolocationService.watchPosition(successCallback, errorCallback, options);
 };
+
+// Utility functions for photo geotagging
+export const addLocationToPhoto = async (photoUri: string): Promise<{ uri: string; location?: LocationCoords }> => {
+  try {
+    const location = await getCurrentLocation({ enableHighAccuracy: true, timeout: 10000 });
+    return {
+      uri: photoUri,
+      location
+    };
+  } catch (error) {
+    console.warn('Failed to get location for photo:', error);
+    return { uri: photoUri };
+  }
+};
+
+export const calculateDistance = (coord1: LocationCoords, coord2: LocationCoords): number => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (coord2.latitude - coord1.latitude) * Math.PI / 180;
+  const dLon = (coord2.longitude - coord1.longitude) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(coord1.latitude * Math.PI / 180) * Math.cos(coord2.latitude * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in kilometers
+};
+
+export const formatLocationName = async (coords: LocationCoords): Promise<string> => {
+  try {
+    if (Platform.OS === 'web') {
+      // For web, we'd need to use a geocoding service
+      return `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
+    } else {
+      const [result] = await Location.reverseGeocodeAsync(coords);
+      if (result) {
+        const parts = [];
+        if (result.city) parts.push(result.city);
+        if (result.region) parts.push(result.region);
+        if (result.country) parts.push(result.country);
+        return parts.join(', ') || 'Localisation inconnue';
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to reverse geocode:', error);
+  }
+  return `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
+};
