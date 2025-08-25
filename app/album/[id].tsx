@@ -19,7 +19,8 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function AlbumDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = params.id;
   const insets = useSafeAreaInsets();
   const { 
     albums, 

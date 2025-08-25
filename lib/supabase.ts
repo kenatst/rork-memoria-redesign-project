@@ -3,12 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration Supabase - Remplacez par vos vraies clés
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://your-project-ref.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseUrl = 'https://yxkbgrmkfgahaclsyeoe.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4a2Jncm1rZmdhaGFjbHN5ZW9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMjAyNjcsImV4cCI6MjA3MTY5NjI2N30.zaGHz2tZ3Jt6b0_V1xMbKkCJDY33J9X1E6DFDO9lziQ';
 
-if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
-  console.warn('⚠️ Variables Supabase manquantes. Créez un fichier .env avec EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY');
-}
+console.log('✅ Supabase configuré avec succès');
 
 // Créer le client Supabase avec AsyncStorage pour la persistance
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

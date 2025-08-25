@@ -35,7 +35,8 @@ interface PhotoLike {
 export default function PhotoDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = params.id;
   const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
   
   const [likes, setLikes] = useState<PhotoLike[]>([]);

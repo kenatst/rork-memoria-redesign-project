@@ -36,7 +36,8 @@ interface Photo {
 
 export default function GroupDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = params.id;
   const { groups, albums, createAlbum, updateGroupCover } = useAppState();
 
   const group = useMemo(() => groups.find(g => g.id === id) ?? null, [groups, id]);
@@ -404,7 +405,7 @@ export default function GroupDetailScreen() {
                       setShowCreateAlbum(false);
                       setNewAlbumName('');
                       handleHaptic('medium');
-                      router.push(`/album/${a.id}`);
+                      router.push(`/album/${(a as any).id}`);
                     }}
                     testID="confirm-create-album"
                   >
