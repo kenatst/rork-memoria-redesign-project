@@ -13,43 +13,36 @@ import {
   Zap,
   ZapOff,
   Grid3X3,
-  Wand2,
   Square,
   Video,
   Contrast,
   Aperture,
-  Maximize,
   X,
+  Circle,
+  Timer,
+  Settings,
+  Sparkles,
+  Focus,
+  Sun,
+  Moon,
+  Play,
+  Pause,
+  StopCircle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
-import { CameraFilters } from '@/components/CameraFilters';
 
-const { height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const CAMERA_MODES = [
-  { id: 'photo', name: 'PHOTO', icon: Camera },
-  { id: 'video', name: 'VIDÉO', icon: Video },
-  { id: 'portrait', name: 'PORTRAIT', icon: Contrast },
-  { id: 'square', name: 'CARRÉ', icon: Square },
-  { id: 'pano', name: 'PANO', icon: Maximize },
-  { id: 'time-lapse', name: 'TIME-LAPSE', icon: Aperture },
+  { id: 'photo', name: 'PHOTO', icon: Camera, color: '#FFD700' },
+  { id: 'video', name: 'VIDÉO', icon: Video, color: '#FF3B30' },
+  { id: 'portrait', name: 'PORTRAIT', icon: Contrast, color: '#007AFF' },
+  { id: 'square', name: 'CARRÉ', icon: Square, color: '#34C759' },
 ] as const;
 
 type CameraModeId = typeof CAMERA_MODES[number]['id'];
-
 type FlashMode = 'off' | 'on' | 'auto';
-
-type AspectId = 'full' | '1:1' | '4:3' | '16:9' | '3:2' | '9:16';
-
-const ASPECT_RATIOS: ReadonlyArray<{ id: AspectId; name: string; ratio: number | null }> = [
-  { id: 'full', name: 'Full', ratio: null },
-  { id: '1:1', name: '1:1', ratio: 1 },
-  { id: '4:3', name: '4:3', ratio: 4 / 3 },
-  { id: '16:9', name: '16:9', ratio: 16 / 9 },
-  { id: '3:2', name: '3:2', ratio: 3 / 2 },
-  { id: '9:16', name: '9:16', ratio: 9 / 16 },
-] as const;
 
 export default function CaptureScreen() {
   const { albums, addPhotoToAlbum } = useAppState();
@@ -63,18 +56,14 @@ export default function CaptureScreen() {
   const [flash, setFlash] = useState<FlashMode>('off');
   const [grid, setGrid] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(0);
-  const [aspectRatio, setAspectRatio] = useState<AspectId>('full');
   const [cameraMode, setCameraMode] = useState<CameraModeId>('photo');
   const [timer, setTimer] = useState<0 | 3 | 10>(0);
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordingTime, setRecordingTime] = useState<number>(0);
 
-  const [showCaptureAnimation, setShowCaptureAnimation] = useState<boolean>(false);
-  const [showGallery, setShowGallery] = useState<boolean>(false);
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
-  const [showCameraFilters, setShowCameraFilters] = useState<boolean>(false);
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
   const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
 
@@ -82,10 +71,46 @@ export default function CaptureScreen() {
   const [flashAnim] = useState(() => new Animated.Value(0));
   const [scaleAnim] = useState(() => new Animated.Value(1));
   const [rotateAnim] = useState(() => new Animated.Value(0));
+  const [pulseAnim] = useState(() => new Animated.Value(1));
+
+  const recordingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isRecording) {
+      recordingInterval.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
+      }
+      setRecordingTime(0);
+    }
+
+    return () => {
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+      }
+    };
+  }, [isRecording]);
+
+  useEffect(() => {
+    if (isRecording) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.1, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [isRecording, pulseAnim]);
 
   useEffect(() => {
     if (!focusPoint) return;
-    const t = setTimeout(() => setFocusPoint(null), 900);
+    const t = setTimeout(() => setFocusPoint(null), 1200);
     return () => clearTimeout(t);
   }, [focusPoint]);
 
@@ -101,17 +126,19 @@ export default function CaptureScreen() {
   }, []);
 
   const playFlash = useCallback(() => {
-    setShowCaptureAnimation(true);
     Animated.sequence([
-      Animated.timing(flashAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
-      Animated.timing(flashAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-    ]).start(() => setShowCaptureAnimation(false));
+      Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
   }, [flashAnim]);
 
   const toggleFacing = useCallback(() => {
     handleHaptic('light');
-    const currentValue = (rotateAnim as any)._value || 0;
-    Animated.timing(rotateAnim, { toValue: currentValue + 1, duration: 300, useNativeDriver: true }).start();
+    Animated.timing(rotateAnim, { 
+      toValue: (rotateAnim as any)._value + 1, 
+      duration: 400, 
+      useNativeDriver: true 
+    }).start();
     setFacing((c) => (c === 'back' ? 'front' : 'back'));
   }, [handleHaptic, rotateAnim]);
 
@@ -122,15 +149,10 @@ export default function CaptureScreen() {
     setTimer(values[(idx + 1) % values.length]);
   }, [timer, handleHaptic]);
 
-  const currentAspect = ASPECT_RATIOS.find((r) => r.id === aspectRatio) ?? ASPECT_RATIOS[0];
-  const cameraContainerStyle = useMemo(() => {
-    if (aspectRatio !== 'full' && currentAspect.ratio) {
-      return { width: '100%', aspectRatio: currentAspect.ratio } as const;
-    }
-    return styles.ratioFull;
-  }, [aspectRatio, currentAspect]);
-
-  const rotateInterpolate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
+  const rotateInterpolate = rotateAnim.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: ['0deg', '180deg'] 
+  });
 
   const gesture = useMemo(
     () =>
@@ -146,6 +168,7 @@ export default function CaptureScreen() {
           } else {
             const { locationX, locationY } = e.nativeEvent;
             setFocusPoint({ x: locationX, y: locationY });
+            handleHaptic('light');
           }
         },
         onPanResponderMove: (e: GestureResponderEvent) => {
@@ -156,7 +179,7 @@ export default function CaptureScreen() {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (lastPinchDistance != null) {
               const delta = dist - lastPinchDistance;
-              const step = delta / 300; // sensitivity
+              const step = delta / 400;
               setZoom((z) => Math.max(0, Math.min(1, +(z + step).toFixed(3))));
             }
             setLastPinchDistance(dist);
@@ -167,7 +190,7 @@ export default function CaptureScreen() {
         },
         onPanResponderTerminationRequest: () => true,
       }),
-    [lastPinchDistance]
+    [lastPinchDistance, handleHaptic]
   );
 
   const takePicture = useCallback(async () => {
@@ -177,22 +200,23 @@ export default function CaptureScreen() {
       playFlash();
 
       Animated.sequence([
-        Animated.timing(captureAnim, { toValue: 0.88, duration: 90, useNativeDriver: true }),
-        Animated.timing(captureAnim, { toValue: 1.06, duration: 90, useNativeDriver: true }),
-        Animated.timing(captureAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+        Animated.timing(captureAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+        Animated.timing(captureAnim, { toValue: 1.05, duration: 100, useNativeDriver: true }),
+        Animated.timing(captureAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
       ]).start();
 
-      Animated.sequence([
-        Animated.timing(scaleAnim, { toValue: 0.96, duration: 100, useNativeDriver: true }),
-        Animated.timing(scaleAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
-      ]).start();
-
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9, base64: false, exif: true, skipProcessing: true });
+      const photo = await cameraRef.current.takePictureAsync({ 
+        quality: 0.95, 
+        base64: false, 
+        exif: true 
+      });
+      
       if (!photo?.uri) return;
 
       if (mediaPermission?.granted) {
         await MediaLibrary.saveToLibraryAsync(photo.uri);
       }
+      
       setRecentPhotos((p) => [photo.uri, ...p.slice(0, 9)]);
       setCapturedPhoto(photo.uri);
       setShowAlbumSelector(true);
@@ -200,20 +224,21 @@ export default function CaptureScreen() {
       console.log('Capture error', e);
       Alert.alert('Erreur', "Impossible de prendre la photo");
     }
-  }, [handleHaptic, playFlash, captureAnim, scaleAnim, mediaPermission]);
+  }, [handleHaptic, playFlash, captureAnim, mediaPermission]);
 
   const startStopRecording = useCallback(async () => {
     try {
       if (!cameraRef.current) return;
       if (Platform.OS === 'web') {
-        Alert.alert('Vidéo non disponible sur web', 'Utilisez l’app mobile pour l’enregistrement.');
+        Alert.alert('Vidéo non disponible sur web', "Utilisez l'app mobile pour l'enregistrement.");
         return;
       }
+      
       if (!isRecording) {
         handleHaptic('heavy');
         setIsRecording(true);
         (cameraRef.current as any).startRecording({
-          maxDuration: 600,
+          maxDuration: 300,
           onRecordingFinished: (video: { uri: string }) => {
             setIsRecording(false);
             setCapturedPhoto(video?.uri ?? null);
@@ -240,6 +265,7 @@ export default function CaptureScreen() {
     try {
       addPhotoToAlbum(albumId, capturedPhoto);
       Alert.alert('Succès', "Photo ajoutée à l'album");
+      handleHaptic('medium');
     } catch {
       Alert.alert('Hors ligne', 'Impossible de synchroniser maintenant.');
     }
@@ -247,11 +273,20 @@ export default function CaptureScreen() {
     setCapturedPhoto(null);
   };
 
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (!permission) {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#000', '#0b0b0d']} style={StyleSheet.absoluteFillObject} />
-        <Text style={styles.loadingText}>Chargement de la caméra…</Text>
+        <View style={styles.loadingContainer}>
+          <Camera color={Colors.palette.accentGold} size={48} />
+          <Text style={styles.loadingText}>Chargement de la caméra…</Text>
+        </View>
       </View>
     );
   }
@@ -261,9 +296,13 @@ export default function CaptureScreen() {
       <View style={styles.container}>
         <LinearGradient colors={['#000', '#0b0b0d']} style={StyleSheet.absoluteFillObject} />
         <View style={styles.permissionContainer}>
-          <Camera color={Colors.palette.accentGold} size={64} />
+          <View style={styles.permissionIcon}>
+            <Camera color={Colors.palette.accentGold} size={64} />
+          </View>
           <Text style={styles.permissionTitle}>Accès Caméra Requis</Text>
-          <Text style={styles.permissionText}>Memoria a besoin d'accéder à votre caméra</Text>
+          <Text style={styles.permissionText}>
+            Memoria a besoin d'accéder à votre caméra pour prendre des photos et vidéos
+          </Text>
           <Pressable style={styles.permissionButton} onPress={requestPermission} testID="grant-permission">
             <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.permissionButtonGradient}>
               <Text style={styles.permissionButtonText}>Autoriser l'accès</Text>
@@ -276,386 +315,737 @@ export default function CaptureScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.cameraWrapper, { paddingTop: Math.max(0, insets.top), paddingBottom: Math.max(0, insets.bottom) }]}>
-        <Animated.View style={[cameraContainerStyle, { alignSelf: 'center', justifyContent: 'center', transform: [{ scale: scaleAnim }] }]}>
-          <CameraView
-            ref={cameraRef}
-            style={StyleSheet.absoluteFillObject}
-            facing={facing}
-            flash={flash}
-            zoom={zoom}
-            mode={cameraMode === 'video' ? 'video' : 'picture'}
-          >
-            {showCaptureAnimation && <Animated.View style={[styles.flashOverlay, { opacity: flashAnim }]} pointerEvents="none" />}
-
-            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-              {aspectRatio !== 'full' && currentAspect.ratio && <AspectRatioMask aspectRatio={currentAspect.ratio} />}
-            </View>
-
-            {grid && (
-              <View style={styles.gridOverlay}>
-                <View style={[styles.gridV, { left: '33.33%' }]} />
-                <View style={[styles.gridV, { left: '66.66%' }]} />
-                <View style={[styles.gridH, { top: '33.33%' }]} />
-                <View style={[styles.gridH, { top: '66.66%' }]} />
-              </View>
-            )}
-
-            {focusPoint && (
-              <View style={[styles.focusRing, { left: focusPoint.x - 30, top: focusPoint.y - 30 }]} pointerEvents="none" />
-            )}
-
-
-
-            <View style={[styles.topBar, { top: Math.max(16, insets.top + 6) }]}>
-              {Platform.OS !== 'web' ? (
-                <BlurView intensity={30} style={styles.topBarBg}>
-                  <TopBarContent {...{ flash, setFlash, grid, setGrid, timer, cycleTimer }} />
-                </BlurView>
-              ) : (
-                <View style={[styles.topBarBg, styles.webBlur]}>
-                  <TopBarContent {...{ flash, setFlash, grid, setGrid, timer, cycleTimer }} />
-                </View>
-              )}
-            </View>
-
-            <View style={StyleSheet.absoluteFill} {...gesture.panHandlers} />
-
-            <BottomControls
-              insetsBottom={insets.bottom}
-              cameraMode={cameraMode}
-              setCameraMode={setCameraMode}
-              onShutter={cameraMode === 'video' ? startStopRecording : takePicture}
-              isRecording={isRecording}
-              onFlip={toggleFacing}
-              rotateInterpolate={rotateInterpolate}
-              lastPhoto={lastPhoto}
-              onOpenFilters={() => setShowCameraFilters(true)}
-              zoom={zoom}
-              setZoom={setZoom}
-            />
-          </CameraView>
-        </Animated.View>
-      </View>
-
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {lastPhoto && (
-          <Pressable
-            style={[styles.lastThumb, { bottom: Math.max(116, insets.bottom + 56) }]}
-            onPress={() => {
-              setCapturedPhoto(lastPhoto);
-              setShowAlbumSelector(true);
-            }}
-            testID="last-photo-thumb"
-          >
-            <Image source={{ uri: lastPhoto }} style={styles.lastThumbImage} contentFit="cover" />
-          </Pressable>
-        )}
-
-        <Pressable
-          style={[styles.galleryToggle, { bottom: Math.max(120, insets.bottom + 60) }]}
-          onPress={() => setShowGallery((v) => !v)}
-          testID="toggle-gallery"
+      <View style={styles.cameraContainer}>
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFillObject}
+          facing={facing}
+          flash={flash}
+          zoom={zoom}
+          mode={cameraMode === 'video' ? 'video' : 'picture'}
         >
-          <Text style={styles.galleryToggleText}>{recentPhotos.length}</Text>
-        </Pressable>
+          {/* Flash Overlay */}
+          <Animated.View 
+            style={[styles.flashOverlay, { opacity: flashAnim }]} 
+            pointerEvents="none" 
+          />
 
-        {showGallery && recentPhotos.length > 0 && (
-          <View style={[styles.galleryContainer, { bottom: Math.max(200, insets.bottom + 100) }]}>
+          {/* Grid Overlay */}
+          {grid && (
+            <View style={styles.gridOverlay} pointerEvents="none">
+              <View style={[styles.gridLine, styles.gridVertical1]} />
+              <View style={[styles.gridLine, styles.gridVertical2]} />
+              <View style={[styles.gridLine, styles.gridHorizontal1]} />
+              <View style={[styles.gridLine, styles.gridHorizontal2]} />
+            </View>
+          )}
+
+          {/* Focus Ring */}
+          {focusPoint && (
+            <Animated.View 
+              style={[
+                styles.focusRing, 
+                { 
+                  left: focusPoint.x - 40, 
+                  top: focusPoint.y - 40,
+                  transform: [{ scale: scaleAnim }]
+                }
+              ]} 
+              pointerEvents="none" 
+            />
+          )}
+
+          {/* Top Controls */}
+          <View style={[styles.topControls, { paddingTop: Math.max(insets.top, 12) + 16 }]}>
             {Platform.OS !== 'web' ? (
-              <BlurView intensity={30} style={styles.galleryBlur}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-                  {recentPhotos.map((uri, idx) => (
-                    <Pressable key={idx} style={styles.galleryItem} onPress={() => {}}>
-                      <Image source={{ uri }} style={styles.galleryImage} contentFit="cover" />
-                    </Pressable>
-                  ))}
-                </ScrollView>
+              <BlurView intensity={40} style={styles.topControlsBlur}>
+                <View style={styles.topControlsContent}>
+                  <Pressable 
+                    style={[styles.topControlButton, flash !== 'off' && styles.activeControl]} 
+                    onPress={() => setFlash(c => c === 'off' ? 'on' : c === 'on' ? 'auto' : 'off')} 
+                    testID="flash-btn"
+                  >
+                    {flash === 'off' ? (
+                      <ZapOff color="#FFFFFF" size={20} />
+                    ) : flash === 'on' ? (
+                      <Zap color="#FFD700" size={20} />
+                    ) : (
+                      <Zap color="#FFA500" size={20} />
+                    )}
+                  </Pressable>
+
+                  <Pressable 
+                    style={[styles.topControlButton, timer > 0 && styles.activeControl]} 
+                    onPress={cycleTimer} 
+                    testID="timer-btn"
+                  >
+                    <Timer color={timer > 0 ? '#FFD700' : '#FFFFFF'} size={20} />
+                    {timer > 0 && (
+                      <Text style={styles.timerText}>{timer}</Text>
+                    )}
+                  </Pressable>
+
+                  <Pressable 
+                    style={[styles.topControlButton, grid && styles.activeControl]} 
+                    onPress={() => setGrid(v => !v)} 
+                    testID="grid-btn"
+                  >
+                    <Grid3X3 color={grid ? '#FFD700' : '#FFFFFF'} size={20} />
+                  </Pressable>
+                </View>
               </BlurView>
             ) : (
-              <View style={[styles.galleryBlur, styles.webBlur]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-                  {recentPhotos.map((uri, idx) => (
-                    <Pressable key={idx} style={styles.galleryItem} onPress={() => {}}>
-                      <Image source={{ uri }} style={styles.galleryImage} contentFit="cover" />
-                    </Pressable>
-                  ))}
-                </ScrollView>
+              <View style={[styles.topControlsBlur, styles.webBlur]}>
+                <View style={styles.topControlsContent}>
+                  <Pressable 
+                    style={[styles.topControlButton, flash !== 'off' && styles.activeControl]} 
+                    onPress={() => setFlash(c => c === 'off' ? 'on' : c === 'on' ? 'auto' : 'off')} 
+                    testID="flash-btn"
+                  >
+                    {flash === 'off' ? (
+                      <ZapOff color="#FFFFFF" size={20} />
+                    ) : flash === 'on' ? (
+                      <Zap color="#FFD700" size={20} />
+                    ) : (
+                      <Zap color="#FFA500" size={20} />
+                    )}
+                  </Pressable>
+
+                  <Pressable 
+                    style={[styles.topControlButton, timer > 0 && styles.activeControl]} 
+                    onPress={cycleTimer} 
+                    testID="timer-btn"
+                  >
+                    <Timer color={timer > 0 ? '#FFD700' : '#FFFFFF'} size={20} />
+                    {timer > 0 && (
+                      <Text style={styles.timerText}>{timer}</Text>
+                    )}
+                  </Pressable>
+
+                  <Pressable 
+                    style={[styles.topControlButton, grid && styles.activeControl]} 
+                    onPress={() => setGrid(v => !v)} 
+                    testID="grid-btn"
+                  >
+                    <Grid3X3 color={grid ? '#FFD700' : '#FFFFFF'} size={20} />
+                  </Pressable>
+                </View>
               </View>
             )}
           </View>
-        )}
 
-        <Modal visible={showAlbumSelector} transparent animationType="slide" onRequestClose={() => setShowAlbumSelector(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Ajouter à un album</Text>
-              <Text style={styles.modalSubtitle}>Sélectionnez un album pour votre photo</Text>
-              <ScrollView style={styles.albumsList} showsVerticalScrollIndicator={false}>
-                {albums.map((album) => (
-                  <Pressable key={album.id} style={styles.albumItem} onPress={() => handleAddToAlbum(album.id)} testID={`select-album-${album.id}`}>
-                    <View style={styles.albumItemContent}>
-                      <Text style={styles.albumItemName}>{album.name}</Text>
-                      <Text style={styles.albumItemCount}>{album.photos.length} photos</Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              <View style={[styles.modalActions, { flexDirection: 'row' }]}>
-                <Pressable style={[styles.skipBtn, { flex: 1 }]} onPress={() => { setShowAlbumSelector(false); setCapturedPhoto(null); }} testID="skip-album">
-                  <Text style={styles.skipBtnText}>Passer</Text>
-                </Pressable>
-                <Pressable style={[styles.deleteBtn, { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' }]} onPress={() => { if (!capturedPhoto) return; setRecentPhotos((p) => p.filter((u) => u !== capturedPhoto)); setCapturedPhoto(null); setShowAlbumSelector(false); }} testID="delete-captured">
-                  <Text style={styles.actionText}>Supprimer</Text>
-                </Pressable>
-              </View>
+          {/* Recording Indicator */}
+          {isRecording && (
+            <View style={[styles.recordingIndicator, { top: Math.max(insets.top, 12) + 80 }]}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingText}>REC {formatRecordingTime(recordingTime)}</Text>
             </View>
-          </KeyboardAvoidingView>
-        </Modal>
+          )}
 
-        <Modal visible={showCameraFilters} transparent animationType="slide" onRequestClose={() => setShowCameraFilters(false)}>
-          <View style={styles.filtersModalBackdrop}>
-            <View style={styles.filtersPanel}>
-              <View style={styles.filtersPanelHeader}>
-                <Text style={styles.filtersPanelTitle}>Filtres & Effets</Text>
-                <Pressable onPress={() => setShowCameraFilters(false)} style={styles.closeFiltersPanelBtn} testID="close-filters">
-                  <X color="#FFFFFF" size={24} />
-                </Pressable>
-              </View>
-              <CameraFilters
-                isVisible
-                onClose={() => setShowCameraFilters(false)}
-                onPhotoTaken={(uri) => {
-                  if (mediaPermission?.granted) MediaLibrary.saveToLibraryAsync(uri);
-                  setRecentPhotos((p) => [uri, ...p.slice(0, 9)]);
-                  setCapturedPhoto(uri);
+          {/* Zoom Indicator */}
+          {zoom > 0 && (
+            <View style={styles.zoomIndicator}>
+              <Text style={styles.zoomIndicatorText}>{(1 + zoom * 9).toFixed(1)}x</Text>
+            </View>
+          )}
+
+          {/* Touch Handler */}
+          <View style={StyleSheet.absoluteFill} {...gesture.panHandlers} />
+
+          {/* Camera Mode Selector */}
+          <View style={[styles.modeSelector, { bottom: Math.max(insets.bottom, 12) + 140 }]}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.modeSelectorContent}
+            >
+              {CAMERA_MODES.map((mode) => {
+                const Icon = mode.icon;
+                const isActive = cameraMode === mode.id;
+                return (
+                  <Pressable 
+                    key={mode.id} 
+                    style={[styles.modeButton, isActive && styles.activeModeButton]} 
+                    onPress={() => {
+                      setCameraMode(mode.id);
+                      handleHaptic('light');
+                    }}
+                    testID={`mode-${mode.id}`}
+                  >
+                    <Icon 
+                      color={isActive ? '#000000' : '#FFFFFF'} 
+                      size={20} 
+                    />
+                    <Text style={[styles.modeText, isActive && styles.activeModeText]}>
+                      {mode.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Bottom Controls */}
+          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 12) + 20 }]}>
+            {/* Last Photo Thumbnail */}
+            {lastPhoto && (
+              <Pressable
+                style={styles.lastPhotoButton}
+                onPress={() => {
+                  setCapturedPhoto(lastPhoto);
                   setShowAlbumSelector(true);
                 }}
-              />
+                testID="last-photo-thumb"
+              >
+                <Image source={{ uri: lastPhoto }} style={styles.lastPhotoImage} contentFit="cover" />
+              </Pressable>
+            )}
+
+            {/* Capture Button */}
+            <Animated.View style={{ transform: [{ scale: isRecording ? pulseAnim : captureAnim }] }}>
+              <Pressable
+                style={[
+                  styles.captureButton,
+                  cameraMode === 'video' && isRecording && styles.recordingCaptureButton
+                ]}
+                onPress={cameraMode === 'video' ? startStopRecording : takePicture}
+                testID="capture-btn"
+              >
+                <View style={styles.captureButtonOuter}>
+                  <View style={[
+                    styles.captureButtonInner,
+                    cameraMode === 'video' && isRecording && styles.recordingInner
+                  ]}>
+                    {cameraMode === 'video' && isRecording ? (
+                      <StopCircle color="#FFFFFF" size={32} />
+                    ) : (
+                      <Circle color="#FFFFFF" size={32} fill="#FFFFFF" />
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+            </Animated.View>
+
+            {/* Flip Camera Button */}
+            <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+              <Pressable
+                style={styles.flipButton}
+                onPress={toggleFacing}
+                testID="flip-btn"
+              >
+                <RotateCcw color="#FFFFFF" size={24} />
+              </Pressable>
+            </Animated.View>
+          </View>
+
+          {/* Zoom Controls */}
+          <View style={[styles.zoomControls, { bottom: Math.max(insets.bottom, 12) + 200 }]}>
+            <Pressable 
+              style={styles.zoomButton} 
+              onPress={() => setZoom(z => Math.max(0, +(z - 0.2).toFixed(2)))}
+              testID="zoom-out"
+            >
+              <Text style={styles.zoomButtonText}>1x</Text>
+            </Pressable>
+            <Pressable 
+              style={styles.zoomButton} 
+              onPress={() => setZoom(z => Math.min(1, +(z + 0.2).toFixed(2)))}
+              testID="zoom-in"
+            >
+              <Text style={styles.zoomButtonText}>3x</Text>
+            </Pressable>
+            <Pressable 
+              style={styles.zoomButton} 
+              onPress={() => setZoom(1)}
+              testID="zoom-max"
+            >
+              <Text style={styles.zoomButtonText}>10x</Text>
+            </Pressable>
+          </View>
+        </CameraView>
+      </View>
+
+      {/* Album Selector Modal */}
+      <Modal visible={showAlbumSelector} transparent animationType="slide" onRequestClose={() => setShowAlbumSelector(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Ajouter à un album</Text>
+            <Text style={styles.modalSubtitle}>Sélectionnez un album pour votre {cameraMode === 'video' ? 'vidéo' : 'photo'}</Text>
+            
+            {capturedPhoto && (
+              <View style={styles.previewContainer}>
+                <Image source={{ uri: capturedPhoto }} style={styles.previewImage} contentFit="cover" />
+              </View>
+            )}
+
+            <ScrollView style={styles.albumsList} showsVerticalScrollIndicator={false}>
+              {albums.map((album) => (
+                <Pressable 
+                  key={album.id} 
+                  style={styles.albumItem} 
+                  onPress={() => handleAddToAlbum(album.id)} 
+                  testID={`select-album-${album.id}`}
+                >
+                  <View style={styles.albumItemContent}>
+                    <Text style={styles.albumItemName}>{album.name}</Text>
+                    <Text style={styles.albumItemCount}>{album.photos.length} éléments</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+            
+            <View style={styles.modalActions}>
+              <Pressable 
+                style={styles.skipButton} 
+                onPress={() => { 
+                  setShowAlbumSelector(false); 
+                  setCapturedPhoto(null); 
+                }} 
+                testID="skip-album"
+              >
+                <Text style={styles.skipButtonText}>Passer</Text>
+              </Pressable>
+              <Pressable 
+                style={styles.deleteButton} 
+                onPress={() => { 
+                  if (!capturedPhoto) return; 
+                  setRecentPhotos(p => p.filter(u => u !== capturedPhoto)); 
+                  setCapturedPhoto(null); 
+                  setShowAlbumSelector(false); 
+                }} 
+                testID="delete-captured"
+              >
+                <Text style={styles.deleteButtonText}>Supprimer</Text>
+              </Pressable>
             </View>
           </View>
-        </Modal>
-
-
-      </SafeAreaView>
-    </View>
-  );
-}
-
-function TopBarContent({
-  flash,
-  setFlash,
-  grid,
-  setGrid,
-  timer,
-  cycleTimer,
-}: {
-  flash: FlashMode;
-  setFlash: React.Dispatch<React.SetStateAction<FlashMode>>;
-  grid: boolean;
-  setGrid: React.Dispatch<React.SetStateAction<boolean>>;
-  timer: 0 | 3 | 10;
-  cycleTimer: () => void;
-}) {
-  return (
-    <View style={styles.topRow}>
-      <Pressable style={styles.controlButton} onPress={() => setGrid((v) => !v)} testID="grid-btn">
-        <Grid3X3 color={grid ? '#FFD700' : '#FFFFFF'} size={22} />
-      </Pressable>
-      <Pressable style={styles.controlButton} onPress={() => setFlash((c) => (c === 'off' ? 'on' : c === 'on' ? 'auto' : 'off'))} testID="flash-btn">
-        {flash === 'off' ? <ZapOff color="#FFFFFF" size={22} /> : flash === 'on' ? <Zap color="#FFD700" size={22} /> : <Zap color="#FFA500" size={22} />}
-      </Pressable>
-      <Pressable style={styles.controlButton} onPress={cycleTimer} testID="timer-btn">
-        <Text style={[styles.ratioText, { color: timer > 0 ? '#FFD700' : '#FFFFFF' }]}>{timer > 0 ? `${timer}s` : '⏱'}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function BottomControls({
-  insetsBottom,
-  cameraMode,
-  setCameraMode,
-  onShutter,
-  isRecording,
-  onFlip,
-  rotateInterpolate,
-  lastPhoto,
-  onOpenFilters,
-  zoom,
-  setZoom,
-}: {
-  insetsBottom: number;
-  cameraMode: CameraModeId;
-  setCameraMode: React.Dispatch<React.SetStateAction<CameraModeId>>;
-  onShutter: () => void;
-  isRecording: boolean;
-  onFlip: () => void;
-  rotateInterpolate: Animated.AnimatedInterpolation<string>;
-  lastPhoto: string | null;
-  onOpenFilters: () => void;
-  zoom: number;
-  setZoom: React.Dispatch<React.SetStateAction<number>>;
-}) {
-  const [captureAnim] = useState(() => new Animated.Value(1));
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(captureAnim, { toValue: 1.06, duration: 1200, useNativeDriver: true }),
-        Animated.timing(captureAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [captureAnim]);
-
-  return (
-    <View style={[styles.bottomArea, { bottom: Math.max(80, insetsBottom + 64) }]}> 
-      <View style={styles.modeCarousel}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modeScrollContent}>
-          {CAMERA_MODES.map((m) => {
-            const Icon = m.icon;
-            const active = cameraMode === m.id;
-            return (
-              <Pressable key={m.id} style={[styles.modePill, active && styles.modePillActive]} onPress={() => setCameraMode(m.id)} testID={`mode-${m.id}`}>
-                <Icon color={active ? '#000' : '#fff'} size={18} />
-                <Text style={[styles.modePillText, active && styles.modePillTextActive]}>{m.name}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      <View style={styles.bottomRow}>
-        <Pressable style={styles.sideButton} onPress={onOpenFilters} testID="filter-btn">
-          <Wand2 color="#FFFFFF" size={24} />
-        </Pressable>
-
-        <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
-          <Pressable
-            style={[styles.captureButton, cameraMode === 'video' && isRecording && styles.recordingButton]}
-            onPress={onShutter}
-            testID="capture-btn"
-          >
-            <LinearGradient colors={isRecording ? ['#FF3B30', '#FF1744'] : ['#FFD700', '#FFA500', '#FF6B35']} style={styles.captureGradient}>
-              <Camera color={isRecording ? '#FF3B30' : '#000000'} size={28} strokeWidth={3} />
-            </LinearGradient>
-          </Pressable>
-        </Animated.View>
-
-        <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
-          <Pressable style={styles.sideButton} onPress={onFlip} testID="flip-btn">
-            <RotateCcw color="#FFFFFF" size={24} />
-          </Pressable>
-        </Animated.View>
-      </View>
-
-      <View style={styles.zoomRow}>
-        <Pressable style={styles.zoomBtn} onPress={() => setZoom((z) => Math.max(0, +(z - 0.1).toFixed(2)))} testID="zoom-out">
-          <Text style={styles.zoomText}>-</Text>
-        </Pressable>
-        <View style={styles.zoomValue}>
-          <Text style={styles.zoomTextSmall}>{Math.round(1 + zoom * 9)}x</Text>
-        </View>
-        <Pressable style={styles.zoomBtn} onPress={() => setZoom((z) => Math.min(1, +(z + 0.1).toFixed(2)))} testID="zoom-in">
-          <Text style={styles.zoomText}>+</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function AspectRatioMask({ aspectRatio }: { aspectRatio: number }) {
-  const { width, height } = Dimensions.get('window');
-  const contentHeight = width / aspectRatio;
-  const topBottom = Math.max(0, (height - contentHeight) / 2);
-  return (
-    <View style={{ flex: 1 }}>
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: topBottom, backgroundColor: '#000000' }} />
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: topBottom, backgroundColor: '#000000' }} />
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
-  safeArea: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 },
-  cameraWrapper: { flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' },
-  ratioFull: { width: '100%', height: '100%' },
-  loadingText: { color: '#FFFFFF', fontSize: 18, textAlign: 'center', marginTop: screenHeight / 2 },
-  permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 24 },
-  permissionTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', textAlign: 'center' },
-  permissionText: { color: Colors.palette.taupe, fontSize: 16, textAlign: 'center', lineHeight: 24 },
-  permissionButton: { borderRadius: 16, overflow: 'hidden', marginTop: 16 },
-  permissionButtonGradient: { paddingHorizontal: 32, paddingVertical: 16 },
-  permissionButtonText: { color: '#000000', fontSize: 16, fontWeight: '800', textAlign: 'center' },
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    gap: 24,
+  },
+  permissionIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  permissionTitle: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  permissionText: {
+    color: Colors.palette.taupe,
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  permissionButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 16,
+  },
+  permissionButtonGradient: {
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+  },
+  permissionButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
 
-  flashOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', zIndex: 100 },
+  // Flash and Grid Overlays
+  flashOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    zIndex: 100,
+  },
+  gridOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
+  },
+  gridLine: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  gridVertical1: {
+    left: '33.33%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+  },
+  gridVertical2: {
+    left: '66.66%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+  },
+  gridHorizontal1: {
+    top: '33.33%',
+    left: 0,
+    right: 0,
+    height: 1,
+  },
+  gridHorizontal2: {
+    top: '66.66%',
+    left: 0,
+    right: 0,
+    height: 1,
+  },
+  focusRing: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    zIndex: 15,
+  },
 
-  gridOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  gridV: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.25)' },
-  gridH: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.25)' },
-  focusRing: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: '#FFD700' },
+  // Top Controls
+  topControls: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    zIndex: 20,
+  },
+  topControlsBlur: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  webBlur: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backdropFilter: 'blur(20px)',
+  },
+  topControlsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 20,
+  },
+  topControlButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  activeControl: {
+    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  timerText: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#FFD700',
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: '800',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 6,
+    minWidth: 16,
+    textAlign: 'center',
+  },
 
-  topBar: { position: 'absolute', left: 16, right: 16, zIndex: 20 },
-  topBarBg: { borderRadius: 16, overflow: 'hidden' },
-  webBlur: { backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)' as any },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 14 },
-  controlButton: { padding: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.10)' },
-  ratioText: { color: '#FFFFFF', fontWeight: '800' },
+  // Recording Indicator
+  recordingIndicator: {
+    position: 'absolute',
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 8,
+    zIndex: 25,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+  },
+  recordingText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
-  bottomArea: { position: 'absolute', left: 16, right: 16, zIndex: 20 },
-  modeCarousel: { marginBottom: 10 },
-  modeScrollContent: { paddingHorizontal: 6, alignItems: 'center' },
-  modePill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.10)', marginRight: 8 },
-  modePillActive: { backgroundColor: '#FFD700' },
-  modePillText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-  modePillTextActive: { color: '#000000', fontWeight: '800' },
+  // Zoom Indicator
+  zoomIndicator: {
+    position: 'absolute',
+    top: '50%',
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    zIndex: 15,
+  },
+  zoomIndicatorText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
-  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sideButton: { padding: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)' },
-  captureButton: { width: 86, height: 86, borderRadius: 43, shadowColor: '#FFD700', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.45, shadowRadius: 10, elevation: 10 },
-  recordingButton: { borderWidth: 3, borderColor: '#FF3B30' },
-  captureGradient: { flex: 1, borderRadius: 43, justifyContent: 'center', alignItems: 'center' },
+  // Mode Selector
+  modeSelector: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 20,
+  },
+  modeSelectorContent: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 12,
+  },
+  modeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  activeModeButton: {
+    backgroundColor: '#FFD700',
+  },
+  modeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  activeModeText: {
+    color: '#000000',
+    fontWeight: '800',
+  },
 
-  zoomRow: { marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  zoomBtn: { backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12 },
-  zoomText: { color: '#FFFFFF', fontWeight: '800', fontSize: 16 },
-  zoomTextSmall: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
-  zoomValue: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)' },
+  // Bottom Controls
+  bottomControls: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 40,
+    zIndex: 20,
+  },
+  lastPhotoButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  lastPhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordingCaptureButton: {
+    borderWidth: 4,
+    borderColor: '#FF3B30',
+  },
+  captureButtonOuter: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordingInner: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+  },
+  flipButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-  galleryContainer: { position: 'absolute', left: 16, right: 16, height: 84, zIndex: 15 },
-  galleryBlur: { borderRadius: 16, overflow: 'hidden', paddingVertical: 8 },
-  galleryScroll: { paddingHorizontal: 12 },
-  galleryItem: { width: 68, height: 68, borderRadius: 14, marginRight: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
-  galleryImage: { width: '100%', height: '100%' },
-  galleryToggle: { position: 'absolute', left: 20, width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', zIndex: 25 },
-  galleryToggleText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  // Zoom Controls
+  zoomControls: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    zIndex: 20,
+  },
+  zoomButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  zoomButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
-  lastThumb: { position: 'absolute', right: 20, width: 56, height: 56, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', zIndex: 26 },
-  lastThumbImage: { width: '100%', height: '100%' },
-
-  banner: { position: 'absolute', left: 16, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, zIndex: 25 },
-  bannerText: { color: '#000000', fontSize: 12, fontWeight: '700' },
-
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0B0B0D', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%' },
-  modalTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
-  modalSubtitle: { color: '#A9AFBC', fontSize: 14, textAlign: 'center', marginBottom: 20 },
-  albumsList: { maxHeight: 300 },
-  albumItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, marginBottom: 12, overflow: 'hidden' },
-  albumItemContent: { padding: 16 },
-  albumItemName: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  albumItemCount: { color: '#A9AFBC', fontSize: 12 },
-  modalActions: { marginTop: 16, gap: 12 },
-  skipBtn: { backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  skipBtnText: { color: '#FFFFFF', fontWeight: '700' },
-  deleteBtn: { backgroundColor: 'rgba(255,0,0,0.2)' },
-  actionText: { color: '#FFFFFF', fontWeight: '700' },
-
-  filtersModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'flex-end' },
-  filtersPanel: { backgroundColor: '#0B0B0D', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 24, maxHeight: '80%' },
-  filtersPanelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 6 },
-  filtersPanelTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
-  closeFiltersPanelBtn: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)' },
+  // Modal Styles
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#0B0B0D',
+    padding: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    color: '#A9AFBC',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  previewContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  previewImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 16,
+  },
+  albumsList: {
+    maxHeight: 300,
+    marginBottom: 20,
+  },
+  albumItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  albumItemContent: {
+    padding: 20,
+  },
+  albumItemName: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  albumItemCount: {
+    color: '#A9AFBC',
+    fontSize: 14,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skipButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 59, 48, 0.2)',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

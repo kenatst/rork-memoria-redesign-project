@@ -52,10 +52,12 @@ export default function GroupDetailScreen() {
     }));
   }, [group]);
 
-  const [members, setMembers] = useState<Member[]>(baseMembers);
+  const [members, setMembers] = useState<Member[]>([]);
   React.useEffect(() => {
-    setMembers(baseMembers);
-  }, [baseMembers]);
+    if (baseMembers.length > 0) {
+      setMembers(baseMembers);
+    }
+  }, [baseMembers.length, group?.id]);
 
   const basePhotos = useMemo<Photo[]>(() => {
     if (!group) return [] as Photo[];

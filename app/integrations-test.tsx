@@ -19,7 +19,7 @@ import ImagePickerComponent from '@/components/ImagePicker';
 import { analyzeImage } from '@/lib/google-vision';
 import { getCurrentLocation, reverseGeocode, findNearbyPlaces } from '@/lib/google-maps';
 import { authenticateWithGoogle, isAuthenticated, getCurrentUser, AuthUser } from '@/lib/auth';
-// Convex supprimé: importations retirées
+// Convex removed
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface TestResult {

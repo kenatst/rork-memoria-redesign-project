@@ -397,7 +397,7 @@ export default function PhotoDetailScreen() {
         </View>
         
         {/* Actions */}
-        <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 12) + 16 }]>
+        <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 12) + 16 }]}>
           {Platform.OS !== 'web' ? (
             <BlurView intensity={30} style={styles.actionsBlur}>
               <View style={styles.actionsContent}>
