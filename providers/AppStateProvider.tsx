@@ -151,24 +151,28 @@ const KEY = "memoria_app_state_v2";
 
 export const [AppStateProvider, useAppState] = createContextHook<AppState>(() => {
   const { user } = useSupabase();
-  const supabaseHooks = React.useMemo(() => {
-    try {
-      return {
-        albums: useAlbums(),
-        photos: usePhotos(),
-        groups: useGroups(),
-        comments: useComments()
-      };
-    } catch (error) {
-      console.warn('Supabase hooks not available:', error);
-      return {
-        albums: { albums: [], createAlbum: null },
-        photos: { photos: [], addPhoto: null },
-        groups: { groups: [], createGroup: null },
-        comments: { comments: [], addComment: null, deleteComment: null }
-      };
-    }
-  }, []);
+  
+  // Call hooks unconditionally at the top level
+  let albumsHook, photosHook, groupsHook, commentsHook;
+  try {
+    albumsHook = useAlbums();
+    photosHook = usePhotos();
+    groupsHook = useGroups();
+    commentsHook = useComments();
+  } catch (error) {
+    console.warn('Supabase hooks not available:', error);
+    albumsHook = { albums: [], createAlbum: null };
+    photosHook = { photos: [], addPhoto: null };
+    groupsHook = { groups: [], createGroup: null };
+    commentsHook = { comments: [], addComment: null, deleteComment: null };
+  }
+  
+  const supabaseHooks = React.useMemo(() => ({
+    albums: albumsHook,
+    photos: photosHook,
+    groups: groupsHook,
+    comments: commentsHook
+  }), [albumsHook, photosHook, groupsHook, commentsHook]);
   const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(false);
   const [displayName, setDisplayNameState] = useState<string>("Memoria");
   const [points, setPoints] = useState<number>(120);

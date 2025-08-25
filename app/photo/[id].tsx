@@ -40,8 +40,7 @@ export default function PhotoDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = params.id;
-  const appState = useAppState();
-  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = appState;
+  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
   
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
