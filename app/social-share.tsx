@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Modal, TextInput, KeyboardAvoidingView, Share } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -143,6 +143,29 @@ export default function SocialShareScreen() {
     announceForAccessibility(`Template ${template?.name} sélectionné`);
   }, [templates, announceForAccessibility]);
 
+  const handleCopyLink = useCallback(async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    try {
+      const shareUrl = 'https://app.memoryshare.com/album/beach2024?ref=social';
+      
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const Clipboard = await import('expo-clipboard');
+        await Clipboard.setStringAsync(shareUrl);
+      }
+      
+      showSuccess('Lien copié', 'Le lien a été copié dans le presse-papiers');
+      announceForAccessibility('Lien universel copié dans le presse-papiers');
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      showError('Erreur', 'Impossible de copier le lien');
+    }
+  }, [showSuccess, showError, announceForAccessibility]);
+
   const handleNativeShare = useCallback(async () => {
     if (Platform.OS !== 'web') {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -157,28 +180,19 @@ export default function SocialShareScreen() {
             url: 'https://app.memoryshare.com/album/beach2024'
           });
         } else {
-          // Fallback to copy link
           await handleCopyLink();
         }
       } else {
-        const Sharing = await import('expo-sharing');
-        const shareOptions = {
+        await Share.share({
           message: 'Découvrez mes photos de l\'album "Soirée Plage 2024" sur MemoryShare',
           url: 'https://app.memoryshare.com/album/beach2024'
-        };
-        
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync('https://app.memoryshare.com/album/beach2024', shareOptions);
-        } else {
-          await handleCopyLink();
-        }
+        });
       }
       
       showSuccess('Partage réussi', 'Contenu partagé avec succès');
       announceForAccessibility('Partage natif réussi');
     } catch (error) {
       console.error('Native share error:', error);
-      // Fallback to copy link
       await handleCopyLink();
     }
   }, [handleCopyLink, showSuccess, announceForAccessibility]);
@@ -233,30 +247,6 @@ export default function SocialShareScreen() {
       setIsSharing(false);
     }
   }, [selectedPlatforms, selectedTemplate, platforms, applyStyleTransfer, showError, showSuccess, announceForAccessibility]);
-
-  const handleCopyLink = useCallback(async () => {
-    if (Platform.OS !== 'web') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    try {
-      const shareUrl = 'https://app.memoryshare.com/album/beach2024?ref=social';
-      
-      if (Platform.OS === 'web') {
-        await navigator.clipboard.writeText(shareUrl);
-      } else {
-        // Use Expo Clipboard for native
-        const Clipboard = await import('expo-clipboard');
-        await Clipboard.setStringAsync(shareUrl);
-      }
-      
-      showSuccess('Lien copié', 'Le lien a été copié dans le presse-papiers');
-      announceForAccessibility('Lien universel copié dans le presse-papiers');
-    } catch (error) {
-      console.error('Failed to copy link:', error);
-      showError('Erreur', 'Impossible de copier le lien');
-    }
-  }, [showSuccess, showError, announceForAccessibility]);
 
   return (
     <View style={styles.container}>

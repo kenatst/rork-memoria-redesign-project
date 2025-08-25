@@ -164,9 +164,8 @@ export default function ExportAdvancedScreen() {
                 URL.revokeObjectURL(url);
               } else {
                 // Native sharing
-                const { Sharing } = await import('expo-sharing');
+                const Sharing = await import('expo-sharing');
                 if (await Sharing.isAvailableAsync()) {
-                  // In a real app, this would be the actual file path
                   await Sharing.shareAsync('file://path/to/export.zip');
                 }
               }
@@ -199,7 +198,7 @@ export default function ExportAdvancedScreen() {
         const body = encodeURIComponent(`Voici l'export de mes souvenirs MemoryShare.\n\n${photos.length} photos et ${albums.length} albums inclus.`);
         window.open(`mailto:?subject=${subject}&body=${body}`);
       } else {
-        const { MailComposer } = await import('expo-mail-composer');
+        const MailComposer = await import('expo-mail-composer');
         const isAvailable = await MailComposer.isAvailableAsync();
         
         if (isAvailable) {
