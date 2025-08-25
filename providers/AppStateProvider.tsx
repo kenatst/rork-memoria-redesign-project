@@ -3,6 +3,8 @@ import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { trpcClient } from "@/lib/trpc";
 import { Platform } from 'react-native';
+import { useSupabase } from './SupabaseProvider';
+import { useAlbums, usePhotos, useGroups, useComments } from '@/lib/supabase-hooks';
 
 interface Photo {
   id: string;
@@ -83,7 +85,7 @@ interface AppState {
   comments: Comment[];
   photos: Photo[];
   events: Event[];
-  createAlbum: (name: string, groupId?: string) => Album;
+  createAlbum: (name: string, groupId?: string) => Promise<Album>;
   deleteAlbum: (albumId: string) => void;
   addPhotoToAlbum: (albumId: string, photoUri: string) => void;
   createGroup: (name: string, description?: string) => Group;
@@ -147,6 +149,11 @@ interface Notification {
 const KEY = "memoria_app_state_v2";
 
 export const [AppStateProvider, useAppState] = createContextHook<AppState>(() => {
+  const { user } = useSupabase();
+  const { albums: supabaseAlbums, createAlbum: createSupabaseAlbum } = useAlbums();
+  const { photos: supabasePhotos, addPhoto: addSupabasePhoto } = usePhotos();
+  const { groups: supabaseGroups, createGroup: createSupabaseGroup } = useGroups();
+  const { comments: supabaseComments, addComment: addSupabaseComment } = useComments();
   const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(false);
   const [displayName, setDisplayNameState] = useState<string>("Memoria");
   const [points, setPoints] = useState<number>(120);
@@ -264,7 +271,40 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     persist({ points: next });
   }, [persist, points]);
 
-  const createAlbum = useCallback((name: string, groupId?: string) => {
+  const createAlbum = useCallback(async (name: string, groupId?: string) => {
+    if (user && createSupabaseAlbum) {
+      try {
+        const supabaseAlbum = await createSupabaseAlbum({
+          name,
+          description: '',
+          is_public: false,
+          group_id: groupId
+        });
+        
+        const newAlbum: Album = {
+          id: supabaseAlbum.id,
+          name: supabaseAlbum.name,
+          photos: [],
+          createdAt: supabaseAlbum.created_at,
+          groupId: supabaseAlbum.group_id || undefined,
+          isPublic: supabaseAlbum.is_public,
+          likes: [],
+          views: supabaseAlbum.views,
+          lastActivity: supabaseAlbum.updated_at,
+          coverTransform: { scale: 1, offsetX: 0, offsetY: 0 },
+          shareLink: null,
+        };
+        
+        const updatedAlbums = [...albums, newAlbum];
+        setAlbums(updatedAlbums);
+        persist({ albums: updatedAlbums });
+        return newAlbum;
+      } catch (error) {
+        console.error('Failed to create album in Supabase:', error);
+      }
+    }
+    
+    // Fallback to local storage
     const newAlbum: Album = {
       id: Date.now().toString(),
       name,
@@ -279,17 +319,10 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       shareLink: null,
     };
     const updatedAlbums = [...albums, newAlbum];
-
-    let updatedGroups = groups;
-    if (groupId) {
-      updatedGroups = groups.map(g => g.id === groupId ? { ...g, albums: [...g.albums, newAlbum.id] } : g);
-    }
-
     setAlbums(updatedAlbums);
-    setGroups(updatedGroups);
-    persist({ albums: updatedAlbums, groups: updatedGroups });
+    persist({ albums: updatedAlbums });
     return newAlbum;
-  }, [albums, groups, persist]);
+  }, [albums, persist, user, createSupabaseAlbum]);
 
   const deleteAlbum = useCallback((albumId: string) => {
     const updatedAlbums = albums.filter(album => album.id !== albumId);
@@ -620,10 +653,10 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     clearSelection();
   }, [photos, albums, persist, clearSelection]);
 
-  const batchArchivePhotos = useCallback((photoIds: string[]) => {
+  const batchArchivePhotos = useCallback(async (photoIds: string[]) => {
     let archiveAlbum = albums.find(a => a.name === ARCHIVE_ALBUM_NAME);
     if (!archiveAlbum) {
-      archiveAlbum = createAlbum(ARCHIVE_ALBUM_NAME);
+      archiveAlbum = await createAlbum(ARCHIVE_ALBUM_NAME);
     }
     const targetAlbumId = archiveAlbum.id;
     batchMovePhotos(photoIds, targetAlbumId);

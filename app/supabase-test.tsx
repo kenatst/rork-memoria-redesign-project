@@ -151,7 +151,7 @@ export default function SupabaseTestScreen() {
 
   const handleJoinGroup = async () => {
     if (!user || !inviteCode.trim()) {
-      Alert.alert('Erreur', 'Vous devez être connecté et saisir un code d\\'invitation');
+      Alert.alert('Erreur', 'Vous devez être connecté et saisir un code d\'invitation');
       return;
     }
 
@@ -162,7 +162,7 @@ export default function SupabaseTestScreen() {
       Alert.alert('✅ Groupe', `Vous avez rejoint le groupe "${group.name}" !`);
     } catch (error) {
       updateTestResult('groups', 'error');
-      Alert.alert('❌ Erreur', error instanceof Error ? error.message : 'Code d\\'invitation invalide');
+      Alert.alert('❌ Erreur', error instanceof Error ? error.message : 'Code d\'invitation invalide');
     }
   };
 
