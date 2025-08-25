@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, Text, Pressable, Alert, Platform, ScrollView, TextInput, KeyboardAvoidingView, Animated } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { View, StyleSheet, Text, Pressable, Alert, Platform, ScrollView, TextInput, KeyboardAvoidingView, Animated, Dimensions, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -19,11 +19,15 @@ import {
   SkipForward,
   SkipBack,
   Tag,
-  Plus
+  Plus,
+  X,
+  ZoomIn
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import UniversalComments from '@/components/UniversalComments';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface PhotoLike {
   id: string;
@@ -34,7 +38,6 @@ interface PhotoLike {
 
 export default function PhotoDetailScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const id = params.id;
   const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
@@ -42,7 +45,7 @@ export default function PhotoDetailScreen() {
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
   const [commentText, setCommentText] = useState<string>('');
-  const [showComments, setShowComments] = useState<boolean>(true);
+  const [showComments] = useState<boolean>(false);
   const [slideshowMode, setSlideshowMode] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
@@ -50,8 +53,9 @@ export default function PhotoDetailScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [showTagInput, setShowTagInput] = useState<boolean>(false);
   const [newTag, setNewTag] = useState<string>('');
-  const [photoTags, setPhotoTags] = useState<string[]>([]);
   const [showUniversalComments, setShowUniversalComments] = useState<boolean>(false);
+  const [showFullscreen, setShowFullscreen] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState<boolean>(true);
   
   const targetUri = React.useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
@@ -87,15 +91,10 @@ export default function PhotoDetailScreen() {
     [comments, targetUri]
   );
   
-  // Get photo tags
-  useEffect(() => {
+  // Get photo tags - using useMemo to prevent infinite loops
+  const photoTags = useMemo(() => {
     const photoData = photos.find(p => p.uri === targetUri);
-    const tags = photoData?.tags ?? [];
-    setPhotoTags(prev => {
-      const prevStr = JSON.stringify(prev);
-      const nextStr = JSON.stringify(tags);
-      return prevStr === nextStr ? prev : tags;
-    });
+    return photoData?.tags ?? [];
   }, [photos, targetUri]);
   
   const handleHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
@@ -233,14 +232,14 @@ export default function PhotoDetailScreen() {
         clearInterval(slideshowInterval.current);
       }
     };
-  }, [slideshowMode, isPlaying, photo?.albumPhotos.length]);
+  }, [slideshowMode, isPlaying, photo?.albumPhotos.length, handleHapticFeedback]);
   
   const handleAddTag = useCallback(() => {
     if (!newTag.trim() || !targetUri) return;
     const photoData = photos.find(p => p.uri === targetUri);
     if (photoData) {
       addTagToPhoto(photoData.id, newTag.trim());
-      setPhotoTags(prev => [...prev, newTag.trim()]);
+
       setNewTag('');
       setShowTagInput(false);
       handleHapticFeedback('light');
@@ -251,11 +250,20 @@ export default function PhotoDetailScreen() {
     const photoData = photos.find(p => p.uri === targetUri);
     if (photoData) {
       removeTagFromPhoto(photoData.id, tag);
-      setPhotoTags(prev => prev.filter(t => t !== tag));
+
       handleHapticFeedback('light');
     }
   }, [targetUri, photos, removeTagFromPhoto, handleHapticFeedback]);
   
+  const toggleFullscreen = useCallback(() => {
+    setShowFullscreen(!showFullscreen);
+    handleHapticFeedback('light');
+  }, [showFullscreen, handleHapticFeedback]);
+
+  const toggleActions = useCallback(() => {
+    setShowActions(!showActions);
+  }, [showActions]);
+
   if (!photo) {
     return (
       <View style={styles.container}>
@@ -280,7 +288,8 @@ export default function PhotoDetailScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         
         {/* Header */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
+        {showActions && (
+          <View style={styles.header}>
           {Platform.OS !== 'web' ? (
             <BlurView intensity={20} style={styles.headerBlur}>
               <View style={styles.headerContent}>
@@ -328,17 +337,29 @@ export default function PhotoDetailScreen() {
               </View>
             </View>
           )}
-        </View>
+          </View>
+        )}
         
         {/* Photo */}
-        <View style={[styles.photoContainer, { paddingTop: (Math.max(insets.top, 12) + 60), paddingBottom: (Math.max(insets.bottom, 12) + 120) }]}>
+        <Pressable 
+          style={styles.photoContainer} 
+          onPress={toggleActions}
+
+        >
           <Animated.View style={[styles.photoWrapper, { opacity: fadeAnim }]}>
-            <Image 
-              source={{ uri: currentPhoto?.uri || '' }} 
-              style={styles.photo} 
-              contentFit="contain"
-              transition={300}
-            />
+            <Pressable onPress={toggleFullscreen} style={styles.photoTouchable}>
+              <Image 
+                source={{ uri: currentPhoto?.uri || '' }} 
+                style={styles.photo} 
+                contentFit="contain"
+                transition={300}
+              />
+              {!showFullscreen && (
+                <View style={styles.zoomIndicator}>
+                  <ZoomIn color="#FFFFFF" size={20} />
+                </View>
+              )}
+            </Pressable>
           </Animated.View>
           
           {/* Slideshow Controls */}
@@ -395,10 +416,11 @@ export default function PhotoDetailScreen() {
               )}
             </View>
           )}
-        </View>
+        </Pressable>
         
         {/* Actions */}
-        <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 12) + 16 }]}>
+        {showActions && (
+          <View style={styles.actions}>
           {Platform.OS !== 'web' ? (
             <BlurView intensity={30} style={styles.actionsBlur}>
               <View style={styles.actionsContent}>
@@ -458,13 +480,14 @@ export default function PhotoDetailScreen() {
               </View>
             </View>
           )}
-        </View>
+          </View>
+        )}
         
         {/* Comments Section */}
-        {showComments && !slideshowMode && (
+        {showComments && !slideshowMode && showActions && (
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={[styles.commentsContainer, { bottom: (Math.max(insets.bottom, 12) + 100) }]}
+            style={styles.commentsContainer}
           >
             {Platform.OS !== 'web' ? (
               <BlurView intensity={40} style={styles.commentsBlur}>
@@ -561,7 +584,7 @@ export default function PhotoDetailScreen() {
         )}
         
         {/* Tags Section */}
-        {photoTags.length > 0 && !slideshowMode && (
+        {photoTags.length > 0 && !slideshowMode && showActions && (
           <View style={styles.tagsContainer}>
             {Platform.OS !== 'web' ? (
               <BlurView intensity={20} style={styles.tagsBlur}>
@@ -666,6 +689,64 @@ export default function PhotoDetailScreen() {
           </View>
         )}
         
+        {/* Fullscreen Modal */}
+        <Modal
+          visible={showFullscreen}
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setShowFullscreen(false)}
+        >
+          <View style={styles.fullscreenContainer}>
+            <LinearGradient colors={['#000000', '#000000']} style={StyleSheet.absoluteFillObject} />
+            
+            {/* Fullscreen Header */}
+            <SafeAreaView style={styles.fullscreenHeader} edges={['top']}>
+              <Pressable style={styles.fullscreenCloseButton} onPress={() => setShowFullscreen(false)}>
+                <X color="#FFFFFF" size={24} />
+              </Pressable>
+            </SafeAreaView>
+            
+            {/* Fullscreen Photo */}
+            <View style={styles.fullscreenPhotoContainer}>
+              <Image 
+                source={{ uri: currentPhoto?.uri || '' }} 
+                style={styles.fullscreenPhoto} 
+                contentFit="contain"
+                transition={300}
+              />
+            </View>
+            
+            {/* Fullscreen Actions */}
+            <SafeAreaView style={styles.fullscreenActions} edges={['bottom']}>
+              <View style={styles.fullscreenActionsContent}>
+                <Pressable style={styles.fullscreenActionButton} onPress={handleLike}>
+                  <Heart 
+                    color={isLiked ? '#FF6B6B' : '#FFFFFF'} 
+                    size={28} 
+                    fill={isLiked ? '#FF6B6B' : 'transparent'}
+                  />
+                  <Text style={styles.fullscreenActionText}>{likes.length}</Text>
+                </Pressable>
+                
+                <Pressable style={styles.fullscreenActionButton} onPress={() => setShowUniversalComments(true)}>
+                  <MessageCircle color="#FFFFFF" size={28} />
+                  <Text style={styles.fullscreenActionText}>{photoComments.length}</Text>
+                </Pressable>
+                
+                <Pressable style={styles.fullscreenActionButton} onPress={handleShare}>
+                  <Share2 color="#FFFFFF" size={28} />
+                  <Text style={styles.fullscreenActionText}>Partager</Text>
+                </Pressable>
+                
+                <Pressable style={styles.fullscreenActionButton} onPress={handleSave}>
+                  <Download color="#FFFFFF" size={28} />
+                  <Text style={styles.fullscreenActionText}>Sauver</Text>
+                </Pressable>
+              </View>
+            </SafeAreaView>
+          </View>
+        </Modal>
+        
         {/* Universal Comments Modal */}
         <UniversalComments
           visible={showUniversalComments}
@@ -685,7 +766,6 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    paddingTop: 0,
   },
   header: {
     position: 'absolute',
@@ -729,6 +809,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 80,
+    paddingBottom: 120,
+  },
+  photoTouchable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  zoomIndicator: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 20,
+    padding: 8,
   },
   photo: {
     width: '100%',
@@ -1006,6 +1103,61 @@ const styles = StyleSheet.create({
   cancelTagText: {
     color: '#A9AFBC',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  fullscreenContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  fullscreenHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  fullscreenCloseButton: {
+    alignSelf: 'flex-end',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  fullscreenPhotoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenPhoto: {
+    width: screenWidth,
+    height: screenHeight,
+  },
+  fullscreenActions: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  fullscreenActionsContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  fullscreenActionButton: {
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+  },
+  fullscreenActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '600',
   },
 });
