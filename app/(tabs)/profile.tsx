@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Text, ScrollView, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, Share, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -8,12 +8,17 @@ import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import ImagePickerComponent from '@/components/ImagePicker';
 import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { displayName, profileAvatar, albums, groups, photos, updateProfile, points } = useAppState();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editName, setEditName] = useState<string>(displayName);
   const [editAvatar, setEditAvatar] = useState<string | undefined>(profileAvatar);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const handleHapticFeedback = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -34,6 +39,112 @@ export default function ProfileScreen() {
     setEditAvatar(profileAvatar);
     setIsEditing(false);
   }, [displayName, profileAvatar, handleHapticFeedback]);
+
+  const handleExportData = useCallback(async () => {
+    handleHapticFeedback();
+    setIsExporting(true);
+    
+    try {
+      // Create export data
+      const exportData = {
+        profile: {
+          name: displayName,
+          avatar: profileAvatar,
+          points,
+          exportDate: new Date().toISOString()
+        },
+        albums: albums.map(album => ({
+          id: album.id,
+          name: album.name,
+          createdAt: album.createdAt,
+          photoCount: album.photos.length,
+          photos: album.photos.map((photo, index) => ({
+            id: `${album.id}-${index}`,
+            uri: typeof photo === 'string' ? photo : photo,
+            timestamp: new Date().toISOString()
+          }))
+        })),
+        groups: groups.map(group => ({
+          id: group.id,
+          name: group.name,
+          memberCount: group.members.length
+        })),
+        totalPhotos: photos.length,
+        totalAlbums: albums.length,
+        totalGroups: groups.length
+      };
+
+      const jsonData = JSON.stringify(exportData, null, 2);
+      const fileName = `memoria-export-${new Date().toISOString().split('T')[0]}.json`;
+      
+      if (Platform.OS === 'web') {
+        // Web download
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        // Mobile save to documents
+        const fileUri = FileSystem.documentDirectory + fileName;
+        await FileSystem.writeAsStringAsync(fileUri, jsonData);
+        
+        // Request media library permissions and save
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status === 'granted') {
+          await MediaLibrary.saveToLibraryAsync(fileUri);
+        }
+        
+        Alert.alert(
+          'Export terminé',
+          `Vos données ont été exportées vers ${fileName}`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Erreur', 'Impossible d\'exporter les données');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [displayName, profileAvatar, points, albums, groups, photos, handleHapticFeedback]);
+
+  const handleShareProfile = useCallback(async () => {
+    handleHapticFeedback();
+    
+    const profileUrl = `https://memoria.app/profile/${displayName.toLowerCase().replace(/\s+/g, '-')}`;
+    const shareContent = {
+      message: `Découvrez mon profil Memoria ! J'ai ${albums.length} albums et ${photos.length} photos partagées.`,
+      url: profileUrl,
+      title: `Profil de ${displayName} sur Memoria`
+    };
+
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          await navigator.share(shareContent);
+        } else {
+          // Fallback for web
+          await navigator.clipboard.writeText(`${shareContent.message} ${shareContent.url}`);
+          Alert.alert('Lien copié', 'Le lien de votre profil a été copié dans le presse-papiers');
+        }
+      } else {
+        await Share.share(shareContent);
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+      Alert.alert('Erreur', 'Impossible de partager le profil');
+    }
+  }, [displayName, albums.length, photos.length, handleHapticFeedback]);
+
+  const handleOpenSettings = useCallback(() => {
+    handleHapticFeedback();
+    router.push('/notification-settings');
+  }, [router, handleHapticFeedback]);
 
   const totalPhotos = albums?.reduce((sum, album) => sum + (album.photos?.length || 0), 0) || 0;
   const totalLikes = albums?.reduce((sum, album) => sum + (album.likes?.length || 0), 0) || 0;
@@ -161,21 +272,15 @@ export default function ProfileScreen() {
 
             {/* Actions */}
             <View style={styles.actionsContainer}>
-              <Pressable style={styles.actionCard} onPress={() => {
-                handleHapticFeedback();
-                Alert.alert('Fonctionnalité', 'Export des données bientôt disponible');
-              }}>
+              <Pressable style={styles.actionCard} onPress={handleExportData} disabled={isExporting}>
                 <LinearGradient colors={['#131417', '#2A2D34']} style={styles.actionGradient}>
                   <Download color={Colors.palette.accentGold} size={24} />
-                  <Text style={styles.actionTitle}>Exporter mes données</Text>
-                  <Text style={styles.actionSubtitle}>Télécharger toutes vos photos</Text>
+                  <Text style={styles.actionTitle}>{isExporting ? 'Export en cours...' : 'Exporter mes données'}</Text>
+                  <Text style={styles.actionSubtitle}>Télécharger toutes vos données</Text>
                 </LinearGradient>
               </Pressable>
 
-              <Pressable style={styles.actionCard} onPress={() => {
-                handleHapticFeedback();
-                Alert.alert('Fonctionnalité', 'Partage de profil bientôt disponible');
-              }}>
+              <Pressable style={styles.actionCard} onPress={handleShareProfile}>
                 <LinearGradient colors={['#131417', '#2A2D34']} style={styles.actionGradient}>
                   <Share2 color={Colors.palette.taupeDeep} size={24} />
                   <Text style={styles.actionTitle}>Partager mon profil</Text>
@@ -183,10 +288,7 @@ export default function ProfileScreen() {
                 </LinearGradient>
               </Pressable>
 
-              <Pressable style={styles.actionCard} onPress={() => {
-                handleHapticFeedback();
-                Alert.alert('Fonctionnalité', 'Paramètres bientôt disponibles');
-              }}>
+              <Pressable style={styles.actionCard} onPress={handleOpenSettings}>
                 <LinearGradient colors={['#131417', '#2A2D34']} style={styles.actionGradient}>
                   <Settings color={Colors.palette.taupe} size={24} />
                   <Text style={styles.actionTitle}>Paramètres</Text>

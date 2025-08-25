@@ -486,7 +486,7 @@ export default function CaptureScreen() {
           </View>
 
           {/* Bottom Controls */}
-          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 12) + 20 }]}>
+          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 12) + 100 }]}>
             {/* Last Photo Thumbnail */}
             {lastPhoto && (
               <Pressable
@@ -539,7 +539,7 @@ export default function CaptureScreen() {
           </View>
 
           {/* Zoom Controls */}
-          <View style={[styles.zoomControls, { bottom: Math.max(insets.bottom, 12) + 200 }]}>
+          <View style={[styles.zoomControls, { bottom: Math.max(insets.bottom, 12) + 280 }]}>
             <Pressable 
               style={styles.zoomButton} 
               onPress={() => setZoom(z => Math.max(0, +(z - 0.2).toFixed(2)))}

@@ -433,157 +433,140 @@ export default function AlbumsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>        
 
-
-        <Animated.View style={[styles.filtersBar, { transform: [{ translateY: mainSlideAnim }] }]}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.filtersScrollContent}
-            style={styles.filtersScroll}
-          >
-            {(['all', 'recent', 'shared', 'favorites', 'mostViewed', 'lastActivity'] as const).map((key) => {
-              const active = filterType === key;
-              return (
-                <Pressable key={key} style={[styles.chip, active && styles.chipActive]} onPress={() => setFilterType(key)} testID={`chip-${key}`}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                    {key === 'all' ? 'Tous' : key === 'recent' ? 'Récents' : key === 'shared' ? 'Partagés' : key === 'favorites' ? 'Favoris' : key === 'mostViewed' ? 'Top vues' : 'Activité'}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            
-            <View style={styles.separator} />
-            
-            <Pressable onPress={() => setSelectedGroup('all')} style={[styles.groupChip, selectedGroup === 'all' && styles.groupChipActive]} testID="group-all">
-              <Text style={[styles.groupChipText, selectedGroup === 'all' && styles.groupChipTextActive]}>Tous groupes</Text>
-            </Pressable>
-            {groups.map((g) => (
-              <Pressable key={g.id} onPress={() => setSelectedGroup(g.id)} style={[styles.groupChip, selectedGroup === g.id && styles.groupChipActive]} testID={`group-${g.id}`}>
-                <Text style={[styles.groupChipText, selectedGroup === g.id && styles.groupChipTextActive]}>{g.name}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          
-          <View style={styles.filtersActions}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Albums</Text>
+          <View style={styles.headerActions}>
             <Pressable 
-              style={styles.round} 
+              style={styles.headerButton} 
               onPress={() => {
                 handleHaptic('light');
                 setShowAdvancedSearch(true);
               }} 
               testID="advanced-search"
-              accessibilityLabel={getAccessibleLabel('Recherche avancée', 'Ouvre la recherche avec filtres')}
-              accessibilityRole="button"
             >
-              <Search color={Colors.palette.taupe} size={18} />
+              <Search color={Colors.palette.accentGold} size={20} />
             </Pressable>
-            <Pressable style={styles.round} onPress={toggleView} testID="toggle-view">
-              {viewMode === 'grid' ? <Grid3X3 color={Colors.palette.taupe} size={18} /> : <List color={Colors.palette.taupe} size={18} />}
+            <Pressable style={styles.headerButton} onPress={toggleView} testID="toggle-view">
+              {viewMode === 'grid' ? <Grid3X3 color={Colors.palette.accentGold} size={20} /> : <List color={Colors.palette.accentGold} size={20} />}
             </Pressable>
           </View>
-        </Animated.View>
+        </View>
 
-        {/* Search Results Indicator */}
-        {searchResults && (
-          <View style={styles.searchResultsIndicator}>
-            <Text style={styles.searchResultsText}>
-              Résultats de recherche: {searchResults.albums.length} album(s), {searchResults.photos.length} photo(s)
-            </Text>
-            <Pressable 
-              style={styles.clearSearchBtn} 
-              onPress={() => {
-                setSearchResults(null);
-                handleHaptic('light');
-              }}
-              testID="clear-search"
-            >
-              <Text style={styles.clearSearchText}>Effacer</Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View style={styles.headerActions}>
-          <Pressable 
-            style={[styles.round, styles.cameraBtn]} 
-            onPress={() => { handleHaptic('medium'); router.push('/(tabs)/capture'); }} 
-            testID="albums-camera-btn"
-            accessibilityLabel={getAccessibleLabel('Ouvrir l\'appareil photo', 'Appuyez pour capturer de nouvelles photos')}
-            accessibilityRole="button"
-          >
-            <Camera color="#000" size={22} />
-          </Pressable>
-          
+        {/* Create Album Card */}
+        <View style={styles.createAlbumSection}>
           <Pressable style={styles.createCard} onPress={() => { handleHaptic('medium'); setShowCreate(true); }} testID="create-album">
-            <LinearGradient colors={['#1a1a1a', '#2A2D34']} style={styles.createGradient}>
-              <View style={styles.createLeft}><Plus color={Colors.palette.taupeDeep} size={20} /></View>
-              <View style={styles.createRight}>
-                <Text style={styles.createTitle}>Créer un album</Text>
-                <Text style={styles.createSub}>Organisez vos souvenirs</Text>
-              </View>
+            <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.createGradient}>
+              <Plus color="#000" size={24} />
+              <Text style={styles.createTitle}>Créer un nouvel album</Text>
             </LinearGradient>
           </Pressable>
         </View>
 
-        <ScrollView
-          style={styles.albumsContainer}
-          contentContainerStyle={styles.albumsContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefreshAlbums} tintColor="#FFD700" colors={["#FFD700"]} progressBackgroundColor="#1a1a1a" />}
-        >
+        {/* Filters */}
+        <View style={styles.filtersContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.filtersContent}
+          >
+            {(['all', 'recent', 'shared', 'favorites', 'mostViewed', 'lastActivity'] as const).map((key) => {
+              const active = filterType === key;
+              return (
+                <Pressable key={key} style={[styles.filterChip, active && styles.filterChipActive]} onPress={() => setFilterType(key)} testID={`chip-${key}`}>
+                  <Text style={[styles.filterText, active && styles.filterTextActive]}>
+                    {key === 'all' ? 'Tous' : key === 'recent' ? 'Récents' : key === 'shared' ? 'Partagés' : key === 'favorites' ? 'Favoris' : key === 'mostViewed' ? 'Top vues' : 'Activité'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-
-          {/* Skeleton grid for perceived performance */}
-          {!filteredAlbums.length && (
-            <View style={styles.skeletonGrid}>
-              {Array.from({ length: viewMode === 'grid' ? 6 : 4 }).map((_, i) => (
-                <View key={i} style={[viewMode === 'grid' ? styles.skeletonCard : styles.skeletonList]} testID={`album-skeleton-${i}`} />
-              ))}
+        {/* Albums Grid */}
+        <View style={styles.albumsContainer}>
+          {filteredAlbums.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Camera color={Colors.palette.taupe} size={48} />
+              <Text style={styles.emptyTitle}>Aucun album</Text>
+              <Text style={styles.emptySubtitle}>Créez votre premier album pour commencer</Text>
             </View>
-          )}
-
-          <View style={styles.flashListContainer}>
+          ) : (
             <FlashList
               data={filteredAlbums}
               renderItem={({ item: album, index }) => {
-                const Icon = AlbumIcon(album.type);
-                const PIcon = PrivacyIcon(album.privacy);
-                const anim = albumAnimations[index % albumAnimations.length];
-                const color = (typeColor as any)[album.type] as string;
-                const card = (
-                  <AlbumCard
-                    album={{ id: album.id, name: album.name, coverImage: album.coverImage, photoCount: album.photoCount, lastUpdated: album.lastUpdated, isActive: album.isActive, coverTransform: album.coverTransform }}
-                    viewMode={viewMode}
-                    isFavorite={favoriteAlbumIds.includes(album.id)}
-                    color={color}
-                    Icon={Icon}
-                    PIcon={PIcon}
-                    glow={glowAnim}
-                    formatDate={formatDate}
-                    onPress={(id) => { handleHaptic('medium'); router.push(`/album/${id}`); }}
-                    onToggleFavorite={(id) => toggleFavoriteAlbum(id)}
-                    testID={`album-${album.id}`}
-                  />
-                );
+                const isFavorite = favoriteAlbumIds.includes(album.id);
                 return (
-                  <Animated.View style={[viewMode === 'grid' ? styles.albumCard : styles.albumListItem, { opacity: anim.opacity, transform: [{ scale: anim.scale }, { translateY: anim.translateY }] }]}>
-                    {Platform.OS !== 'web' ? (
-                      <BlurView intensity={12} style={styles.albumBlur}>{card}</BlurView>
-                    ) : (
-                      <View style={[styles.albumBlur, styles.webBlur]}>{card}</View>
-                    )}
+                  <Animated.View style={[styles.albumItem, { opacity: mainFadeAnim }]}>
+                    <Pressable
+                      style={styles.albumPressable}
+                      onPress={() => {
+                        handleHaptic('medium');
+                        router.push(`/album/${album.id}`);
+                      }}
+                    >
+                      <View style={styles.albumImageContainer}>
+                        <Image
+                          source={{ uri: album.coverImage }}
+                          style={styles.albumImage}
+                          contentFit="cover"
+                          transition={300}
+                        />
+                        <LinearGradient
+                          colors={['transparent', 'rgba(0,0,0,0.8)']}
+                          style={styles.albumOverlay}
+                        />
+                        
+                        {/* Favorite Button */}
+                        <Pressable
+                          style={[styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
+                          onPress={() => {
+                            handleHaptic('light');
+                            toggleFavoriteAlbum(album.id);
+                          }}
+                        >
+                          <Heart
+                            size={16}
+                            color={isFavorite ? '#FF4444' : '#FFFFFF'}
+                            fill={isFavorite ? '#FF4444' : 'transparent'}
+                          />
+                        </Pressable>
+                      </View>
+                      
+                      <View style={styles.albumInfo}>
+                        <Text style={styles.albumName} numberOfLines={1}>
+                          {album.name}
+                        </Text>
+                        <Text style={styles.albumStats}>
+                          {album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}
+                        </Text>
+                        <Text style={styles.albumDate}>
+                          {formatDate(album.lastUpdated)}
+                        </Text>
+                      </View>
+                    </Pressable>
                   </Animated.View>
                 );
               }}
               keyExtractor={(item) => item.id}
               numColumns={viewMode === 'grid' ? 2 : 1}
               key={viewMode}
-              estimatedItemSize={viewMode === 'grid' ? 200 : 100}
-              contentContainerStyle={styles.flashListContent}
+              estimatedItemSize={viewMode === 'grid' ? 220 : 100}
+              contentContainerStyle={styles.albumsContent}
               showsVerticalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={{ height: viewMode === 'grid' ? 16 : 12 }} />}
+              ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+              refreshControl={
+                <RefreshControl 
+                  refreshing={refreshing} 
+                  onRefresh={handleRefreshAlbums} 
+                  tintColor="#FFD700" 
+                  colors={["#FFD700"]} 
+                  progressBackgroundColor="#1a1a1a" 
+                />
+              }
             />
-          </View>
-        </ScrollView>
+          )}
+        </View>
 
         {/* Advanced Search Modal */}
         {showAdvancedSearch && (
@@ -736,9 +719,34 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onTo
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
-  safeArea: { flex: 1, paddingTop: 0 },
-  content: { flex: 1, paddingTop: 12 },
-  header: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, gap: 12 },
+  safeArea: { flex: 1 },
+  content: { flex: 1 },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    paddingHorizontal: 20, 
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)'
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: Colors.palette.taupeDeep
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,215,0,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 56, height: 56, borderRadius: 28 },
   userInfo: { flex: 1 },
@@ -750,15 +758,52 @@ const styles = StyleSheet.create({
   linkCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.06)', padding: 12, borderRadius: 14 },
   linkLeft: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
   linkText: { color: Colors.palette.taupeDeep, fontSize: 14, fontWeight: '700' },
-  filtersBar: { paddingHorizontal: 20, paddingVertical: 16 },
-  filtersScroll: { flex: 1 },
-  filtersScrollContent: { alignItems: 'center', gap: 10, paddingRight: 20 },
-  filtersActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 10 },
-  separator: { width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)' },
-  chipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
-  chipText: { color: Colors.palette.taupe, fontWeight: '700' },
-  chipTextActive: { color: '#FFD700' },
+  createAlbumSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16
+  },
+  createCard: {
+    borderRadius: 16,
+    overflow: 'hidden'
+  },
+  createGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20
+  },
+  createTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000000'
+  },
+  filtersContainer: {
+    paddingVertical: 12
+  },
+  filtersContent: {
+    paddingHorizontal: 20,
+    gap: 12
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)'
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(255,215,0,0.2)'
+  },
+  filterText: {
+    color: Colors.palette.taupe,
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  filterTextActive: {
+    color: '#FFD700',
+    fontWeight: '700'
+  },
   offlineBadge: { alignSelf: 'flex-end', backgroundColor: '#FF4444', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginBottom: 8 },
   offlineText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
@@ -766,16 +811,92 @@ const styles = StyleSheet.create({
   groupChipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
   groupChipText: { color: Colors.palette.taupe, fontSize: 12, fontWeight: '700' },
   groupChipTextActive: { color: '#FFD700' },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 16 },
-  createCard: { flex: 1, borderRadius: 16, overflow: 'hidden' },
-  createGradient: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+
   createLeft: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   createRight: { flex: 1 },
-  createTitle: { fontSize: 16, fontWeight: '800', color: Colors.palette.taupeDeep },
+
   createSub: { fontSize: 12, color: Colors.palette.taupe },
 
-  albumsContainer: { flex: 1, paddingHorizontal: 20 },
-  albumsContent: { paddingBottom: 140 },
+  albumsContainer: {
+    flex: 1,
+    paddingHorizontal: 20
+  },
+  albumsContent: {
+    paddingBottom: 120
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.palette.taupeDeep,
+    marginTop: 16,
+    marginBottom: 8
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: Colors.palette.taupe,
+    textAlign: 'center'
+  },
+  albumItem: {
+    marginBottom: 16
+  },
+  albumPressable: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#131417'
+  },
+  albumImageContainer: {
+    height: 140,
+    position: 'relative'
+  },
+  albumImage: {
+    width: '100%',
+    height: '100%'
+  },
+  albumOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%'
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  favoriteButtonActive: {
+    backgroundColor: 'rgba(255,68,68,0.9)'
+  },
+  albumInfo: {
+    padding: 16
+  },
+  albumName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.palette.taupeDeep,
+    marginBottom: 4
+  },
+  albumStats: {
+    fontSize: 12,
+    color: Colors.palette.taupe,
+    marginBottom: 4
+  },
+  albumDate: {
+    fontSize: 11,
+    color: Colors.palette.taupe
+  },
   webBlur: { backgroundColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' as any },
   flashListContainer: { flex: 1, minHeight: 400 },
   flashListContent: { paddingBottom: 20 },
@@ -783,12 +904,12 @@ const styles = StyleSheet.create({
   albumsList: { gap: 12 },
   albumCard: { width: (screenWidth - 56) / 2, borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
   albumListItem: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
-  albumPressable: { borderRadius: 16, overflow: 'hidden' },
+
   albumBlur: { borderRadius: 16 },
   albumCardContent: { borderRadius: 16 },
-  albumImageContainer: { position: 'relative', height: 140, overflow: 'hidden' },
+
   albumCover: { width: '100%', height: '100%', backgroundColor: '#1a1a1a' },
-  albumOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+
   favoriteBadgeWrap: { position: 'absolute', top: 8, left: 8 },
   favoriteBadge: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
   favoriteBadgeActive: { backgroundColor: 'rgba(255,215,0,0.9)' },
@@ -799,11 +920,9 @@ const styles = StyleSheet.create({
   liveText: { color: '#000000', fontSize: 10, fontWeight: '800' },
   typeBadge: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.3)' },
   privacyBadge: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
-  albumInfo: { padding: 12, gap: 6, backgroundColor: '#131417' },
-  albumName: { color: Colors.palette.taupeDeep, fontSize: 14, fontWeight: '700', lineHeight: 18 },
+
   albumMeta: { flexDirection: 'row', alignItems: 'center' },
-  albumStats: { color: Colors.palette.taupe, fontSize: 12 },
-  albumDate: { color: Colors.palette.taupe, fontSize: 11 },
+
   groupBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginTop: 4 },
   groupBadgeText: { color: Colors.palette.taupe, fontSize: 10, fontWeight: '700' },
   albumListContent: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
@@ -841,8 +960,7 @@ const styles = StyleSheet.create({
   statusText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   privateBadge: { backgroundColor: 'rgba(255,68,68,0.2)' },
   publicBadge: { backgroundColor: 'rgba(34,197,94,0.2)' },
-  favoriteButton: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
-  favoriteButtonActive: { backgroundColor: 'rgba(255,215,0,0.9)' },
+
   albumCardList: { flexDirection: 'row', alignItems: 'center', padding: 12 },
   albumCoverList: { width: 60, height: 60, borderRadius: 12 },
   albumInfoList: { flex: 1, marginLeft: 12 },
