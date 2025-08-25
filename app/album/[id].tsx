@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Dimensions, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { AlbumExport } from '@/components/AlbumExport';
@@ -19,6 +20,7 @@ const { width: screenWidth } = Dimensions.get('window');
 export default function AlbumDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { 
     albums, 
     addPhotoToAlbum, 
@@ -191,7 +193,7 @@ export default function AlbumDetailScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} />
 
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]>
         <Pressable style={styles.backBtn} onPress={() => router.back()} testID="back-btn">
           <ArrowLeft color="#FFD700" size={24} />
         </Pressable>
@@ -448,7 +450,7 @@ export default function AlbumDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   loadingText: { color: '#fff', textAlign: 'center', marginTop: '50%' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800', flex: 1, marginLeft: 12 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },

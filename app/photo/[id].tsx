@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, StyleSheet, Text, Pressable, Alert, Platform, ScrollView, TextInput, KeyboardAvoidingView, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -34,6 +34,7 @@ interface PhotoLike {
 
 export default function PhotoDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
   
@@ -88,9 +89,12 @@ export default function PhotoDetailScreen() {
   // Get photo tags
   useEffect(() => {
     const photoData = photos.find(p => p.uri === targetUri);
-    if (photoData?.tags) {
-      setPhotoTags(photoData.tags);
-    }
+    const tags = photoData?.tags ?? [];
+    setPhotoTags(prev => {
+      const prevStr = JSON.stringify(prev);
+      const nextStr = JSON.stringify(tags);
+      return prevStr === nextStr ? prev : tags;
+    });
   }, [photos, targetUri]);
   
   const handleHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
@@ -206,8 +210,17 @@ export default function PhotoDetailScreen() {
   // Auto-play slideshow
   useEffect(() => {
     if (slideshowMode && isPlaying && photo) {
+      if (slideshowInterval.current) {
+        clearInterval(slideshowInterval.current);
+        slideshowInterval.current = null;
+      }
+      const total = photo.albumPhotos.length;
       slideshowInterval.current = setInterval(() => {
-        nextPhoto();
+        setCurrentPhotoIndex(prev => {
+          const next = (prev + 1) % Math.max(total, 1);
+          return next;
+        });
+        handleHapticFeedback('light');
       }, 3000) as unknown as number; // Change photo every 3 seconds
     } else if (slideshowInterval.current) {
       clearInterval(slideshowInterval.current);
@@ -219,7 +232,7 @@ export default function PhotoDetailScreen() {
         clearInterval(slideshowInterval.current);
       }
     };
-  }, [slideshowMode, isPlaying, nextPhoto, photo]);
+  }, [slideshowMode, isPlaying, photo?.albumPhotos.length]);
   
   const handleAddTag = useCallback(() => {
     if (!newTag.trim() || !targetUri) return;
@@ -266,7 +279,7 @@ export default function PhotoDetailScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
           {Platform.OS !== 'web' ? (
             <BlurView intensity={20} style={styles.headerBlur}>
               <View style={styles.headerContent}>
@@ -317,7 +330,7 @@ export default function PhotoDetailScreen() {
         </View>
         
         {/* Photo */}
-        <View style={styles.photoContainer}>
+        <View style={[styles.photoContainer, { paddingTop: (Math.max(insets.top, 12) + 60), paddingBottom: (Math.max(insets.bottom, 12) + 120) }]}>
           <Animated.View style={[styles.photoWrapper, { opacity: fadeAnim }]}>
             <Image 
               source={{ uri: currentPhoto?.uri || '' }} 
@@ -384,7 +397,7 @@ export default function PhotoDetailScreen() {
         </View>
         
         {/* Actions */}
-        <View style={styles.actions}>
+        <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 12) + 16 }]>
           {Platform.OS !== 'web' ? (
             <BlurView intensity={30} style={styles.actionsBlur}>
               <View style={styles.actionsContent}>
@@ -450,7 +463,7 @@ export default function PhotoDetailScreen() {
         {showComments && !slideshowMode && (
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.commentsContainer}
+            style={[styles.commentsContainer, { bottom: (Math.max(insets.bottom, 12) + 100) }]}
           >
             {Platform.OS !== 'web' ? (
               <BlurView intensity={40} style={styles.commentsBlur}>
@@ -679,7 +692,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
-    paddingTop: 50,
   },
   headerBlur: {
     paddingVertical: 12,
@@ -716,8 +728,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
-    paddingBottom: 120,
   },
   photo: {
     width: '100%',
@@ -730,7 +740,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
-    paddingBottom: 40,
   },
   actionsBlur: {
     paddingVertical: 16,
@@ -761,7 +770,6 @@ const styles = StyleSheet.create({
   },
   commentsContainer: {
     position: 'absolute',
-    bottom: 100,
     left: 0,
     right: 0,
     maxHeight: '50%',
