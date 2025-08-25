@@ -181,14 +181,17 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   const ARCHIVE_ALBUM_NAME = 'Archives';
 
   const mountedRef = useRef<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   useEffect(() => {
     mountedRef.current = true;
     let syncTimeout: ReturnType<typeof setTimeout> | undefined;
-    (async () => {
+    
+    const initializeState = async () => {
       try {
         const raw = await AsyncStorage.getItem(KEY);
         if (!mountedRef.current) return;
+        
         if (raw) {
           const data = JSON.parse(raw) as { 
             onboardingComplete?: boolean; 
@@ -203,28 +206,35 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
             profileAvatar?: string;
             favoriteGroups?: string[];
           };
-          setOnboardingCompleteState(Boolean(data.onboardingComplete));
-          setDisplayNameState(data.displayName ?? "Memoria");
-          setPoints(typeof data.points === "number" ? data.points : 120);
-          setAlbums(data.albums ?? []);
-          setGroups(data.groups ?? []);
-          setComments(data.comments ?? []);
-          setPhotos(data.photos ?? []);
-          setFavoriteAlbums(data.favoriteAlbums ?? []);
-          setFavoriteGroups(data.favoriteGroups ?? []);
-          setLastSync(data.lastSync);
-          setProfileAvatar(data.profileAvatar);
+          
+          if (mountedRef.current) {
+            setOnboardingCompleteState(Boolean(data.onboardingComplete));
+            setDisplayNameState(data.displayName ?? "Memoria");
+            setPoints(typeof data.points === "number" ? data.points : 120);
+            setAlbums(data.albums ?? []);
+            setGroups(data.groups ?? []);
+            setComments(data.comments ?? []);
+            setPhotos(data.photos ?? []);
+            setFavoriteAlbums(data.favoriteAlbums ?? []);
+            setFavoriteGroups(data.favoriteGroups ?? []);
+            setLastSync(data.lastSync);
+            setProfileAvatar(data.profileAvatar);
+          }
         }
-        // Delay sync initialization to avoid dependency issues
-        syncTimeout = setTimeout(() => { 
-          if (mountedRef.current) { 
-            // Call syncData after component is fully mounted
-          } 
-        }, 1000);
+        
+        if (mountedRef.current) {
+          setIsInitialized(true);
+        }
       } catch (e) {
-        console.log("Load AppState error", e);
+        console.error("Load AppState error", e);
+        if (mountedRef.current) {
+          setIsInitialized(true);
+        }
       }
-    })();
+    };
+    
+    initializeState();
+    
     return () => {
       mountedRef.current = false;
       if (syncTimeout) clearTimeout(syncTimeout);
@@ -426,8 +436,11 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     };
     const prev = comments;
     const next = [...comments, optimistic];
-    setComments(next);
-    persist({ comments: next });
+    
+    if (mountedRef.current) {
+      setComments(next);
+      persist({ comments: next });
+    }
 
     (async () => {
       try {
@@ -442,13 +455,17 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
             albumId: created.album_id ?? undefined,
           };
           const replaced = (curr: Comment[]) => curr.map(c => c.id === tempId ? mapped : c);
-          setComments(replaced);
-          persist({ comments: replaced(next) });
+          if (mountedRef.current) {
+            setComments(replaced);
+            persist({ comments: replaced(next) });
+          }
         }
       } catch (e) {
         console.error('addComment sync failed', e);
-        setComments(prev);
-        persist({ comments: prev });
+        if (mountedRef.current) {
+          setComments(prev);
+          persist({ comments: prev });
+        }
       }
     })();
 
@@ -481,8 +498,11 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         ? { ...photo, likes: [...photo.likes, displayName] }
         : photo
     );
-    setPhotos(optimistic);
-    persist({ photos: optimistic });
+    
+    if (mountedRef.current) {
+      setPhotos(optimistic);
+      persist({ photos: optimistic });
+    }
 
     (async () => {
       try {
@@ -500,8 +520,10 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         }
       } catch (e) {
         console.error('likePhoto sync failed', e);
-        setPhotos(prev);
-        persist({ photos: prev });
+        if (mountedRef.current) {
+          setPhotos(prev);
+          persist({ photos: prev });
+        }
       }
     })();
   }, [photos, displayName, persist, user]);
@@ -700,9 +722,12 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   }, [albums, addNotification]);
 
   const syncData = useCallback(async (retryCount = 0) => {
+    if (!mountedRef.current || !isInitialized) return;
+    
     try {
       if (mountedRef.current) setIsOnline(true);
       console.log('Starting sync...', { photosCount: photos.length, albumsCount: albums.length });
+      
       const result = await trpcClient.photos.sync.mutate({
         photos,
         comments,
@@ -710,13 +735,16 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         groups,
         lastSync
       });
+      
       if (!mountedRef.current) return;
+      
       const newLastSync = result.syncedAt;
       setLastSync(newLastSync);
       persist({ lastSync: newLastSync });
+      
       if (result.conflicts && result.conflicts.length > 0) {
         console.log('Resolving conflicts:', result.conflicts);
-        if (result.serverData) {
+        if (result.serverData && mountedRef.current) {
           setPhotos(result.serverData.photos as Photo[]);
           setAlbums(result.serverData.albums as Album[]);
           setGroups(result.serverData.groups as Group[]);
@@ -733,13 +761,18 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     } catch (error) {
       console.error('Sync failed:', error);
       if (mountedRef.current) setIsOnline(false);
-      if (retryCount < 3) {
+      
+      if (retryCount < 3 && mountedRef.current) {
         const delay = Math.pow(2, retryCount) * 1000;
         console.log(`Retrying sync in ${delay}ms...`);
-        setTimeout(() => { if (mountedRef.current) { syncData(retryCount + 1); } }, delay);
+        setTimeout(() => { 
+          if (mountedRef.current) { 
+            syncData(retryCount + 1); 
+          } 
+        }, delay);
       }
     }
-  }, [photos, comments, albums, groups, lastSync, persist]);
+  }, [photos, comments, albums, groups, lastSync, persist, isInitialized]);
 
   const batchSelectPhotos = useCallback((photoIds: string[]) => {
     setSelectedPhotos(prev => {

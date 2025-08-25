@@ -40,8 +40,10 @@ export default function PhotoDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = params.id;
+  
+  // Memoize the app state to prevent re-renders
   const appState = useAppState();
-  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = appState;
+  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useMemo(() => appState, [appState]);
   
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -58,10 +60,12 @@ export default function PhotoDetailScreen() {
   const [showFullscreen, setShowFullscreen] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(true);
   
-  const targetUri = React.useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
+  const targetUri = useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
-  // Trouver la photo dans les albums
-  const photo = React.useMemo(() => {
+  // Trouver la photo dans les albums - memoized to prevent infinite loops
+  const photo = useMemo(() => {
+    if (!targetUri || !albums || albums.length === 0) return null;
+    
     for (const album of albums) {
       const photoIndex = album.photos.findIndex(p => p === targetUri);
       if (photoIndex !== -1) {
@@ -77,8 +81,8 @@ export default function PhotoDetailScreen() {
     return null;
   }, [albums, targetUri]);
   
-  // Current photo for slideshow
-  const currentPhoto = React.useMemo(() => {
+  // Current photo for slideshow - memoized to prevent re-renders
+  const currentPhoto = useMemo(() => {
     if (!photo || !slideshowMode) return photo;
     return {
       ...photo,
@@ -87,14 +91,14 @@ export default function PhotoDetailScreen() {
     };
   }, [photo, slideshowMode, currentPhotoIndex]);
   
-  const photoComments = React.useMemo(() => 
-    comments.filter(c => c.photoId === targetUri),
-    [comments, targetUri]
-  );
+  const photoComments = useMemo(() => {
+    if (!targetUri || !comments) return [];
+    return comments.filter(c => c.photoId === targetUri);
+  }, [comments, targetUri]);
   
   // Get photo tags - using useMemo to prevent infinite loops
   const photoTags = useMemo(() => {
-    if (!targetUri || !photos) return [];
+    if (!targetUri || !photos || photos.length === 0) return [];
     const photoData = photos.find(p => p.uri === targetUri);
     return photoData?.tags ?? [];
   }, [photos, targetUri]);
@@ -237,11 +241,10 @@ export default function PhotoDetailScreen() {
   }, [slideshowMode, isPlaying, photo?.albumPhotos.length, handleHapticFeedback]);
   
   const handleAddTag = useCallback(() => {
-    if (!newTag.trim() || !targetUri) return;
+    if (!newTag.trim() || !targetUri || !photos) return;
     const photoData = photos.find(p => p.uri === targetUri);
     if (photoData) {
       addTagToPhoto(photoData.id, newTag.trim());
-
       setNewTag('');
       setShowTagInput(false);
       handleHapticFeedback('light');
@@ -249,10 +252,10 @@ export default function PhotoDetailScreen() {
   }, [newTag, targetUri, photos, addTagToPhoto, handleHapticFeedback]);
   
   const handleRemoveTag = useCallback((tag: string) => {
+    if (!targetUri || !photos) return;
     const photoData = photos.find(p => p.uri === targetUri);
     if (photoData) {
       removeTagFromPhoto(photoData.id, tag);
-
       handleHapticFeedback('light');
     }
   }, [targetUri, photos, removeTagFromPhoto, handleHapticFeedback]);

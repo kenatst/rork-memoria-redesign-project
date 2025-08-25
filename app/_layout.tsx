@@ -4,7 +4,8 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { ErrorBoundary as StabilityErrorBoundary } from "@/components/ErrorHandling";
 import { AppStateProvider } from "@/providers/AppStateProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
@@ -148,7 +149,9 @@ export default function RootLayout() {
                             <GestureHandlerRootView style={{ flex: 1 }}>
                               <StatusBar style="light" backgroundColor="#000000" />
                               <ErrorBoundary>
-                                <RootLayoutNav />
+                                <StabilityErrorBoundary>
+                                  <RootLayoutNav />
+                                </StabilityErrorBoundary>
                               </ErrorBoundary>
                               <Toast />
                             </GestureHandlerRootView>
