@@ -486,7 +486,7 @@ export default function CaptureScreen() {
           </View>
 
           {/* Bottom Controls */}
-          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 12) + 100 }]}>
+          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 12) + 20 }]}>
             {/* Last Photo Thumbnail */}
             {lastPhoto && (
               <Pressable

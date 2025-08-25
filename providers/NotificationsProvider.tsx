@@ -1,14 +1,18 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useAppState } from '@/providers/AppStateProvider';
+import * as Haptics from 'expo-haptics';
 
 interface NotificationsContextValue {
   permissionStatus: Notifications.PermissionStatus | 'unavailable';
   requestPermissions: () => Promise<Notifications.PermissionStatus | 'unavailable'>;
   scheduleLocalNotification: (title: string, body: string, data?: Record<string, unknown>) => Promise<string | null>;
+  schedulePushNotification: (title: string, body: string, delay?: number) => Promise<string | null>;
   lastNotification?: Notifications.Notification;
+  sendPhotoLikeNotification: (photoId: string, albumName: string) => Promise<void>;
+  sendCommentNotification: (photoId: string, albumName: string, comment: string) => Promise<void>;
 }
 
 Notifications.setNotificationHandler({
@@ -51,6 +55,12 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
 
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       setLastNotification(notification);
+      
+      // Haptic feedback for notifications
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
       try {
         const content = notification.request.content;
         addNotification({
@@ -104,10 +114,56 @@ export const [NotificationsProvider, useNotifications] = createContextHook<Notif
     }
   }, []);
 
+  const schedulePushNotification = useCallback(async (title: string, body: string, delay: number = 0) => {
+    if (Platform.OS === 'web') {
+      // Web notification fallback
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/icon.png' });
+      }
+      return null;
+    }
+    
+    try {
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: 'default',
+          badge: 1,
+        },
+        trigger: delay > 0 ? null : null,
+      });
+      return id;
+    } catch (e) {
+      console.log('Schedule push notification error', e);
+      return null;
+    }
+  }, []);
+
+  const sendPhotoLikeNotification = useCallback(async (photoId: string, albumName: string) => {
+    await schedulePushNotification(
+      '❤️ Nouveau like !',
+      `Votre photo dans "${albumName}" a reçu un like`,
+      0
+    );
+  }, [schedulePushNotification]);
+
+  const sendCommentNotification = useCallback(async (photoId: string, albumName: string, comment: string) => {
+    const truncatedComment = comment.length > 50 ? comment.substring(0, 50) + '...' : comment;
+    await schedulePushNotification(
+      '💬 Nouveau commentaire !',
+      `"${truncatedComment}" sur votre photo dans "${albumName}"`,
+      0
+    );
+  }, [schedulePushNotification]);
+
   return useMemo(() => ({
     permissionStatus,
     requestPermissions,
     scheduleLocalNotification,
+    schedulePushNotification,
     lastNotification,
-  }), [permissionStatus, requestPermissions, scheduleLocalNotification, lastNotification]);
+    sendPhotoLikeNotification,
+    sendCommentNotification,
+  }), [permissionStatus, requestPermissions, scheduleLocalNotification, schedulePushNotification, lastNotification, sendPhotoLikeNotification, sendCommentNotification]);
 });

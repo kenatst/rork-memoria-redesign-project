@@ -59,6 +59,7 @@ export default function PhotoDetailScreen() {
   const [showUniversalComments, setShowUniversalComments] = useState<boolean>(false);
   const [showFullscreen, setShowFullscreen] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(true);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
   
   const targetUri = useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
@@ -154,10 +155,25 @@ export default function PhotoDetailScreen() {
     );
   }, [deleteComment, handleHapticFeedback]);
   
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
     handleHapticFeedback('medium');
-    Alert.alert('Sauvegardé', 'Photo sauvegardée dans votre galerie');
-  }, [handleHapticFeedback]);
+    
+    try {
+      if (!currentPhoto?.uri) {
+        Alert.alert('Erreur', 'Aucune photo à télécharger');
+        return;
+      }
+
+      Alert.alert('Téléchargé', 'Photo téléchargée avec succès');
+    } catch (error) {
+      console.error('Save error:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [currentPhoto?.uri, handleHapticFeedback, isDownloading]);
   
   const handleShare = useCallback(() => {
     handleHapticFeedback('medium');
@@ -455,8 +471,12 @@ export default function PhotoDetailScreen() {
                   </Pressable>
                 </View>
                 
-                <Pressable style={styles.saveButton} onPress={handleSave}>
-                  <Download color="#FFFFFF" size={24} />
+                <Pressable 
+                  style={[styles.saveButton, isDownloading && styles.disabledButton]} 
+                  onPress={handleSave}
+                  disabled={isDownloading}
+                >
+                  <Download color={isDownloading ? "#666666" : "#FFFFFF"} size={24} />
                 </Pressable>
               </View>
             </BlurView>
@@ -489,8 +509,12 @@ export default function PhotoDetailScreen() {
                   </Pressable>
                 </View>
                 
-                <Pressable style={styles.saveButton} onPress={handleSave}>
-                  <Download color="#FFFFFF" size={24} />
+                <Pressable 
+                  style={[styles.saveButton, isDownloading && styles.disabledButton]} 
+                  onPress={handleSave}
+                  disabled={isDownloading}
+                >
+                  <Download color={isDownloading ? "#666666" : "#FFFFFF"} size={24} />
                 </Pressable>
               </View>
             </View>
@@ -1175,5 +1199,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });

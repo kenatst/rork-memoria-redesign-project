@@ -118,7 +118,7 @@ export default function ProfileScreen() {
     
     const profileUrl = `https://memoria.app/profile/${displayName.toLowerCase().replace(/\s+/g, '-')}`;
     const shareContent = {
-      message: `Découvrez mon profil Memoria ! J'ai ${albums.length} albums et ${photos.length} photos partagées.`,
+      message: `Découvrez mon profil Memoria ! J'ai ${albums.length} albums et ${photos.length} photos partagées. ${profileUrl}`,
       url: profileUrl,
       title: `Profil de ${displayName} sur Memoria`
     };
@@ -129,14 +129,25 @@ export default function ProfileScreen() {
           await navigator.share(shareContent);
         } else {
           // Fallback for web
-          await navigator.clipboard.writeText(`${shareContent.message} ${shareContent.url}`);
+          await navigator.clipboard.writeText(shareContent.message);
           Alert.alert('Lien copié', 'Le lien de votre profil a été copié dans le presse-papiers');
         }
       } else {
-        await Share.share(shareContent);
+        // Native sharing with haptic feedback
+        await Share.share({
+          message: shareContent.message,
+          url: shareContent.url,
+          title: shareContent.title
+        });
+        
+        // Additional haptic feedback on successful share
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
       console.error('Share error:', error);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
       Alert.alert('Erreur', 'Impossible de partager le profil');
     }
   }, [displayName, albums.length, photos.length, handleHapticFeedback]);
