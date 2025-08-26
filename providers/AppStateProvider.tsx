@@ -309,10 +309,12 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   }, [persist]);
 
   const addPoints = useCallback((n: number) => {
-    const next = points + n;
-    setPoints(next);
-    persist({ points: next });
-  }, [persist, points]);
+    setPoints(prev => {
+      const next = prev + n;
+      persist({ points: next });
+      return next;
+    });
+  }, [persist]);
 
   const createAlbum = useCallback(async (name: string, groupId?: string) => {
     if (user && supabaseHooks.albums.createAlbum) {

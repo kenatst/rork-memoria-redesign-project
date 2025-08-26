@@ -86,35 +86,72 @@ export default function AlbumDetailScreen() {
   const [importing, setImporting] = useState<boolean>(false);
 
   const addFromLibrary = async () => {
+    if (!album) {
+      Alert.alert('Erreur', 'Album non trouvé');
+      return;
+    }
+
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         Alert.alert('Permission requise', "Autorisez l'accès à la galerie pour ajouter des photos.");
         return;
       }
+      
       const res = await ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: true,
         quality: 0.9,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         selectionLimit: 20,
       });
-      if (res.canceled || !res.assets) return;
-      const assets = res.assets;
-      setImporting(true);
-      let done = 0;
-      for (const asset of assets) {
-        if (asset.uri && album) {
-          await addPhotoToAlbum(album.id, asset.uri);
-          done++;
-        }
-      }
-      setImporting(false);
-      Alert.alert('Succès', `${done} photo(s) ajoutée(s) à l'album`);
       
-      if (Platform.OS !== 'web') {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (res.canceled || !res.assets || res.assets.length === 0) {
+        console.log('Selection cancelled or no assets');
+        return;
       }
-    } catch (e) {
+      
+      console.log(`Selected ${res.assets.length} photos for import`);
+      setImporting(true);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Process photos in parallel for better performance
+      const importPromises = res.assets.map(async (asset, index) => {
+        try {
+          if (asset.uri) {
+            console.log(`Importing photo ${index + 1}/${res.assets.length}: ${asset.uri}`);
+            await addPhotoToAlbum(album.id, asset.uri);
+            successCount++;
+            console.log(`Successfully imported photo ${index + 1}`);
+          } else {
+            console.warn(`Photo ${index + 1} has no URI`);
+            errorCount++;
+          }
+        } catch (error) {
+          console.error(`Failed to import photo ${index + 1}:`, error);
+          errorCount++;
+        }
+      });
+      
+      await Promise.all(importPromises);
+      setImporting(false);
+      
+      if (successCount > 0) {
+        Alert.alert(
+          'Import terminé', 
+          `${successCount} photo(s) ajoutée(s) à l'album${errorCount > 0 ? ` (${errorCount} erreur(s))` : ''}`
+        );
+        
+        if (Platform.OS !== 'web') {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } else {
+        Alert.alert('Erreur', 'Aucune photo n\'a pu être importée');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      setImporting(false);
       Alert.alert('Erreur', "Impossible d'ajouter les photos.");
     }
   };
