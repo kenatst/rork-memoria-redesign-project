@@ -503,7 +503,7 @@ export default function AlbumsScreen() {
               renderItem={({ item: album, index }: { item: Album; index: number }) => {
                 const isFavorite = favoriteAlbumIds.includes(album.id);
                 return (
-                  <Animated.View style={[styles.albumItem, { opacity: mainFadeAnim }]}>
+                  <Animated.View style={[styles.albumItem, { opacity: mainFadeAnim, width: (screenWidth - 48) / 2 }]}>
                     <Pressable
                       style={styles.albumPressable}
                       onPress={() => {
@@ -540,7 +540,7 @@ export default function AlbumsScreen() {
                       </View>
                       
                       <View style={[styles.albumInfo, viewMode === 'list' ? { minHeight: 84 } : null]}>
-                        <Text style={[styles.albumName, viewMode === 'list' ? { minHeight: 20 } : null]} numberOfLines={1}>
+                        <Text style={[styles.albumName, viewMode === 'list' ? { minHeight: 20 } : null]} numberOfLines={2}>
                           {album.name}
                         </Text>
                         <Text style={[styles.albumStats, viewMode === 'list' ? { minHeight: 16 } : null]}>
@@ -557,8 +557,8 @@ export default function AlbumsScreen() {
               keyExtractor={(item) => item.id}
               numColumns={viewMode === 'grid' ? 2 : 1}
               key={viewMode}
-              estimatedItemSize={viewMode === 'grid' ? 220 : 100}
-              contentContainerStyle={styles.albumsContent}
+              estimatedItemSize={viewMode === 'grid' ? 280 : 100}
+              contentContainerStyle={[styles.albumsContent, { justifyContent: 'space-between' }]}
               showsVerticalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
               refreshControl={
@@ -855,7 +855,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#131417',
-    height: 240,
+    height: 260,
+    width: (screenWidth - 48) / 2,
   },
   albumImageContainer: {
     height: 140,
@@ -888,14 +889,16 @@ const styles = StyleSheet.create({
   },
   albumInfo: {
     padding: 16,
-    height: 100,
+    height: 120,
     justifyContent: 'flex-start',
   },
   albumName: {
     fontSize: 16,
     fontWeight: '700',
     color: Colors.palette.taupeDeep,
-    marginBottom: 4
+    marginBottom: 4,
+    minHeight: 44,
+    lineHeight: 22
   },
   albumStats: {
     fontSize: 12,
@@ -911,7 +914,7 @@ const styles = StyleSheet.create({
   flashListContent: { paddingBottom: 20 },
   albumsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   albumsList: { gap: 12 },
-  albumCard: { width: (screenWidth - 56) / 2, borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
+  albumCard: { width: (screenWidth - 48) / 2, borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
   albumListItem: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
 
   albumBlur: { borderRadius: 16 },

@@ -267,7 +267,7 @@ export default function AlbumDetailScreen() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.pinterestGrid} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {album.photos.length === 0 ? (
           <View style={styles.empty}>
             <Camera color={Colors.palette.taupe} size={48} />
@@ -283,57 +283,112 @@ export default function AlbumDetailScreen() {
             </View>
           </View>
         ) : (
-          <View style={styles.pinterestContainer}>
-            {album.photos.map((uri, idx) => {
-              const photoId = `${album.id}-${idx}`;
-              const isSelected = selectedPhotos.includes(photoId);
-              const height = 180 + (idx % 3) * 60; // Hauteurs variables pour effet Pinterest
-              const photoComments = comments.filter(c => c.photoId === `${album.id}-${idx}`);
-              
-              return (
-                <View key={`${uri}-${idx}`} style={[styles.pinterestCard, { height }]}>
-                  <Pressable 
-                    style={[styles.photoCard, isSelected && styles.selectedPhoto]} 
-                    testID={`photo-${idx}`} 
-                    onPress={() => handlePhotoPress(uri, idx)}
-                    onLongPress={() => {
-                      if (!selectionMode) {
-                        setSelectionMode(true);
-                      }
-                      batchSelectPhotos([photoId]);
-                      
-                      if (Platform.OS !== 'web') {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                      }
-                    }}
-                  >
-                    <Image source={{ uri }} style={[styles.photo, { height: height - 60 }]} contentFit="cover" cachePolicy="memory-disk" transition={200} />
-                    {selectionMode && (
-                      <View style={[styles.selectionOverlay, isSelected && styles.selectedOverlay]}>
-                        {isSelected && (
-                          <View style={styles.checkmark}>
-                            <Text style={styles.checkmarkText}>✓</Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                  </Pressable>
-                  
-                  {/* Commentaires visibles sous chaque photo */}
-                  <View style={styles.photoComments}>
-                    {photoComments.slice(0, 2).map(comment => (
-                      <View key={comment.id} style={styles.commentPreview}>
-                        <Text style={styles.commentAuthorSmall}>{comment.author}</Text>
-                        <Text style={styles.commentTextSmall} numberOfLines={2}>{comment.text}</Text>
-                      </View>
-                    ))}
-                    {photoComments.length > 2 && (
-                      <Text style={styles.moreComments}>+{photoComments.length - 2} commentaires</Text>
-                    )}
+          <View style={styles.pinterestMasonry}>
+            <View style={styles.pinterestColumn}>
+              {album.photos.filter((_, idx) => idx % 2 === 0).map((uri, idx) => {
+                const originalIdx = idx * 2;
+                const photoId = `${album.id}-${originalIdx}`;
+                const isSelected = selectedPhotos.includes(photoId);
+                const height = 200 + (originalIdx % 4) * 80;
+                const photoComments = comments.filter(c => c.photoId === `${album.id}-${originalIdx}`);
+                
+                return (
+                  <View key={`${uri}-${originalIdx}`} style={[styles.pinterestCard, { height }]}>
+                    <Pressable 
+                      style={[styles.photoCard, isSelected && styles.selectedPhoto]} 
+                      testID={`photo-${originalIdx}`} 
+                      onPress={() => handlePhotoPress(uri, originalIdx)}
+                      onLongPress={() => {
+                        if (!selectionMode) {
+                          setSelectionMode(true);
+                        }
+                        batchSelectPhotos([photoId]);
+                        
+                        if (Platform.OS !== 'web') {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                        }
+                      }}
+                    >
+                      <Image source={{ uri }} style={[styles.photo, { height: height - 80 }]} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+                      {selectionMode && (
+                        <View style={[styles.selectionOverlay, isSelected && styles.selectedOverlay]}>
+                          {isSelected && (
+                            <View style={styles.checkmark}>
+                              <Text style={styles.checkmarkText}>✓</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </Pressable>
+                    
+                    <View style={styles.photoComments}>
+                      {photoComments.slice(0, 2).map(comment => (
+                        <View key={comment.id} style={styles.commentPreview}>
+                          <Text style={styles.commentAuthorSmall}>{comment.author}</Text>
+                          <Text style={styles.commentTextSmall} numberOfLines={2}>{comment.text}</Text>
+                        </View>
+                      ))}
+                      {photoComments.length > 2 && (
+                        <Text style={styles.moreComments}>+{photoComments.length - 2} commentaires</Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-              );
-            })}
+                );
+              })}
+            </View>
+            
+            <View style={styles.pinterestColumn}>
+              {album.photos.filter((_, idx) => idx % 2 === 1).map((uri, idx) => {
+                const originalIdx = idx * 2 + 1;
+                const photoId = `${album.id}-${originalIdx}`;
+                const isSelected = selectedPhotos.includes(photoId);
+                const height = 180 + (originalIdx % 4) * 90;
+                const photoComments = comments.filter(c => c.photoId === `${album.id}-${originalIdx}`);
+                
+                return (
+                  <View key={`${uri}-${originalIdx}`} style={[styles.pinterestCard, { height }]}>
+                    <Pressable 
+                      style={[styles.photoCard, isSelected && styles.selectedPhoto]} 
+                      testID={`photo-${originalIdx}`} 
+                      onPress={() => handlePhotoPress(uri, originalIdx)}
+                      onLongPress={() => {
+                        if (!selectionMode) {
+                          setSelectionMode(true);
+                        }
+                        batchSelectPhotos([photoId]);
+                        
+                        if (Platform.OS !== 'web') {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                        }
+                      }}
+                    >
+                      <Image source={{ uri }} style={[styles.photo, { height: height - 80 }]} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+                      {selectionMode && (
+                        <View style={[styles.selectionOverlay, isSelected && styles.selectedOverlay]}>
+                          {isSelected && (
+                            <View style={styles.checkmark}>
+                              <Text style={styles.checkmarkText}>✓</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </Pressable>
+                    
+                    <View style={styles.photoComments}>
+                      {photoComments.slice(0, 2).map(comment => (
+                        <View key={comment.id} style={styles.commentPreview}>
+                          <Text style={styles.commentAuthorSmall}>{comment.author}</Text>
+                          <Text style={styles.commentTextSmall} numberOfLines={2}>{comment.text}</Text>
+                        </View>
+                      ))}
+                      {photoComments.length > 2 && (
+                        <Text style={styles.moreComments}>+{photoComments.length - 2} commentaires</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         )}
       </ScrollView>
@@ -512,17 +567,18 @@ const styles = StyleSheet.create({
   selectionText: { color: '#FFD700', fontSize: 14, fontWeight: '700' },
   batchActionBtn: { backgroundColor: '#FFD700', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   batchActionText: { color: '#000', fontSize: 14, fontWeight: '800' },
-  pinterestGrid: { padding: 8, paddingBottom: 120 },
-  pinterestContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  pinterestCard: { width: (screenWidth - 24) / 2, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' },
+  scrollContent: { padding: 8, paddingBottom: 120 },
+  pinterestMasonry: { flexDirection: 'row', gap: 8 },
+  pinterestColumn: { flex: 1, gap: 8 },
+  pinterestCard: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5 },
   photoCard: { position: 'relative' },
-  photoComments: { padding: 8, backgroundColor: 'rgba(0,0,0,0.8)' },
+  photoComments: { padding: 12, backgroundColor: 'rgba(0,0,0,0.9)' },
   commentPreview: { marginBottom: 4 },
-  commentAuthorSmall: { color: '#FFD700', fontSize: 11, fontWeight: '600' },
-  commentTextSmall: { color: '#FFFFFF', fontSize: 10, lineHeight: 14 },
-  moreComments: { color: '#A9AFBC', fontSize: 9, fontStyle: 'italic', marginTop: 2 },
+  commentAuthorSmall: { color: '#FFD700', fontSize: 12, fontWeight: '700', marginBottom: 2 },
+  commentTextSmall: { color: '#FFFFFF', fontSize: 11, lineHeight: 16 },
+  moreComments: { color: '#A9AFBC', fontSize: 10, fontStyle: 'italic', marginTop: 4, textAlign: 'center' },
   selectedPhoto: { borderWidth: 3, borderColor: '#FFD700' },
-  photo: { width: '100%', height: '100%' },
+  photo: { width: '100%', borderTopLeftRadius: 16, borderTopRightRadius: 16 },
   selectionOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   selectedOverlay: { backgroundColor: 'rgba(255,215,0,0.3)' },
   checkmark: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFD700', alignItems: 'center', justifyContent: 'center' },

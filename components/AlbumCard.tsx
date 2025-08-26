@@ -1,9 +1,11 @@
 import React, { memo, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 import { Sparkles } from 'lucide-react-native';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export interface AlbumCardData {
   id: string;
@@ -107,7 +109,7 @@ function areEqual(prev: Props, next: Props) {
 }
 
 const styles = StyleSheet.create({
-  gridRoot: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
+  gridRoot: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417', width: (screenWidth - 48) / 2 },
   gridImageWrap: { height: 140, position: 'relative' },
   gridCover: { width: '100%', height: '100%', backgroundColor: '#1a1a1a' },
   liveBadge: { position: 'absolute', top: 8, right: 8, flexDirection: 'row', gap: 4, backgroundColor: 'rgba(255,215,0,0.95)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
@@ -119,12 +121,12 @@ const styles = StyleSheet.create({
   favPillActive: { backgroundColor: 'rgba(255,215,0,0.9)' },
   favPillText: { color: '#FFFFFF', fontWeight: '800' },
   favPillTextActive: { color: '#000000', fontWeight: '800' },
-  gridInfo: { padding: 12, gap: 6, backgroundColor: '#131417', height: 84, justifyContent: 'flex-start' },
-  gridName: { color: Colors.palette.taupeDeep, fontSize: 14, fontWeight: '700' },
+  gridInfo: { padding: 12, gap: 6, backgroundColor: '#131417', minHeight: 84, justifyContent: 'flex-start' },
+  gridName: { color: Colors.palette.taupeDeep, fontSize: 14, fontWeight: '700', minHeight: 36, lineHeight: 18 },
   gridStats: { color: Colors.palette.taupe, fontSize: 12 },
   gridDate: { color: Colors.palette.taupe, fontSize: 11 },
 
-  listRoot: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12, borderRadius: 16, backgroundColor: '#131417', height: 84 },
+  listRoot: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12, borderRadius: 16, backgroundColor: '#131417', minHeight: 84 },
   listImageWrap: { position: 'relative' },
   listCover: { width: 60, height: 60, borderRadius: 12, backgroundColor: '#1a1a1a' },
   listLiveBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#FFD700', borderRadius: 8, padding: 2 },
