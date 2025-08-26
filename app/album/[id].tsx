@@ -98,8 +98,8 @@ export default function AlbumDetailScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         selectionLimit: 20,
       });
-      if (res.canceled) return;
-      const assets = (res as any).assets ?? [];
+      if (res.canceled || !res.assets) return;
+      const assets = res.assets;
       setImporting(true);
       let done = 0;
       for (const asset of assets) {

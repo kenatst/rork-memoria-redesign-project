@@ -1,6 +1,9 @@
-# REVIEW COMPLET DE L'APPLICATION MEMORIA
+# 📱 REVIEW COMPLET - MEMORIA APP
 
-## ✅ CORRECTIONS EFFECTUÉES
+## 🔧 **PROBLÈME URGENT CORRIGÉ**
+✅ **Import multiple photos** : Corrigé dans `app/album/[id].tsx` - Le problème venait du typage TypeScript avec `allowsMultipleSelection`
+
+## ✅ CORRECTIONS PRÉCÉDENTES EFFECTUÉES
 
 ### 1. **Centralisation des routes**
 - ✅ Créé `constants/routes.ts` pour éviter les hardcodes
