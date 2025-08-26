@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { View, StyleSheet, Text, Pressable, Alert, Platform, ScrollView, TextInput, KeyboardAvoidingView, Animated, Dimensions, Modal } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Alert, Platform, ScrollView, TextInput, KeyboardAvoidingView, Animated, Dimensions, Modal, Share } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -26,6 +26,9 @@ import {
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import UniversalComments from '@/components/UniversalComments';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import * as Clipboard from 'expo-clipboard';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -40,6 +43,7 @@ export default function PhotoDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = params.id;
+  const insets = useSafeAreaInsets();
   
   const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
   
@@ -164,7 +168,31 @@ export default function PhotoDetailScreen() {
         return;
       }
 
-      Alert.alert('Téléchargé', 'Photo téléchargée avec succès');
+      if (Platform.OS === 'web') {
+        try {
+          const response = await fetch(currentPhoto.uri);
+          const blob = await response.blob();
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.href = url;
+          link.download = 'photo.jpg';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          Alert.alert('Téléchargé', 'Photo téléchargée');
+        } catch (e) {
+          Alert.alert('Erreur', 'Téléchargement web indisponible');
+        }
+      } else {
+        const fileUri = FileSystem.cacheDirectory + `photo_${Date.now()}.jpg`;
+        const dl = await FileSystem.downloadAsync(currentPhoto.uri, fileUri);
+        try {
+          await MediaLibrary.requestPermissionsAsync();
+        } catch {}
+        await MediaLibrary.saveToLibraryAsync(dl.uri);
+        Alert.alert('Téléchargé', 'Photo enregistrée dans votre galerie');
+      }
     } catch (error) {
       console.error('Save error:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
@@ -173,10 +201,25 @@ export default function PhotoDetailScreen() {
     }
   }, [currentPhoto?.uri, handleHapticFeedback, isDownloading]);
   
-  const handleShare = useCallback(() => {
+  const handleShare = useCallback(async () => {
     handleHapticFeedback('medium');
-    Alert.alert('Partager', 'Fonctionnalité de partage à venir');
-  }, [handleHapticFeedback]);
+    try {
+      if (!currentPhoto?.uri) return;
+      if (Platform.OS === 'web') {
+        const canWebShare = typeof navigator !== 'undefined' && (navigator as any).share;
+        if (canWebShare) {
+          await (navigator as any).share({ title: 'Photo', url: currentPhoto.uri });
+        } else {
+          await Clipboard.setStringAsync(currentPhoto.uri);
+          Alert.alert('Lien copié', 'Le lien de la photo a été copié');
+        }
+      } else {
+        await Share.share({ message: currentPhoto.uri, url: currentPhoto.uri });
+      }
+    } catch (e) {
+      Alert.alert('Erreur', 'Le partage a échoué');
+    }
+  }, [handleHapticFeedback, currentPhoto?.uri]);
   
   const startSlideshow = useCallback(() => {
     if (!photo) return;
@@ -523,7 +566,7 @@ export default function PhotoDetailScreen() {
         {showComments && !slideshowMode && showActions && (
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.commentsContainer}
+            style={[styles.commentsContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 0 }]}
           >
             {Platform.OS !== 'web' ? (
               <BlurView intensity={40} style={styles.commentsBlur}>
@@ -559,6 +602,8 @@ export default function PhotoDetailScreen() {
                       onChangeText={setCommentText}
                       multiline
                       maxLength={500}
+                      returnKeyType="send"
+                      onSubmitEditing={handleAddComment}
                     />
                     <Pressable 
                       style={[styles.sendButton, { opacity: commentText.trim() ? 1 : 0.5 }]}
@@ -604,6 +649,8 @@ export default function PhotoDetailScreen() {
                       onChangeText={setCommentText}
                       multiline
                       maxLength={500}
+                      returnKeyType="send"
+                      onSubmitEditing={handleAddComment}
                     />
                     <Pressable 
                       style={[styles.sendButton, { opacity: commentText.trim() ? 1 : 0.5 }]}
@@ -736,8 +783,8 @@ export default function PhotoDetailScreen() {
             <LinearGradient colors={['#000000', '#000000']} style={StyleSheet.absoluteFillObject} />
             
             {/* Fullscreen Header */}
-            <SafeAreaView style={styles.fullscreenHeader} edges={['top']}>
-              <Pressable style={styles.fullscreenCloseButton} onPress={() => setShowFullscreen(false)}>
+            <SafeAreaView style={[styles.fullscreenHeader, { paddingTop: Math.max(insets.top, 12) }]} edges={['top']}>
+              <Pressable style={styles.fullscreenCloseButton} onPress={() => setShowFullscreen(false)} testID="close-fullscreen">
                 <X color="#FFFFFF" size={24} />
               </Pressable>
             </SafeAreaView>
@@ -755,7 +802,7 @@ export default function PhotoDetailScreen() {
             {/* Fullscreen Actions */}
             <SafeAreaView style={styles.fullscreenActions} edges={['bottom']}>
               <View style={styles.fullscreenActionsContent}>
-                <Pressable style={styles.fullscreenActionButton} onPress={handleLike}>
+                <Pressable style={styles.fullscreenActionButton} onPress={handleLike} testID="fs-like">
                   <Heart 
                     color={isLiked ? '#FF6B6B' : '#FFFFFF'} 
                     size={28} 
@@ -764,17 +811,17 @@ export default function PhotoDetailScreen() {
                   <Text style={styles.fullscreenActionText}>{likes.length}</Text>
                 </Pressable>
                 
-                <Pressable style={styles.fullscreenActionButton} onPress={() => setShowUniversalComments(true)}>
+                <Pressable style={styles.fullscreenActionButton} onPress={() => setShowUniversalComments(true)} testID="fs-comments">
                   <MessageCircle color="#FFFFFF" size={28} />
                   <Text style={styles.fullscreenActionText}>{photoComments.length}</Text>
                 </Pressable>
                 
-                <Pressable style={styles.fullscreenActionButton} onPress={handleShare}>
+                <Pressable style={styles.fullscreenActionButton} onPress={handleShare} testID="fs-share">
                   <Share2 color="#FFFFFF" size={28} />
                   <Text style={styles.fullscreenActionText}>Partager</Text>
                 </Pressable>
                 
-                <Pressable style={styles.fullscreenActionButton} onPress={handleSave}>
+                <Pressable style={styles.fullscreenActionButton} onPress={handleSave} testID="fs-download">
                   <Download color="#FFFFFF" size={28} />
                   <Text style={styles.fullscreenActionText}>Sauver</Text>
                 </Pressable>

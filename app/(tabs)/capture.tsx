@@ -31,6 +31,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -259,6 +260,33 @@ export default function CaptureScreen() {
   }, [isRecording, handleHaptic]);
 
   const lastPhoto = useMemo(() => recentPhotos[0] ?? null, [recentPhotos]);
+
+  const openNativeCamera = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Non disponible sur web', 'Ouvrez la caméra native depuis votre téléphone.');
+      return;
+    }
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (perm.status !== 'granted') {
+        Alert.alert('Permission requise', "Autorisez l'accès à la caméra");
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({ quality: 1, allowsEditing: false });
+      if (!result.canceled && result.assets[0]?.uri) {
+        const uri = result.assets[0].uri;
+        setCapturedPhoto(uri);
+        setRecentPhotos((p) => [uri, ...p.slice(0, 9)]);
+        setShowAlbumSelector(true);
+        if (mediaPermission?.granted) {
+          await MediaLibrary.saveToLibraryAsync(uri);
+        }
+      }
+    } catch (e) {
+      console.log('Native camera error', e);
+      Alert.alert('Erreur', "Impossible d'ouvrir la caméra native");
+    }
+  }, [mediaPermission]);
 
   const handleAddToAlbum = (albumId: string) => {
     if (!capturedPhoto) return;
@@ -536,6 +564,15 @@ export default function CaptureScreen() {
                 <RotateCcw color="#FFFFFF" size={24} />
               </Pressable>
             </Animated.View>
+
+            {/* Native Camera Button */}
+            <Pressable
+              style={styles.flipButton}
+              onPress={openNativeCamera}
+              testID="native-camera-btn"
+            >
+              <Camera color="#FFFFFF" size={24} />
+            </Pressable>
           </View>
 
           {/* Zoom Controls */}
