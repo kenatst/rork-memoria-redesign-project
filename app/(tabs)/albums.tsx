@@ -19,6 +19,7 @@ import ImageCacheOptimizer from '@/components/ImageCacheOptimizer';
 import OfflineSync from '@/components/OfflineSync';
 
 import { AlbumCard } from '@/components/AlbumCard';
+import { ROUTES } from '@/constants/routes';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -202,7 +203,7 @@ export default function AlbumsScreen() {
             if (Platform.OS !== 'web') {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-            router.push(`/album/${album.id}`);
+            router.push(`/album/${album.id}` as any);
           }}
           accessibilityLabel={accessibleLabel}
           accessibilityRole="button"
@@ -507,7 +508,7 @@ export default function AlbumsScreen() {
                       style={styles.albumPressable}
                       onPress={() => {
                         handleHaptic('medium');
-                        router.push(`/album/${album.id}`);
+                        router.push(`/album/${album.id}` as any);
                       }}
                     >
                       <View style={styles.albumImageContainer}>

@@ -241,6 +241,38 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     };
   }, []);
 
+  // Use ref to avoid circular dependencies in persist callback
+  const stateRef = useRef({
+    onboardingComplete,
+    displayName,
+    points,
+    albums,
+    groups,
+    comments,
+    photos,
+    favoriteAlbums,
+    favoriteGroups,
+    lastSync,
+    profileAvatar
+  });
+  
+  // Update ref when state changes
+  useEffect(() => {
+    stateRef.current = {
+      onboardingComplete,
+      displayName,
+      points,
+      albums,
+      groups,
+      comments,
+      photos,
+      favoriteAlbums,
+      favoriteGroups,
+      lastSync,
+      profileAvatar
+    };
+  }, [onboardingComplete, displayName, points, albums, groups, comments, photos, favoriteAlbums, favoriteGroups, lastSync, profileAvatar]);
+
   const persist = useCallback(
     async (next: { 
       onboardingComplete?: boolean; 
@@ -256,26 +288,14 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       profileAvatar?: string;
     }) => {
       try {
-        const current = { 
-          onboardingComplete, 
-          displayName, 
-          points, 
-          albums, 
-          groups, 
-          comments, 
-          photos, 
-          favoriteAlbums, 
-          favoriteGroups,
-          lastSync, 
-          profileAvatar 
-        };
+        const current = stateRef.current;
         const merged = { ...current, ...next };
         await AsyncStorage.setItem(KEY, JSON.stringify(merged));
       } catch (e) {
         console.log("Persist AppState error", e);
       }
     },
-    [onboardingComplete, displayName, points, albums, groups, comments, photos, favoriteAlbums, favoriteGroups, lastSync, profileAvatar]
+    [] // No dependencies to avoid circular updates
   );
 
   const setOnboardingComplete = useCallback((v: boolean) => {
