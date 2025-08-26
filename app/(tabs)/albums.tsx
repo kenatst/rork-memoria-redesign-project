@@ -853,7 +853,8 @@ const styles = StyleSheet.create({
   albumPressable: {
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#131417'
+    backgroundColor: '#131417',
+    height: 220,
   },
   albumImageContainer: {
     height: 140,
@@ -885,7 +886,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,68,68,0.9)'
   },
   albumInfo: {
-    padding: 16
+    padding: 16,
+    minHeight: 80,
+    justifyContent: 'flex-start',
   },
   albumName: {
     fontSize: 16,
