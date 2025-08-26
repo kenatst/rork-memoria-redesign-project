@@ -181,17 +181,20 @@ export default function PhotoDetailScreen() {
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
           Alert.alert('Téléchargé', 'Photo téléchargée');
-        } catch (e) {
+        } catch (webError) {
           Alert.alert('Erreur', 'Téléchargement web indisponible');
         }
       } else {
-        const fileUri = FileSystem.cacheDirectory + `photo_${Date.now()}.jpg`;
-        const dl = await FileSystem.downloadAsync(currentPhoto.uri, fileUri);
         try {
+          const fileUri = FileSystem.cacheDirectory + `photo_${Date.now()}.jpg`;
+          const dl = await FileSystem.downloadAsync(currentPhoto.uri, fileUri);
           await MediaLibrary.requestPermissionsAsync();
-        } catch {}
-        await MediaLibrary.saveToLibraryAsync(dl.uri);
-        Alert.alert('Téléchargé', 'Photo enregistrée dans votre galerie');
+          await MediaLibrary.saveToLibraryAsync(dl.uri);
+          Alert.alert('Téléchargé', 'Photo enregistrée dans votre galerie');
+        } catch (saveError) {
+          console.error('Save error:', saveError);
+          Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
+        }
       }
     } catch (error) {
       console.error('Save error:', error);
@@ -216,7 +219,7 @@ export default function PhotoDetailScreen() {
       } else {
         await Share.share({ message: currentPhoto.uri, url: currentPhoto.uri });
       }
-    } catch (e) {
+    } catch (shareError) {
       Alert.alert('Erreur', 'Le partage a échoué');
     }
   }, [handleHapticFeedback, currentPhoto?.uri]);
@@ -294,7 +297,7 @@ export default function PhotoDetailScreen() {
         clearInterval(slideshowInterval.current);
       }
     };
-  }, [slideshowMode, isPlaying, photo?.albumPhotos.length]);
+  }, [slideshowMode, isPlaying, photo]);
   
   const handleAddTag = useCallback(() => {
     if (!newTag.trim() || !targetUri || !photos) return;
@@ -350,9 +353,9 @@ export default function PhotoDetailScreen() {
         
         {/* Header */}
         {showActions && (
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
           {Platform.OS !== 'web' ? (
-            <BlurView intensity={20} style={styles.headerBlur}>
+            <BlurView intensity={30} style={styles.headerBlur}>
               <View style={styles.headerContent}>
                 <Pressable style={styles.headerButton} onPress={() => router.back()}>
                   <ArrowLeft color="#FFFFFF" size={24} />
@@ -856,10 +859,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
+    paddingHorizontal: 20,
   },
   headerBlur: {
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 20,
+    borderRadius: 20,
+    marginHorizontal: 0,
   },
   webBlur: {
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -892,8 +898,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 80,
-    paddingBottom: 120,
+    paddingTop: 100,
+    paddingBottom: 140,
+    paddingHorizontal: 10,
   },
   photoTouchable: {
     width: '100%',
@@ -913,7 +920,8 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
+    borderRadius: 16,
+    backgroundColor: '#000000',
   },
   actions: {
     position: 'absolute',
@@ -921,10 +929,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
+    paddingBottom: 12,
   },
   actionsBlur: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingHorizontal: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   actionsContent: {
     flexDirection: 'row',
@@ -951,16 +962,17 @@ const styles = StyleSheet.create({
   },
   commentsContainer: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 140,
     left: 0,
     right: 0,
-    maxHeight: '60%',
+    maxHeight: '50%',
     zIndex: 15,
   },
   commentsBlur: {
     margin: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.9)',
   },
   commentsContent: {
     padding: 20,
@@ -1008,22 +1020,26 @@ const styles = StyleSheet.create({
   commentInput: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.2)',
   },
   textInput: {
     flex: 1,
     color: '#FFFFFF',
     fontSize: 16,
-    maxHeight: 100,
-    paddingVertical: 8,
+    maxHeight: 80,
+    paddingVertical: 4,
+    lineHeight: 20,
   },
   sendButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,215,0,0.2)',
   },
   errorContainer: {
     flex: 1,
@@ -1204,9 +1220,10 @@ const styles = StyleSheet.create({
   },
   fullscreenCloseButton: {
     alignSelf: 'flex-end',
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    marginTop: 8,
   },
   fullscreenPhotoContainer: {
     flex: 1,

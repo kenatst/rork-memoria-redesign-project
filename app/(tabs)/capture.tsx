@@ -52,6 +52,7 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
+  const [useNativeCamera, setUseNativeCamera] = useState<boolean>(Platform.OS !== 'web');
 
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<FlashMode>('off');
@@ -272,14 +273,22 @@ export default function CaptureScreen() {
         Alert.alert('Permission requise', "Autorisez l'accès à la caméra");
         return;
       }
-      const result = await ImagePicker.launchCameraAsync({ quality: 1, allowsEditing: false });
-      if (!result.canceled && result.assets[0]?.uri) {
+      const result = await ImagePicker.launchCameraAsync({ 
+        quality: 1, 
+        allowsEditing: false,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
         const uri = result.assets[0].uri;
         setCapturedPhoto(uri);
         setRecentPhotos((p) => [uri, ...p.slice(0, 9)]);
         setShowAlbumSelector(true);
         if (mediaPermission?.granted) {
-          await MediaLibrary.saveToLibraryAsync(uri);
+          try {
+            await MediaLibrary.saveToLibraryAsync(uri);
+          } catch (saveError) {
+            console.log('Save to library error:', saveError);
+          }
         }
       }
     } catch (e) {
@@ -331,12 +340,100 @@ export default function CaptureScreen() {
           <Text style={styles.permissionText}>
             Memoria a besoin d'accéder à votre caméra pour prendre des photos et vidéos
           </Text>
-          <Pressable style={styles.permissionButton} onPress={requestPermission} testID="grant-permission">
+          <Pressable style={styles.permissionButton} onPress={openNativeCamera} testID="native-camera">
             <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.permissionButtonGradient}>
-              <Text style={styles.permissionButtonText}>Autoriser l'accès</Text>
+              <Text style={styles.permissionButtonText}>Ouvrir Caméra Native</Text>
             </LinearGradient>
           </Pressable>
+          <Pressable style={styles.skipButton} onPress={requestPermission} testID="grant-permission">
+            <Text style={styles.skipButtonText}>Utiliser caméra intégrée</Text>
+          </Pressable>
         </View>
+      </View>
+    );
+  }
+
+  // Si on préfère la caméra native, l'ouvrir directement
+  if (useNativeCamera && Platform.OS !== 'web') {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#000', '#0b0b0d']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          <View style={styles.nativeCameraContainer}>
+            <View style={styles.nativeCameraIcon}>
+              <Camera color={Colors.palette.accentGold} size={80} />
+            </View>
+            <Text style={styles.nativeCameraTitle}>Caméra Native</Text>
+            <Text style={styles.nativeCameraText}>
+              Utilisez votre caméra native pour des photos de qualité professionnelle
+            </Text>
+            <Pressable style={styles.nativeCameraButton} onPress={openNativeCamera} testID="open-native">
+              <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.nativeCameraButtonGradient}>
+                <Text style={styles.nativeCameraButtonText}>Ouvrir Caméra</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable style={styles.switchButton} onPress={() => setUseNativeCamera(false)} testID="switch-integrated">
+              <Text style={styles.switchButtonText}>Utiliser caméra intégrée</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+        
+        {/* Album Selector Modal */}
+        <Modal visible={showAlbumSelector} transparent animationType="slide" onRequestClose={() => setShowAlbumSelector(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Ajouter à un album</Text>
+              <Text style={styles.modalSubtitle}>Sélectionnez un album pour votre photo</Text>
+              
+              {capturedPhoto && (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: capturedPhoto }} style={styles.previewImage} contentFit="cover" />
+                </View>
+              )}
+
+              <ScrollView style={styles.albumsList} showsVerticalScrollIndicator={false}>
+                {albums.map((album) => (
+                  <Pressable 
+                    key={album.id} 
+                    style={styles.albumItem} 
+                    onPress={() => handleAddToAlbum(album.id)} 
+                    testID={`select-album-${album.id}`}
+                  >
+                    <View style={styles.albumItemContent}>
+                      <Text style={styles.albumItemName}>{album.name}</Text>
+                      <Text style={styles.albumItemCount}>{album.photos.length} éléments</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              
+              <View style={styles.modalActions}>
+                <Pressable 
+                  style={styles.skipButton} 
+                  onPress={() => { 
+                    setShowAlbumSelector(false); 
+                    setCapturedPhoto(null); 
+                  }} 
+                  testID="skip-album"
+                >
+                  <Text style={styles.skipButtonText}>Passer</Text>
+                </Pressable>
+                <Pressable 
+                  style={styles.deleteButton} 
+                  onPress={() => { 
+                    if (!capturedPhoto) return; 
+                    setRecentPhotos(p => p.filter(u => u !== capturedPhoto)); 
+                    setCapturedPhoto(null); 
+                    setShowAlbumSelector(false); 
+                  }} 
+                  testID="delete-captured"
+                >
+                  <Text style={styles.deleteButtonText}>Supprimer</Text>
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     );
   }
@@ -565,11 +662,11 @@ export default function CaptureScreen() {
               </Pressable>
             </Animated.View>
 
-            {/* Native Camera Button */}
+            {/* Switch to Native Camera Button */}
             <Pressable
               style={styles.flipButton}
-              onPress={openNativeCamera}
-              testID="native-camera-btn"
+              onPress={() => setUseNativeCamera(true)}
+              testID="switch-native-btn"
             >
               <Camera color="#FFFFFF" size={24} />
             </Pressable>
@@ -1084,5 +1181,65 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 16,
     fontWeight: '700',
+  },
+  
+  // Native Camera Styles
+  safeArea: {
+    flex: 1,
+  },
+  nativeCameraContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    gap: 24,
+  },
+  nativeCameraIcon: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  nativeCameraTitle: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  nativeCameraText: {
+    color: Colors.palette.taupe,
+    fontSize: 18,
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  nativeCameraButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 16,
+  },
+  nativeCameraButtonGradient: {
+    paddingHorizontal: 40,
+    paddingVertical: 18,
+  },
+  nativeCameraButtonText: {
+    color: '#000000',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  switchButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  switchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
