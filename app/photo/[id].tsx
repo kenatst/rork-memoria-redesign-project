@@ -41,9 +41,7 @@ export default function PhotoDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = params.id;
   
-  // Memoize the app state to prevent re-renders
-  const appState = useAppState();
-  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useMemo(() => appState, [appState]);
+  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
   
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -199,9 +197,9 @@ export default function PhotoDetailScreen() {
   }, [handleHapticFeedback]);
   
   const togglePlayPause = useCallback(() => {
-    setIsPlaying(!isPlaying);
+    setIsPlaying(prev => !prev);
     handleHapticFeedback('light');
-  }, [isPlaying, handleHapticFeedback]);
+  }, [handleHapticFeedback]);
   
   const nextPhoto = useCallback(() => {
     if (!photo) return;
@@ -242,8 +240,7 @@ export default function PhotoDetailScreen() {
           const next = (prev + 1) % Math.max(total, 1);
           return next;
         });
-        handleHapticFeedback('light');
-      }, 3000) as unknown as number; // Change photo every 3 seconds
+      }, 3000) as unknown as number;
     } else if (slideshowInterval.current) {
       clearInterval(slideshowInterval.current);
       slideshowInterval.current = null;
@@ -254,7 +251,7 @@ export default function PhotoDetailScreen() {
         clearInterval(slideshowInterval.current);
       }
     };
-  }, [slideshowMode, isPlaying, photo?.albumPhotos.length, handleHapticFeedback]);
+  }, [slideshowMode, isPlaying, photo?.albumPhotos.length]);
   
   const handleAddTag = useCallback(() => {
     if (!newTag.trim() || !targetUri || !photos) return;
@@ -277,13 +274,13 @@ export default function PhotoDetailScreen() {
   }, [targetUri, photos, removeTagFromPhoto, handleHapticFeedback]);
   
   const toggleFullscreen = useCallback(() => {
-    setShowFullscreen(!showFullscreen);
+    setShowFullscreen(prev => !prev);
     handleHapticFeedback('light');
-  }, [showFullscreen, handleHapticFeedback]);
+  }, [handleHapticFeedback]);
 
   const toggleActions = useCallback(() => {
-    setShowActions(!showActions);
-  }, [showActions]);
+    setShowActions(prev => !prev);
+  }, []);
 
   if (!photo) {
     return (

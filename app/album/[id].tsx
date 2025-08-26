@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Dimensions, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,10 +51,12 @@ export default function AlbumDetailScreen() {
   const [showAlbumComments, setShowAlbumComments] = useState<boolean>(false);
   const [albumCommentText, setAlbumCommentText] = useState<string>('');
 
+  const hasIncrementedRef = useRef<boolean>(false);
   useEffect(() => {
-    if (!album) return;
+    if (!album || hasIncrementedRef.current) return;
+    hasIncrementedRef.current = true;
     incrementAlbumView(album.id);
-  }, [album?.id, incrementAlbumView]);
+  }, [album?.id]);
 
   const albumComments = useMemo(() => comments.filter(c => c.albumId === id), [comments, id]);
   const isFavorite = useMemo(() => Boolean(album && favoriteAlbums.includes(album.id)), [favoriteAlbums, album]);
