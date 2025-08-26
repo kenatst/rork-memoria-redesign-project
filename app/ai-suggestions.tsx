@@ -35,6 +35,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { useAI } from '@/providers/AIProvider';
 import { useImageCompression } from '@/providers/ImageCompressionProvider';
 import { useOfflineQueue } from '@/providers/OfflineQueueProvider';
+import { askMemoria, buildAISystemPrompt, buildAIMessages } from '@/lib/ai';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -53,7 +54,7 @@ interface AISuggestion {
 }
 
 export default function AISuggestionsScreen() {
-  const { albums, createAlbum } = useAppState();
+  const { albums, createAlbum, displayName } = useAppState() as any;
   const { showSuccess, showError } = useToast();
   const { 
     analyzePhotos, 
@@ -92,7 +93,7 @@ export default function AISuggestionsScreen() {
     },
   });
 
-  const allPhotos = albums.flatMap(album => album.photos);
+  const allPhotos = (albums ?? []).flatMap((album: any) => album.photos ?? []);
 
   const handleGenerateSuggestions = useCallback(async () => {
     if (allPhotos.length < 5) {
@@ -135,22 +136,39 @@ export default function AISuggestionsScreen() {
         console.log('Organized photos:', organized);
         
         // Convert organized data to suggestions format
-        const aiSuggestions: AISuggestion[] = Object.entries(organized).map(([category, photos], index) => ({
+        let aiSuggestions: AISuggestion[] = Object.entries(organized).map(([category, photos], index) => ({
           id: `ai_${Date.now()}_${index}`,
           title: `Album ${category}`,
           description: `Collection automatique basée sur l'analyse IA`,
           criteria: 'events' as const,
-          cover: photos[0] || 'https://via.placeholder.com/400x300',
+          cover: (photos as string[])[0] || 'https://via.placeholder.com/400x300',
           confidence: 0.85 + Math.random() * 0.1,
           aiInsights: {
             facesDetected: Math.floor(Math.random() * 10) + 1,
             eventTypes: [category],
             locations: ['Paris', 'Lyon'].slice(0, Math.floor(Math.random() * 2) + 1),
           },
-          photos: photos.slice(0, 10),
+          photos: (photos as string[]).slice(0, 10),
           tags: ['IA', 'Auto', category.toLowerCase()],
         }));
         
+        try {
+          const system = buildAISystemPrompt({ userName: displayName ?? 'Invité', task: 'album_suggestions', tone: 'friendly' });
+          const messages = buildAIMessages({
+            system,
+            query: `Génère 5 titres d'albums courts et élégants basés sur des thèmes analysés (${Object.keys(organized).join(', ')}). Retourne une liste JSON d'objets {title, description}.`,
+            context: { totalPhotos: allPhotos.length, criteria: selectedCriteria },
+          });
+          const completion = await askMemoria(messages);
+          const parsed = JSON.parse(completion) as Array<{ id?: string; title: string; description?: string; reason?: string }>;
+          aiSuggestions = aiSuggestions.map((s, i) => ({
+            ...s,
+            title: parsed[i]?.title ?? s.title,
+            description: parsed[i]?.description ?? s.description,
+          }));
+        } catch (e) {
+          console.log('AI titling fallback used', e);
+        }
         setSuggestions(aiSuggestions);
         setIsAnalyzing(false);
         setAnalysisProgress(0);
@@ -167,7 +185,7 @@ export default function AISuggestionsScreen() {
     } finally {
       clearInterval(progressInterval);
     }
-  }, [allPhotos, selectedCriteria, suggestAlbumsMutation]);
+  }, [allPhotos, selectedCriteria, suggestAlbumsMutation, analyzePhotos, organizePhotos, displayName, showSuccess]);
 
   const handleCreateAlbumFromSuggestion = useCallback(async (suggestion: AISuggestion) => {
     try {

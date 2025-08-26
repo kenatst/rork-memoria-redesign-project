@@ -499,7 +499,7 @@ export default function AlbumsScreen() {
           ) : (
             <FlashList
               data={filteredAlbums}
-              renderItem={({ item: album, index }) => {
+              renderItem={({ item: album, index }: { item: Album; index: number }) => {
                 const isFavorite = favoriteAlbumIds.includes(album.id);
                 return (
                   <Animated.View style={[styles.albumItem, { opacity: mainFadeAnim }]}>
@@ -538,14 +538,14 @@ export default function AlbumsScreen() {
                         </Pressable>
                       </View>
                       
-                      <View style={styles.albumInfo}>
-                        <Text style={styles.albumName} numberOfLines={1}>
+                      <View style={[styles.albumInfo, viewMode === 'list' ? { minHeight: 84 } : null]}>
+                        <Text style={[styles.albumName, viewMode === 'list' ? { minHeight: 20 } : null]} numberOfLines={1}>
                           {album.name}
                         </Text>
-                        <Text style={styles.albumStats}>
+                        <Text style={[styles.albumStats, viewMode === 'list' ? { minHeight: 16 } : null]}>
                           {album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}
                         </Text>
-                        <Text style={styles.albumDate}>
+                        <Text style={[styles.albumDate, viewMode === 'list' ? { minHeight: 14 } : null]}>
                           {formatDate(album.lastUpdated)}
                         </Text>
                       </View>
