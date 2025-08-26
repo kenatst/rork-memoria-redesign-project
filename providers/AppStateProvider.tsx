@@ -150,11 +150,11 @@ const KEY = "memoria_app_state_v2";
 export const [AppStateProvider, useAppState] = createContextHook<AppState>(() => {
   const { user } = useSupabase();
   
-  // Always call hooks at the top level - never conditionally
-  const albumsHook = useAlbums();
-  const photosHook = usePhotos();
-  const groupsHook = useGroups();
-  const commentsHook = useComments();
+  // Conditionally call hooks only when user is available
+  const albumsHook = user ? useAlbums() : null;
+  const photosHook = user ? usePhotos() : null;
+  const groupsHook = user ? useGroups() : null;
+  const commentsHook = user ? useComments() : null;
   
   const supabaseHooks = React.useMemo(() => ({
     albums: albumsHook || { albums: [], createAlbum: null },
@@ -760,7 +760,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       
       const newLastSync = result.syncedAt;
       setLastSync(newLastSync);
-      persist({ lastSync: newLastSync });
+      await persist({ lastSync: newLastSync });
       
       if (result.conflicts && result.conflicts.length > 0) {
         console.log('Resolving conflicts:', result.conflicts);
@@ -769,7 +769,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
           setAlbums(result.serverData.albums as Album[]);
           setGroups(result.serverData.groups as Group[]);
           setComments(result.serverData.comments as Comment[]);
-          persist({
+          await persist({
             photos: result.serverData.photos as Photo[],
             albums: result.serverData.albums as Album[],
             groups: result.serverData.groups as Group[],
@@ -783,7 +783,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       if (mountedRef.current) setIsOnline(false);
       
       if (retryCount < 3 && mountedRef.current) {
-        const delay = Math.pow(2, retryCount) * 1000;
+        const delay = Math.pow(2, retryCount) * 1000 + Math.random() * 500; // Add jitter
         console.log(`Retrying sync in ${delay}ms...`);
         setTimeout(() => { 
           if (mountedRef.current) { 
