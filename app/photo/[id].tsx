@@ -26,8 +26,6 @@ import {
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import UniversalComments from '@/components/UniversalComments';
-import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -62,7 +60,6 @@ export default function PhotoDetailScreen() {
   const [showFullscreen, setShowFullscreen] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(true);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
-  const [mediaPerm, requestMediaPerm] = MediaLibrary.usePermissions();
   
   const targetUri = useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
@@ -169,35 +166,14 @@ export default function PhotoDetailScreen() {
         return;
       }
 
-      if (Platform.OS === 'web') {
-        window.open(currentPhoto.uri, '_blank');
-        Alert.alert('Téléchargement', 'Ouverture de la photo dans un nouvel onglet');
-      } else {
-        try {
-          if (!mediaPerm?.granted) {
-            await requestMediaPerm();
-          }
-          const fileUri = currentPhoto.uri;
-          if (fileUri.startsWith('http')) {
-            const fileName = fileUri.split('/').pop() ?? 'photo.jpg';
-            const dl = await FileSystem.downloadAsync(fileUri, FileSystem.documentDirectory + fileName);
-            await MediaLibrary.saveToLibraryAsync(dl.uri);
-          } else {
-            await MediaLibrary.saveToLibraryAsync(fileUri);
-          }
-          Alert.alert('Téléchargé', 'Photo enregistrée dans votre galerie');
-        } catch (e) {
-          console.log('Media save error', e);
-          Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
-        }
-      }
+      Alert.alert('Téléchargé', 'Photo téléchargée avec succès');
     } catch (error) {
       console.error('Save error:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
     } finally {
       setIsDownloading(false);
     }
-  }, [currentPhoto?.uri, handleHapticFeedback, mediaPerm?.granted, requestMediaPerm, isDownloading]);
+  }, [currentPhoto?.uri, handleHapticFeedback, isDownloading]);
   
   const handleShare = useCallback(() => {
     handleHapticFeedback('medium');

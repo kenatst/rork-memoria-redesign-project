@@ -21,7 +21,6 @@ export default function Toast({ type, title, message, duration = 4000, onDismiss
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
   const [isVisible, setIsVisible] = useState<boolean>(false);
-  const mountedRef = useRef<boolean>(false);
 
   const hideToast = useCallback(() => {
     Animated.parallel([
@@ -41,19 +40,10 @@ export default function Toast({ type, title, message, duration = 4000, onDismiss
         useNativeDriver: true,
       }),
     ]).start(() => {
-      if (mountedRef.current) {
-        setIsVisible(false);
-        onDismiss?.();
-      }
+      setIsVisible(false);
+      onDismiss?.();
     });
   }, [translateY, opacity, scale, onDismiss]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (visible && !isVisible) {
@@ -99,7 +89,7 @@ export default function Toast({ type, title, message, duration = 4000, onDismiss
 
       // Auto dismiss
       const timer = setTimeout(() => {
-        if (mountedRef.current) hideToast();
+        hideToast();
       }, duration);
 
       return () => clearTimeout(timer);

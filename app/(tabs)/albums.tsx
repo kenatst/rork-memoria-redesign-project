@@ -438,7 +438,7 @@ export default function AlbumsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>        
 
-        {false && (
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Albums</Text>
           <View style={styles.headerActions}>
@@ -457,9 +457,8 @@ export default function AlbumsScreen() {
             </Pressable>
           </View>
         </View>
-        )}
 
-        {false && (
+        {/* Create Album Card */}
         <View style={styles.createAlbumSection}>
           <Pressable style={styles.createCard} onPress={() => { handleHaptic('medium'); setShowCreate(true); }} testID="create-album">
             <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.createGradient}>
@@ -468,7 +467,6 @@ export default function AlbumsScreen() {
             </LinearGradient>
           </Pressable>
         </View>
-        )}
 
         {/* Filters */}
         <View style={styles.filtersContainer}>
