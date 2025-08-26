@@ -270,7 +270,7 @@ export default function CaptureScreen() {
 
           <Pressable style={StyleSheet.absoluteFill} onPress={handleCameraPress} />
 
-          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 24) + 40 }]}>
+          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 24) + 80 }]}>
             {lastPhoto && (
               <Pressable
                 style={styles.lastPhotoButton}
@@ -309,7 +309,7 @@ export default function CaptureScreen() {
             </Animated.View>
           </View>
 
-          <View style={[styles.zoomControls, { bottom: Math.max(insets.bottom, 24) + 140 }]}>
+          <View style={[styles.zoomControls, { bottom: Math.max(insets.bottom, 24) + 180 }]}>
             <Pressable 
               style={styles.zoomButton} 
               onPress={() => setZoom(0)}

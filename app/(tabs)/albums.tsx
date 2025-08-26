@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#131417',
-    height: 220,
+    height: 240,
   },
   albumImageContainer: {
     height: 140,
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
   },
   albumInfo: {
     padding: 16,
-    minHeight: 80,
+    height: 100,
     justifyContent: 'flex-start',
   },
   albumName: {

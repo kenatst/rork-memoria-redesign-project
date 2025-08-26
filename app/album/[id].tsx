@@ -267,7 +267,7 @@ export default function AlbumDetailScreen() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.pinterestGrid} showsVerticalScrollIndicator={false}>
         {album.photos.length === 0 ? (
           <View style={styles.empty}>
             <Camera color={Colors.palette.taupe} size={48} />
@@ -283,39 +283,58 @@ export default function AlbumDetailScreen() {
             </View>
           </View>
         ) : (
-          album.photos.map((uri, idx) => {
-            const photoId = `${album.id}-${idx}`;
-            const isSelected = selectedPhotos.includes(photoId);
-            return (
-              <Pressable 
-                key={`${uri}-${idx}`} 
-                style={[styles.photoCard, isSelected && styles.selectedPhoto]} 
-                testID={`photo-${idx}`} 
-                onPress={() => handlePhotoPress(uri, idx)}
-                onLongPress={() => {
-                  if (!selectionMode) {
-                    setSelectionMode(true);
-                  }
-                  batchSelectPhotos([photoId]);
-                  
-                  if (Platform.OS !== 'web') {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                  }
-                }}
-              >
-                <Image source={{ uri }} style={styles.photo} contentFit="cover" cachePolicy="memory-disk" transition={200} />
-                {selectionMode && (
-                  <View style={[styles.selectionOverlay, isSelected && styles.selectedOverlay]}>
-                    {isSelected && (
-                      <View style={styles.checkmark}>
-                        <Text style={styles.checkmarkText}>✓</Text>
+          <View style={styles.pinterestContainer}>
+            {album.photos.map((uri, idx) => {
+              const photoId = `${album.id}-${idx}`;
+              const isSelected = selectedPhotos.includes(photoId);
+              const height = 180 + (idx % 3) * 60; // Hauteurs variables pour effet Pinterest
+              const photoComments = comments.filter(c => c.photoId === `${album.id}-${idx}`);
+              
+              return (
+                <View key={`${uri}-${idx}`} style={[styles.pinterestCard, { height }]}>
+                  <Pressable 
+                    style={[styles.photoCard, isSelected && styles.selectedPhoto]} 
+                    testID={`photo-${idx}`} 
+                    onPress={() => handlePhotoPress(uri, idx)}
+                    onLongPress={() => {
+                      if (!selectionMode) {
+                        setSelectionMode(true);
+                      }
+                      batchSelectPhotos([photoId]);
+                      
+                      if (Platform.OS !== 'web') {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                      }
+                    }}
+                  >
+                    <Image source={{ uri }} style={[styles.photo, { height: height - 60 }]} contentFit="cover" cachePolicy="memory-disk" transition={200} />
+                    {selectionMode && (
+                      <View style={[styles.selectionOverlay, isSelected && styles.selectedOverlay]}>
+                        {isSelected && (
+                          <View style={styles.checkmark}>
+                            <Text style={styles.checkmarkText}>✓</Text>
+                          </View>
+                        )}
                       </View>
                     )}
+                  </Pressable>
+                  
+                  {/* Commentaires visibles sous chaque photo */}
+                  <View style={styles.photoComments}>
+                    {photoComments.slice(0, 2).map(comment => (
+                      <View key={comment.id} style={styles.commentPreview}>
+                        <Text style={styles.commentAuthorSmall}>{comment.author}</Text>
+                        <Text style={styles.commentTextSmall} numberOfLines={2}>{comment.text}</Text>
+                      </View>
+                    ))}
+                    {photoComments.length > 2 && (
+                      <Text style={styles.moreComments}>+{photoComments.length - 2} commentaires</Text>
+                    )}
                   </View>
-                )}
-              </Pressable>
-            );
-          })
+                </View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
 
@@ -493,8 +512,15 @@ const styles = StyleSheet.create({
   selectionText: { color: '#FFD700', fontSize: 14, fontWeight: '700' },
   batchActionBtn: { backgroundColor: '#FFD700', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   batchActionText: { color: '#000', fontSize: 14, fontWeight: '800' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, padding: 2, paddingBottom: 120 },
-  photoCard: { width: (screenWidth - 8) / 3, height: (screenWidth - 8) / 3, backgroundColor: 'rgba(255,255,255,0.06)', position: 'relative' },
+  pinterestGrid: { padding: 8, paddingBottom: 120 },
+  pinterestContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  pinterestCard: { width: (screenWidth - 24) / 2, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' },
+  photoCard: { position: 'relative' },
+  photoComments: { padding: 8, backgroundColor: 'rgba(0,0,0,0.8)' },
+  commentPreview: { marginBottom: 4 },
+  commentAuthorSmall: { color: '#FFD700', fontSize: 11, fontWeight: '600' },
+  commentTextSmall: { color: '#FFFFFF', fontSize: 10, lineHeight: 14 },
+  moreComments: { color: '#A9AFBC', fontSize: 9, fontStyle: 'italic', marginTop: 2 },
   selectedPhoto: { borderWidth: 3, borderColor: '#FFD700' },
   photo: { width: '100%', height: '100%' },
   selectionOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
