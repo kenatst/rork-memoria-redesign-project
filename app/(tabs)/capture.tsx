@@ -52,7 +52,7 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
-  const [useNativeCamera, setUseNativeCamera] = useState<boolean>(Platform.OS !== 'web');
+  const [useNativeCamera, setUseNativeCamera] = useState<boolean>(false);
 
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<FlashMode>('off');
@@ -262,40 +262,7 @@ export default function CaptureScreen() {
 
   const lastPhoto = useMemo(() => recentPhotos[0] ?? null, [recentPhotos]);
 
-  const openNativeCamera = useCallback(async () => {
-    if (Platform.OS === 'web') {
-      Alert.alert('Non disponible sur web', 'Ouvrez la caméra native depuis votre téléphone.');
-      return;
-    }
-    try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (perm.status !== 'granted') {
-        Alert.alert('Permission requise', "Autorisez l'accès à la caméra");
-        return;
-      }
-      const result = await ImagePicker.launchCameraAsync({ 
-        quality: 1, 
-        allowsEditing: false,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images
-      });
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        const uri = result.assets[0].uri;
-        setCapturedPhoto(uri);
-        setRecentPhotos((p) => [uri, ...p.slice(0, 9)]);
-        setShowAlbumSelector(true);
-        if (mediaPermission?.granted) {
-          try {
-            await MediaLibrary.saveToLibraryAsync(uri);
-          } catch (saveError) {
-            console.log('Save to library error:', saveError);
-          }
-        }
-      }
-    } catch (e) {
-      console.log('Native camera error', e);
-      Alert.alert('Erreur', "Impossible d'ouvrir la caméra native");
-    }
-  }, [mediaPermission]);
+
 
   const handleAddToAlbum = (albumId: string) => {
     if (!capturedPhoto) return;
@@ -340,103 +307,17 @@ export default function CaptureScreen() {
           <Text style={styles.permissionText}>
             Memoria a besoin d'accéder à votre caméra pour prendre des photos et vidéos
           </Text>
-          <Pressable style={styles.permissionButton} onPress={openNativeCamera} testID="native-camera">
+          <Pressable style={styles.permissionButton} onPress={requestPermission} testID="grant-permission">
             <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.permissionButtonGradient}>
-              <Text style={styles.permissionButtonText}>Ouvrir Caméra Native</Text>
+              <Text style={styles.permissionButtonText}>Autoriser l'accès</Text>
             </LinearGradient>
-          </Pressable>
-          <Pressable style={styles.skipButton} onPress={requestPermission} testID="grant-permission">
-            <Text style={styles.skipButtonText}>Utiliser caméra intégrée</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
-  // Si on préfère la caméra native, l'ouvrir directement
-  if (useNativeCamera && Platform.OS !== 'web') {
-    return (
-      <View style={styles.container}>
-        <LinearGradient colors={['#000', '#0b0b0d']} style={StyleSheet.absoluteFillObject} />
-        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-          <View style={styles.nativeCameraContainer}>
-            <View style={styles.nativeCameraIcon}>
-              <Camera color={Colors.palette.accentGold} size={80} />
-            </View>
-            <Text style={styles.nativeCameraTitle}>Caméra Native</Text>
-            <Text style={styles.nativeCameraText}>
-              Utilisez votre caméra native pour des photos de qualité professionnelle
-            </Text>
-            <Pressable style={styles.nativeCameraButton} onPress={openNativeCamera} testID="open-native">
-              <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.nativeCameraButtonGradient}>
-                <Text style={styles.nativeCameraButtonText}>Ouvrir Caméra</Text>
-              </LinearGradient>
-            </Pressable>
-            <Pressable style={styles.switchButton} onPress={() => setUseNativeCamera(false)} testID="switch-integrated">
-              <Text style={styles.switchButtonText}>Utiliser caméra intégrée</Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-        
-        {/* Album Selector Modal */}
-        <Modal visible={showAlbumSelector} transparent animationType="slide" onRequestClose={() => setShowAlbumSelector(false)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Ajouter à un album</Text>
-              <Text style={styles.modalSubtitle}>Sélectionnez un album pour votre photo</Text>
-              
-              {capturedPhoto && (
-                <View style={styles.previewContainer}>
-                  <Image source={{ uri: capturedPhoto }} style={styles.previewImage} contentFit="cover" />
-                </View>
-              )}
 
-              <ScrollView style={styles.albumsList} showsVerticalScrollIndicator={false}>
-                {albums.map((album) => (
-                  <Pressable 
-                    key={album.id} 
-                    style={styles.albumItem} 
-                    onPress={() => handleAddToAlbum(album.id)} 
-                    testID={`select-album-${album.id}`}
-                  >
-                    <View style={styles.albumItemContent}>
-                      <Text style={styles.albumItemName}>{album.name}</Text>
-                      <Text style={styles.albumItemCount}>{album.photos.length} éléments</Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              
-              <View style={styles.modalActions}>
-                <Pressable 
-                  style={styles.skipButton} 
-                  onPress={() => { 
-                    setShowAlbumSelector(false); 
-                    setCapturedPhoto(null); 
-                  }} 
-                  testID="skip-album"
-                >
-                  <Text style={styles.skipButtonText}>Passer</Text>
-                </Pressable>
-                <Pressable 
-                  style={styles.deleteButton} 
-                  onPress={() => { 
-                    if (!capturedPhoto) return; 
-                    setRecentPhotos(p => p.filter(u => u !== capturedPhoto)); 
-                    setCapturedPhoto(null); 
-                    setShowAlbumSelector(false); 
-                  }} 
-                  testID="delete-captured"
-                >
-                  <Text style={styles.deleteButtonText}>Supprimer</Text>
-                </Pressable>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -662,14 +543,7 @@ export default function CaptureScreen() {
               </Pressable>
             </Animated.View>
 
-            {/* Switch to Native Camera Button */}
-            <Pressable
-              style={styles.flipButton}
-              onPress={() => setUseNativeCamera(true)}
-              testID="switch-native-btn"
-            >
-              <Camera color="#FFFFFF" size={24} />
-            </Pressable>
+
           </View>
 
           {/* Zoom Controls */}

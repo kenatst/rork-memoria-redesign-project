@@ -302,12 +302,6 @@ export default function GroupDetailScreen() {
                   <View style={styles.photoOverlay}>
                     <View style={styles.photoMeta}>
                       <Text style={styles.photoAlbum}>{photo.albumName}</Text>
-                      <View style={styles.photoStats}>
-                        <Heart color={photo.likes.includes('current-user') ? '#FF6B6B' : '#fff'} size={14} fill={photo.likes.includes('current-user') ? '#FF6B6B' : 'none'} />
-                        <Text style={styles.photoStatsText}>{photo.likes.length}</Text>
-                        <MessageSquare color="#fff" size={14} />
-                        <Text style={styles.photoStatsText}>{photo.comments.length}</Text>
-                      </View>
                     </View>
                   </View>
                 </Pressable>

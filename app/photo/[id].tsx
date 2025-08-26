@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { View, StyleSheet, Text, Pressable, Alert, Platform, ScrollView, TextInput, KeyboardAvoidingView, Animated, Dimensions, Modal, Share } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Alert, Platform, ScrollView, TextInput, KeyboardAvoidingView, Animated, Dimensions, Modal, Share, PanResponder, GestureResponderEvent } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -62,6 +62,8 @@ export default function PhotoDetailScreen() {
   const [showFullscreen, setShowFullscreen] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(true);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [swipeAnim] = useState(() => new Animated.Value(0));
   
   const targetUri = useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
@@ -84,27 +86,35 @@ export default function PhotoDetailScreen() {
     return null;
   }, [albums, targetUri]);
   
-  // Current photo for slideshow - memoized to prevent re-renders
+  // Initialize current index when photo is found
+  useEffect(() => {
+    if (photo && currentIndex !== photo.index) {
+      setCurrentIndex(photo.index);
+    }
+  }, [photo?.index]);
+  
+  // Current photo for slideshow or swipe - memoized to prevent re-renders
   const currentPhoto = useMemo(() => {
-    if (!photo || !slideshowMode) return photo;
+    if (!photo) return photo;
+    const index = slideshowMode ? currentPhotoIndex : currentIndex;
     return {
       ...photo,
-      uri: photo.albumPhotos[currentPhotoIndex],
-      index: currentPhotoIndex
+      uri: photo.albumPhotos[index],
+      index: index
     };
-  }, [photo, slideshowMode, currentPhotoIndex]);
+  }, [photo, slideshowMode, currentPhotoIndex, currentIndex]);
   
   const photoComments = useMemo(() => {
-    if (!targetUri || !comments) return [];
-    return comments.filter(c => c.photoId === targetUri);
-  }, [comments, targetUri]);
+    if (!currentPhoto?.uri || !comments) return [];
+    return comments.filter(c => c.photoId === currentPhoto.uri);
+  }, [comments, currentPhoto?.uri]);
   
   // Get photo tags - using useMemo to prevent infinite loops
   const photoTags = useMemo(() => {
-    if (!targetUri || !photos || photos.length === 0) return [];
-    const photoData = photos.find(p => p.uri === targetUri);
+    if (!currentPhoto?.uri || !photos || photos.length === 0) return [];
+    const photoData = photos.find(p => p.uri === currentPhoto.uri);
     return photoData?.tags ?? [];
-  }, [photos, targetUri]);
+  }, [photos, currentPhoto?.uri]);
   
   const handleHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
     if (Platform.OS !== 'web') {
@@ -132,12 +142,12 @@ export default function PhotoDetailScreen() {
   }, [isLiked, id, handleHapticFeedback]);
   
   const handleAddComment = useCallback(() => {
-    if (commentText.trim() && targetUri) {
-      addComment(commentText.trim(), targetUri);
+    if (commentText.trim() && currentPhoto?.uri) {
+      addComment(commentText.trim(), currentPhoto.uri);
       setCommentText('');
       handleHapticFeedback('light');
     }
-  }, [commentText, targetUri, addComment, handleHapticFeedback]);
+  }, [commentText, currentPhoto?.uri, addComment, handleHapticFeedback]);
   
   const handleDeleteComment = useCallback((commentId: string) => {
     Alert.alert(
@@ -300,24 +310,24 @@ export default function PhotoDetailScreen() {
   }, [slideshowMode, isPlaying, photo]);
   
   const handleAddTag = useCallback(() => {
-    if (!newTag.trim() || !targetUri || !photos) return;
-    const photoData = photos.find(p => p.uri === targetUri);
+    if (!newTag.trim() || !currentPhoto?.uri || !photos) return;
+    const photoData = photos.find(p => p.uri === currentPhoto.uri);
     if (photoData) {
       addTagToPhoto(photoData.id, newTag.trim());
       setNewTag('');
       setShowTagInput(false);
       handleHapticFeedback('light');
     }
-  }, [newTag, targetUri, photos, addTagToPhoto, handleHapticFeedback]);
+  }, [newTag, currentPhoto?.uri, photos, addTagToPhoto, handleHapticFeedback]);
   
   const handleRemoveTag = useCallback((tag: string) => {
-    if (!targetUri || !photos) return;
-    const photoData = photos.find(p => p.uri === targetUri);
+    if (!currentPhoto?.uri || !photos) return;
+    const photoData = photos.find(p => p.uri === currentPhoto.uri);
     if (photoData) {
       removeTagFromPhoto(photoData.id, tag);
       handleHapticFeedback('light');
     }
-  }, [targetUri, photos, removeTagFromPhoto, handleHapticFeedback]);
+  }, [currentPhoto?.uri, photos, removeTagFromPhoto, handleHapticFeedback]);
   
   const toggleFullscreen = useCallback(() => {
     setShowFullscreen(prev => !prev);
@@ -327,6 +337,56 @@ export default function PhotoDetailScreen() {
   const toggleActions = useCallback(() => {
     setShowActions(prev => !prev);
   }, []);
+  
+  // Swipe gesture handler
+  const swipeGesture = useMemo(() => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderGrant: () => {
+        swipeAnim.setOffset((swipeAnim as any)._value);
+        swipeAnim.setValue(0);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        swipeAnim.setValue(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        swipeAnim.flattenOffset();
+        
+        if (Math.abs(gestureState.dx) > 100 && photo) {
+          const direction = gestureState.dx > 0 ? -1 : 1; // Swipe right = previous, swipe left = next
+          const newIndex = currentIndex + direction;
+          
+          if (newIndex >= 0 && newIndex < photo.albumPhotos.length) {
+            // Animate to new position
+            Animated.timing(swipeAnim, {
+              toValue: direction * screenWidth,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(() => {
+              setCurrentIndex(newIndex);
+              swipeAnim.setValue(0);
+              handleHapticFeedback('light');
+            });
+          } else {
+            // Bounce back
+            Animated.spring(swipeAnim, {
+              toValue: 0,
+              useNativeDriver: true,
+            }).start();
+          }
+        } else {
+          // Bounce back
+          Animated.spring(swipeAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    });
+  }, [swipeAnim, currentIndex, photo, handleHapticFeedback]);
 
   if (!photo) {
     return (
@@ -405,26 +465,49 @@ export default function PhotoDetailScreen() {
         )}
         
         {/* Photo */}
-        <Pressable 
-          style={styles.photoContainer} 
-          onPress={toggleActions}
-
-        >
-          <Animated.View style={[styles.photoWrapper, { opacity: fadeAnim }]}>
-            <Pressable onPress={toggleFullscreen} style={styles.photoTouchable}>
-              <Image 
-                source={{ uri: currentPhoto?.uri || '' }} 
-                style={styles.photo} 
-                contentFit="contain"
-                transition={300}
-              />
-              {!showFullscreen && (
-                <View style={styles.zoomIndicator}>
-                  <ZoomIn color="#FFFFFF" size={20} />
-                </View>
-              )}
+        <View style={styles.photoContainer}>
+          <Animated.View 
+            style={[
+              styles.photoWrapper, 
+              { 
+                opacity: fadeAnim,
+                transform: [{ translateX: swipeAnim }]
+              }
+            ]}
+            {...swipeGesture.panHandlers}
+          >
+            <Pressable onPress={toggleActions} style={styles.photoTouchable}>
+              <Pressable onPress={toggleFullscreen} style={styles.photoImageContainer}>
+                <Image 
+                  source={{ uri: currentPhoto?.uri || '' }} 
+                  style={styles.photo} 
+                  contentFit="contain"
+                  transition={300}
+                />
+                {!showFullscreen && (
+                  <View style={styles.zoomIndicator}>
+                    <ZoomIn color="#FFFFFF" size={20} />
+                  </View>
+                )}
+              </Pressable>
             </Pressable>
           </Animated.View>
+          
+          {/* Swipe indicators */}
+          {photo && photo.albumPhotos.length > 1 && (
+            <View style={styles.swipeIndicators}>
+              {photo.albumPhotos.map((_, index) => (
+                <View 
+                  key={index} 
+                  style={[
+                    styles.swipeIndicator, 
+                    index === currentIndex && styles.activeSwipeIndicator
+                  ]} 
+                />
+              ))}
+            </View>
+          )}
+        </View>
           
           {/* Slideshow Controls */}
           {slideshowMode && (
@@ -480,7 +563,6 @@ export default function PhotoDetailScreen() {
               )}
             </View>
           )}
-        </Pressable>
         
         {/* Actions */}
         {showActions && (
@@ -837,7 +919,7 @@ export default function PhotoDetailScreen() {
         <UniversalComments
           visible={showUniversalComments}
           onClose={() => setShowUniversalComments(false)}
-          photoId={targetUri}
+          photoId={currentPhoto?.uri || ''}
           photoUri={currentPhoto?.uri}
         />
       </SafeAreaView>
@@ -903,6 +985,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   photoTouchable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoImageContainer: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
@@ -1263,5 +1351,25 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  swipeIndicators: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    zIndex: 5,
+  },
+  swipeIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  activeSwipeIndicator: {
+    backgroundColor: '#FFD700',
+    width: 24,
   },
 });
