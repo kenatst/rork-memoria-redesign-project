@@ -160,7 +160,7 @@ export default function AISuggestionsScreen() {
             context: { totalPhotos: allPhotos.length, criteria: selectedCriteria },
           });
           const completion = await askMemoria(messages);
-          const parsed = JSON.parse(completion) as Array<{ id?: string; title: string; description?: string; reason?: string }>;
+          const parsed = JSON.parse(completion) as { id?: string; title: string; description?: string; reason?: string }[];
           aiSuggestions = aiSuggestions.map((s, i) => ({
             ...s,
             title: parsed[i]?.title ?? s.title,
@@ -177,7 +177,7 @@ export default function AISuggestionsScreen() {
       } else {
         // Fallback to tRPC for specific criteria
         await suggestAlbumsMutation.mutateAsync({
-          photos: allPhotos.map((photo: string | { uri: string }) => typeof photo === 'string' ? photo : photo.uri || photo),
+          photos: allPhotos.map((photo: any) => typeof photo === 'string' ? photo : photo.uri || photo),
           criteria: selectedCriteria,
           maxSuggestions: 5,
         });
@@ -280,13 +280,13 @@ export default function AISuggestionsScreen() {
           </View>
           <Text style={styles.headerTitle}>Intelligence Artificielle</Text>
           <Text style={styles.headerSubtitle}>
-            Laissez l'IA organiser vos photos en albums intelligents
+            Laissez l&apos;IA organiser vos photos en albums intelligents
           </Text>
         </View>
 
         {/* Criteria Selection */}
         <View style={styles.criteriaSection}>
-          <Text style={styles.sectionTitle}>Critère d'analyse</Text>
+          <Text style={styles.sectionTitle}>Critère d&apos;analyse</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.criteriaRow}>
               {([
@@ -346,7 +346,7 @@ export default function AISuggestionsScreen() {
         {suggestions.length > 0 && (
           <View style={styles.suggestionsSection}>
             <View style={styles.suggestionsHeader}>
-              <Text style={styles.sectionTitle}>Suggestions d'albums</Text>
+              <Text style={styles.sectionTitle}>Suggestions d&apos;albums</Text>
               <View style={styles.suggestionsCount}>
                 <TrendingUp size={16} color="#FFD700" />
                 <Text style={styles.suggestionsCountText}>{suggestions.length}</Text>
@@ -443,7 +443,7 @@ export default function AISuggestionsScreen() {
                           style={styles.createButtonGradient}
                         >
                           <Plus size={20} color="#000000" />
-                          <Text style={styles.createButtonText}>Créer l'album</Text>
+                          <Text style={styles.createButtonText}>Créer l&apos;album</Text>
                         </LinearGradient>
                       </Pressable>
                       

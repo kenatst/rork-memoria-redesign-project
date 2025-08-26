@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Text, Pressable, Alert, Platform, Animated, Dimensions, ScrollView, Modal, KeyboardAvoidingView, PanResponder, GestureResponderEvent } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, StyleSheet, Text, Pressable, Alert, Platform, Animated, Modal, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -13,28 +13,11 @@ import {
   Zap,
   ZapOff,
   Grid3X3,
-  Square,
-  Video,
-  Contrast,
   Circle,
-  Timer,
-  Sparkles,
-  StopCircle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
-import { CameraFilters } from '@/components/CameraFilters';
 
-const { width: screenWidth } = Dimensions.get('window');
-
-const CAMERA_MODES = [
-  { id: 'photo', name: 'PHOTO', icon: Camera, color: '#FFD700' },
-  { id: 'video', name: 'VIDÉO', icon: Video, color: '#FF3B30' },
-  { id: 'portrait', name: 'PORTRAIT', icon: Contrast, color: '#007AFF' },
-  { id: 'square', name: 'CARRÉ', icon: Square, color: '#34C759' },
-] as const;
-
-type CameraModeId = typeof CAMERA_MODES[number]['id'];
 type FlashMode = 'off' | 'on' | 'auto';
 
 export default function CaptureScreen() {
@@ -49,46 +32,15 @@ export default function CaptureScreen() {
   const [flash, setFlash] = useState<FlashMode>('off');
   const [grid, setGrid] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(0);
-  const [cameraMode, setCameraMode] = useState<CameraModeId>('photo');
-  const [timer, setTimer] = useState<0 | 3 | 10>(0);
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [recordingTime, setRecordingTime] = useState<number>(0);
 
   const [showAlbumSelector, setShowAlbumSelector] = useState<boolean>(false);
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
-  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
-  const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [countdown, setCountdown] = useState<number>(0);
 
   const [captureAnim] = useState(() => new Animated.Value(1));
   const [flashAnim] = useState(() => new Animated.Value(0));
-  const [scaleAnim] = useState(() => new Animated.Value(1));
   const [rotateAnim] = useState(() => new Animated.Value(0));
-  const [pulseAnim] = useState(() => new Animated.Value(1));
-
-  const recordingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (isRecording) {
-      recordingInterval.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (recordingInterval.current) {
-        clearInterval(recordingInterval.current);
-        recordingInterval.current = null;
-      }
-      setRecordingTime(0);
-    }
-
-    return () => {
-      if (recordingInterval.current) {
-        clearInterval(recordingInterval.current);
-      }
-    };
-  }, [isRecording]);
 
   useEffect(() => {
     if (!focusPoint) return;
@@ -124,75 +76,20 @@ export default function CaptureScreen() {
     setFacing((c) => (c === 'back' ? 'front' : 'back'));
   }, [handleHaptic, rotateAnim]);
 
-  const cycleTimer = useCallback(() => {
-    handleHaptic('light');
-    const values: Array<0 | 3 | 10> = [0, 3, 10];
-    const idx = values.indexOf(timer);
-    setTimer(values[(idx + 1) % values.length]);
-  }, [timer, handleHaptic]);
-
   const rotateInterpolate = rotateAnim.interpolate({ 
     inputRange: [0, 1], 
     outputRange: ['0deg', '180deg'] 
   });
 
-  const gesture = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (e: GestureResponderEvent) => {
-          const touches = (e.nativeEvent as any).touches as ReadonlyArray<{ pageX: number; pageY: number }> | undefined;
-          if (touches && touches.length === 2) {
-            const dx = touches[0].pageX - touches[1].pageX;
-            const dy = touches[0].pageY - touches[1].pageY;
-            setLastPinchDistance(Math.sqrt(dx * dx + dy * dy));
-          } else {
-            const { locationX, locationY } = e.nativeEvent;
-            setFocusPoint({ x: locationX, y: locationY });
-            handleHaptic('light');
-          }
-        },
-        onPanResponderMove: (e: GestureResponderEvent) => {
-          const touches = (e.nativeEvent as any).touches as ReadonlyArray<{ pageX: number; pageY: number }> | undefined;
-          if (touches && touches.length === 2) {
-            const dx = touches[0].pageX - touches[1].pageX;
-            const dy = touches[0].pageY - touches[1].pageY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (lastPinchDistance != null) {
-              const delta = dist - lastPinchDistance;
-              const step = delta / 400;
-              setZoom((z) => Math.max(0, Math.min(1, +(z + step).toFixed(3))));
-            }
-            setLastPinchDistance(dist);
-          }
-        },
-        onPanResponderRelease: () => {
-          setLastPinchDistance(null);
-        },
-        onPanResponderTerminationRequest: () => true,
-      }),
-    [lastPinchDistance, handleHaptic]
-  );
+  const handleCameraPress = useCallback((event: any) => {
+    const { locationX, locationY } = event.nativeEvent;
+    setFocusPoint({ x: locationX, y: locationY });
+    handleHaptic('light');
+  }, [handleHaptic]);
 
   const takePicture = useCallback(async () => {
     if (!cameraRef.current) return;
     try {
-      if (timer > 0) {
-        setCountdown(timer);
-        let t = timer;
-        await new Promise<void>((resolve) => {
-          const interval = setInterval(() => {
-            t = t - 1;
-            setCountdown(t);
-            if (t === 0) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 1000);
-        });
-      }
-
       handleHaptic('heavy');
       playFlash();
 
@@ -208,7 +105,10 @@ export default function CaptureScreen() {
         exif: true 
       });
       
-      if (!photo?.uri) return;
+      if (!photo?.uri) {
+        Alert.alert('Erreur', 'Impossible de capturer la photo');
+        return;
+      }
 
       if (mediaPermission?.granted) {
         await MediaLibrary.saveToLibraryAsync(photo.uri);
@@ -217,46 +117,13 @@ export default function CaptureScreen() {
       setRecentPhotos((p) => [photo.uri, ...p.slice(0, 9)]);
       setCapturedPhoto(photo.uri);
       setShowAlbumSelector(true);
-      setCountdown(0);
     } catch (e) {
-      console.log('Capture error', e);
+      console.error('Capture error:', e);
       Alert.alert('Erreur', "Impossible de prendre la photo");
     }
-  }, [handleHaptic, playFlash, captureAnim, mediaPermission, timer]);
+  }, [handleHaptic, playFlash, captureAnim, mediaPermission]);
 
-  const startStopRecording = useCallback(async () => {
-    try {
-      if (!cameraRef.current) return;
-      if (Platform.OS === 'web') {
-        Alert.alert('Vidéo non disponible sur web', "Utilisez l'app mobile pour l'enregistrement.");
-        return;
-      }
-      
-      if (!isRecording) {
-        handleHaptic('heavy');
-        setIsRecording(true);
-        (cameraRef.current as any).startRecording({
-          maxDuration: 300,
-          onRecordingFinished: (video: { uri: string }) => {
-            setIsRecording(false);
-            setCapturedPhoto(video?.uri ?? null);
-            setShowAlbumSelector(true);
-          },
-          onRecordingError: () => {
-            setIsRecording(false);
-            Alert.alert('Erreur', "Impossible d'enregistrer la vidéo");
-          },
-        });
-      } else {
-        (cameraRef.current as any).stopRecording();
-      }
-    } catch (e) {
-      console.log('Video toggle error', e);
-      setIsRecording(false);
-    }
-  }, [isRecording, handleHaptic]);
-
-  const lastPhoto = useMemo(() => recentPhotos[0] ?? null, [recentPhotos]);
+  const lastPhoto = recentPhotos[0] ?? null;
 
   const handleAddToAlbum = (albumId: string) => {
     if (!capturedPhoto) return;
@@ -269,12 +136,6 @@ export default function CaptureScreen() {
     }
     setShowAlbumSelector(false);
     setCapturedPhoto(null);
-  };
-
-  const formatRecordingTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (!permission) {
@@ -299,7 +160,7 @@ export default function CaptureScreen() {
           </View>
           <Text style={styles.permissionTitle}>Accès Caméra Requis</Text>
           <Text style={styles.permissionText}>
-            Memoria a besoin d'accéder à votre caméra pour prendre des photos et vidéos
+            Memoria a besoin d'accéder à votre caméra pour prendre des photos
           </Text>
           <Pressable style={styles.permissionButton} onPress={requestPermission} testID="grant-permission">
             <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.permissionButtonGradient}>
@@ -320,7 +181,7 @@ export default function CaptureScreen() {
           facing={facing}
           flash={facing === 'front' ? 'off' : flash}
           zoom={zoom}
-          mode={cameraMode === 'video' ? 'video' : 'picture'}
+          mode="picture"
         >
           <Animated.View style={[styles.flashOverlay, { opacity: flashAnim }]} pointerEvents="none" />
 
@@ -334,10 +195,10 @@ export default function CaptureScreen() {
           )}
 
           {focusPoint && (
-            <Animated.View 
+            <View 
               style={[
                 styles.focusRing, 
-                { left: focusPoint.x - 40, top: focusPoint.y - 40, transform: [{ scale: scaleAnim }] }
+                { left: focusPoint.x - 40, top: focusPoint.y - 40 }
               ]} 
               pointerEvents="none" 
             />
@@ -363,31 +224,11 @@ export default function CaptureScreen() {
                   </Pressable>
 
                   <Pressable 
-                    style={[styles.topControlButton, timer > 0 && styles.activeControl]} 
-                    onPress={cycleTimer} 
-                    testID="timer-btn"
-                    disabled={cameraMode !== 'photo'}
-                  >
-                    <Timer color={timer > 0 ? '#FFD700' : '#FFFFFF'} size={20} />
-                    {timer > 0 && (
-                      <Text style={styles.timerText}>{timer}</Text>
-                    )}
-                  </Pressable>
-
-                  <Pressable 
                     style={[styles.topControlButton, grid && styles.activeControl]} 
                     onPress={() => setGrid(v => !v)} 
                     testID="grid-btn"
                   >
                     <Grid3X3 color={grid ? '#FFD700' : '#FFFFFF'} size={20} />
-                  </Pressable>
-
-                  <Pressable 
-                    style={[styles.topControlButton]} 
-                    onPress={() => setShowFilters(true)} 
-                    testID="filters-open"
-                  >
-                    <Sparkles color="#FFD700" size={20} />
                   </Pressable>
                 </View>
               </BlurView>
@@ -410,49 +251,16 @@ export default function CaptureScreen() {
                   </Pressable>
 
                   <Pressable 
-                    style={[styles.topControlButton, timer > 0 && styles.activeControl]} 
-                    onPress={cycleTimer} 
-                    testID="timer-btn"
-                    disabled={cameraMode !== 'photo'}
-                  >
-                    <Timer color={timer > 0 ? '#FFD700' : '#FFFFFF'} size={20} />
-                    {timer > 0 && (
-                      <Text style={styles.timerText}>{timer}</Text>
-                    )}
-                  </Pressable>
-
-                  <Pressable 
                     style={[styles.topControlButton, grid && styles.activeControl]} 
                     onPress={() => setGrid(v => !v)} 
                     testID="grid-btn"
                   >
                     <Grid3X3 color={grid ? '#FFD700' : '#FFFFFF'} size={20} />
                   </Pressable>
-
-                  <Pressable 
-                    style={[styles.topControlButton]} 
-                    onPress={() => setShowFilters(true)} 
-                    testID="filters-open"
-                  >
-                    <Sparkles color="#FFD700" size={20} />
-                  </Pressable>
                 </View>
               </View>
             )}
           </View>
-
-          {isRecording && (
-            <View style={[styles.recordingIndicator, { top: Math.max(insets.top, 12) + 80 }]}>
-              <View style={styles.recordingDot} />
-              <Text style={styles.recordingText}>REC {formatRecordingTime(recordingTime)}</Text>
-            </View>
-          )}
-
-          {countdown > 0 && (
-            <View style={[styles.countdownOverlay, { top: Math.max(insets.top, 12) + 120 }]}>
-              <Text style={styles.countdownText}>{countdown}</Text>
-            </View>
-          )}
 
           {zoom > 0 && (
             <View style={styles.zoomIndicator}>
@@ -460,41 +268,9 @@ export default function CaptureScreen() {
             </View>
           )}
 
-          <View style={StyleSheet.absoluteFill} {...gesture.panHandlers} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleCameraPress} />
 
-          <View style={[styles.modeSelector, { bottom: Math.max(insets.bottom, 24) + 170 }]}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={styles.modeSelectorContent}
-            >
-              {CAMERA_MODES.map((mode) => {
-                const Icon = mode.icon;
-                const isActive = cameraMode === mode.id;
-                return (
-                  <Pressable 
-                    key={mode.id} 
-                    style={[styles.modeButton, isActive && styles.activeModeButton]} 
-                    onPress={() => {
-                      setCameraMode(mode.id);
-                      handleHaptic('light');
-                    }}
-                    testID={`mode-${mode.id}`}
-                  >
-                    <Icon 
-                      color={isActive ? '#000000' : '#FFFFFF'} 
-                      size={20} 
-                    />
-                    <Text style={[styles.modeText, isActive && styles.activeModeText]}>
-                      {mode.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 24) + 90 }]}>
+          <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 24) + 40 }]}>
             {lastPhoto && (
               <Pressable
                 style={styles.lastPhotoButton}
@@ -508,25 +284,15 @@ export default function CaptureScreen() {
               </Pressable>
             )}
 
-            <Animated.View style={{ transform: [{ scale: isRecording ? pulseAnim : captureAnim }] }}>
+            <Animated.View style={{ transform: [{ scale: captureAnim }] }}>
               <Pressable
-                style={[
-                  styles.captureButton,
-                  cameraMode === 'video' && isRecording && styles.recordingCaptureButton
-                ]}
-                onPress={cameraMode === 'video' ? startStopRecording : takePicture}
+                style={styles.captureButton}
+                onPress={takePicture}
                 testID="capture-btn"
               >
                 <View style={styles.captureButtonOuter}>
-                  <View style={[
-                    styles.captureButtonInner,
-                    cameraMode === 'video' && isRecording && styles.recordingInner
-                  ]}>
-                    {cameraMode === 'video' && isRecording ? (
-                      <StopCircle color="#FFFFFF" size={32} />
-                    ) : (
-                      <Circle color="#FFFFFF" size={32} fill="#FFFFFF" />
-                    )}
+                  <View style={styles.captureButtonInner}>
+                    <Circle color="#FFFFFF" size={32} fill="#FFFFFF" />
                   </View>
                 </View>
               </Pressable>
@@ -543,27 +309,27 @@ export default function CaptureScreen() {
             </Animated.View>
           </View>
 
-          <View style={[styles.zoomControls, { bottom: Math.max(insets.bottom, 24) + 250 }]}>
+          <View style={[styles.zoomControls, { bottom: Math.max(insets.bottom, 24) + 140 }]}>
             <Pressable 
               style={styles.zoomButton} 
-              onPress={() => setZoom(z => Math.max(0, +(z - 0.2).toFixed(2)))}
-              testID="zoom-out"
+              onPress={() => setZoom(0)}
+              testID="zoom-1x"
             >
               <Text style={styles.zoomButtonText}>1x</Text>
             </Pressable>
             <Pressable 
               style={styles.zoomButton} 
-              onPress={() => setZoom(z => Math.min(1, +(z + 0.2).toFixed(2)))}
-              testID="zoom-in"
+              onPress={() => setZoom(0.5)}
+              testID="zoom-2x"
             >
-              <Text style={styles.zoomButtonText}>3x</Text>
+              <Text style={styles.zoomButtonText}>2x</Text>
             </Pressable>
             <Pressable 
               style={styles.zoomButton} 
               onPress={() => setZoom(1)}
-              testID="zoom-max"
+              testID="zoom-5x"
             >
-              <Text style={styles.zoomButtonText}>10x</Text>
+              <Text style={styles.zoomButtonText}>5x</Text>
             </Pressable>
           </View>
         </CameraView>
@@ -573,7 +339,7 @@ export default function CaptureScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Ajouter à un album</Text>
-            <Text style={styles.modalSubtitle}>Sélectionnez un album pour votre {cameraMode === 'video' ? 'vidéo' : 'photo'}</Text>
+            <Text style={styles.modalSubtitle}>Sélectionnez un album pour votre photo</Text>
             {capturedPhoto && (
               <View style={styles.previewContainer}>
                 <Image source={{ uri: capturedPhoto }} style={styles.previewImage} contentFit="cover" />
@@ -621,16 +387,6 @@ export default function CaptureScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      <CameraFilters
-        isVisible={showFilters}
-        onClose={() => setShowFilters(false)}
-        onPhotoTaken={(uri) => {
-          setRecentPhotos((p) => [uri, ...p.slice(0, 9)]);
-          setCapturedPhoto(uri);
-          setShowAlbumSelector(true);
-        }}
-      />
     </View>
   );
 }
@@ -787,43 +543,6 @@ const styles = StyleSheet.create({
   activeControl: {
     backgroundColor: 'rgba(255, 215, 0, 0.3)',
   },
-  timerText: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#FFD700',
-    color: '#000000',
-    fontSize: 10,
-    fontWeight: '800',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 6,
-    minWidth: 16,
-    textAlign: 'center',
-  },
-  recordingIndicator: {
-    position: 'absolute',
-    left: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 59, 48, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 8,
-    zIndex: 25,
-  },
-  recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  recordingText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
   zoomIndicator: {
     position: 'absolute',
     top: '50%',
@@ -838,54 +557,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
-  },
-  countdownOverlay: {
-    position: 'absolute',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    zIndex: 30,
-  },
-  countdownText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  modeSelector: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 20,
-  },
-  modeSelectorContent: {
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    gap: 12,
-  },
-  modeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    minWidth: 100,
-    justifyContent: 'center',
-  },
-  activeModeButton: {
-    backgroundColor: '#FFD700',
-  },
-  modeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  activeModeText: {
-    color: '#000000',
-    fontWeight: '800',
   },
   bottomControls: {
     position: 'absolute',
@@ -916,10 +587,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  recordingCaptureButton: {
-    borderWidth: 4,
-    borderColor: '#FF3B30',
-  },
   captureButtonOuter: {
     width: 76,
     height: 76,
@@ -935,12 +602,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  recordingInner: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    width: 32,
-    height: 32,
   },
   flipButton: {
     width: 50,

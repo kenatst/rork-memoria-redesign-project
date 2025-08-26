@@ -14,18 +14,13 @@ import {
   Share2, 
   Trash2,
   Send,
-  Play,
-  Pause,
-  SkipForward,
-  SkipBack,
-  Tag,
-  Plus,
   X,
-  ZoomIn
+  ZoomIn,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
-import UniversalComments from '@/components/UniversalComments';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Clipboard from 'expo-clipboard';
@@ -45,29 +40,24 @@ export default function PhotoDetailScreen() {
   const id = params.id;
   const insets = useSafeAreaInsets();
   
-  const { albums, comments, addComment, deleteComment, photos, addTagToPhoto, removeTagFromPhoto } = useAppState();
+  const { albums, comments, addComment, deleteComment } = useAppState();
   
   const [likes, setLikes] = useState<PhotoLike[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
   const [commentText, setCommentText] = useState<string>('');
   const [showComments, setShowComments] = useState<boolean>(false);
-  const [slideshowMode, setSlideshowMode] = useState<boolean>(false);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
-  const slideshowInterval = useRef<number | null>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const [showTagInput, setShowTagInput] = useState<boolean>(false);
-  const [newTag, setNewTag] = useState<string>('');
-  const [showUniversalComments, setShowUniversalComments] = useState<boolean>(false);
   const [showFullscreen, setShowFullscreen] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(true);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [swipeAnim] = useState(() => new Animated.Value(0));
+  const [scaleAnim] = useState(() => new Animated.Value(1));
+  const [translateXAnim] = useState(() => new Animated.Value(0));
+  const [translateYAnim] = useState(() => new Animated.Value(0));
   
   const targetUri = useMemo(() => (id ? decodeURIComponent(id) : ''), [id]);
   
-  // Trouver la photo dans les albums - memoized to prevent infinite loops
+  // Trouver la photo dans les albums
   const photo = useMemo(() => {
     if (!targetUri || !albums || albums.length === 0) return null;
     
@@ -93,28 +83,20 @@ export default function PhotoDetailScreen() {
     }
   }, [photo?.index]);
   
-  // Current photo for slideshow or swipe - memoized to prevent re-renders
+  // Current photo for swipe
   const currentPhoto = useMemo(() => {
     if (!photo) return photo;
-    const index = slideshowMode ? currentPhotoIndex : currentIndex;
     return {
       ...photo,
-      uri: photo.albumPhotos[index],
-      index: index
+      uri: photo.albumPhotos[currentIndex],
+      index: currentIndex
     };
-  }, [photo, slideshowMode, currentPhotoIndex, currentIndex]);
+  }, [photo, currentIndex]);
   
   const photoComments = useMemo(() => {
     if (!currentPhoto?.uri || !comments) return [];
     return comments.filter(c => c.photoId === currentPhoto.uri);
   }, [comments, currentPhoto?.uri]);
-  
-  // Get photo tags - using useMemo to prevent infinite loops
-  const photoTags = useMemo(() => {
-    if (!currentPhoto?.uri || !photos || photos.length === 0) return [];
-    const photoData = photos.find(p => p.uri === currentPhoto.uri);
-    return photoData?.tags ?? [];
-  }, [photos, currentPhoto?.uri]);
   
   const handleHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
     if (Platform.OS !== 'web') {
@@ -233,110 +215,23 @@ export default function PhotoDetailScreen() {
       Alert.alert('Erreur', 'Le partage a échoué');
     }
   }, [handleHapticFeedback, currentPhoto?.uri]);
-  
-  const startSlideshow = useCallback(() => {
-    if (!photo) return;
-    setSlideshowMode(true);
-    setCurrentPhotoIndex(photo.index);
-    setIsPlaying(true);
-    handleHapticFeedback('medium');
-  }, [photo, handleHapticFeedback]);
-  
-  const stopSlideshow = useCallback(() => {
-    setSlideshowMode(false);
-    setIsPlaying(false);
-    if (slideshowInterval.current) {
-      clearInterval(slideshowInterval.current);
-      slideshowInterval.current = null;
-    }
-    handleHapticFeedback('light');
-  }, [handleHapticFeedback]);
-  
-  const togglePlayPause = useCallback(() => {
-    setIsPlaying(prev => !prev);
-    handleHapticFeedback('light');
-  }, [handleHapticFeedback]);
-  
-  const nextPhoto = useCallback(() => {
-    if (!photo) return;
-    const nextIndex = (currentPhotoIndex + 1) % photo.albumPhotos.length;
-    
-    Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true })
-    ]).start();
-    
-    setCurrentPhotoIndex(nextIndex);
-    handleHapticFeedback('light');
-  }, [photo, currentPhotoIndex, fadeAnim, handleHapticFeedback]);
-  
-  const previousPhoto = useCallback(() => {
-    if (!photo) return;
-    const prevIndex = currentPhotoIndex === 0 ? photo.albumPhotos.length - 1 : currentPhotoIndex - 1;
-    
-    Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true })
-    ]).start();
-    
-    setCurrentPhotoIndex(prevIndex);
-    handleHapticFeedback('light');
-  }, [photo, currentPhotoIndex, fadeAnim, handleHapticFeedback]);
-  
-  // Auto-play slideshow
-  useEffect(() => {
-    if (slideshowMode && isPlaying && photo) {
-      if (slideshowInterval.current) {
-        clearInterval(slideshowInterval.current);
-        slideshowInterval.current = null;
-      }
-      const total = photo.albumPhotos.length;
-      slideshowInterval.current = setInterval(() => {
-        setCurrentPhotoIndex(prev => {
-          const next = (prev + 1) % Math.max(total, 1);
-          return next;
-        });
-      }, 3000) as unknown as number;
-    } else if (slideshowInterval.current) {
-      clearInterval(slideshowInterval.current);
-      slideshowInterval.current = null;
-    }
-    
-    return () => {
-      if (slideshowInterval.current) {
-        clearInterval(slideshowInterval.current);
-      }
-    };
-  }, [slideshowMode, isPlaying, photo]);
-  
-  const handleAddTag = useCallback(() => {
-    if (!newTag.trim() || !currentPhoto?.uri || !photos) return;
-    const photoData = photos.find(p => p.uri === currentPhoto.uri);
-    if (photoData) {
-      addTagToPhoto(photoData.id, newTag.trim());
-      setNewTag('');
-      setShowTagInput(false);
-      handleHapticFeedback('light');
-    }
-  }, [newTag, currentPhoto?.uri, photos, addTagToPhoto, handleHapticFeedback]);
-  
-  const handleRemoveTag = useCallback((tag: string) => {
-    if (!currentPhoto?.uri || !photos) return;
-    const photoData = photos.find(p => p.uri === currentPhoto.uri);
-    if (photoData) {
-      removeTagFromPhoto(photoData.id, tag);
-      handleHapticFeedback('light');
-    }
-  }, [currentPhoto?.uri, photos, removeTagFromPhoto, handleHapticFeedback]);
-  
-  const toggleFullscreen = useCallback(() => {
-    setShowFullscreen(prev => !prev);
-    handleHapticFeedback('light');
-  }, [handleHapticFeedback]);
 
   const toggleActions = useCallback(() => {
     setShowActions(prev => !prev);
   }, []);
+
+  const navigatePhoto = useCallback((direction: 'prev' | 'next') => {
+    if (!photo) return;
+    
+    const newIndex = direction === 'next' 
+      ? Math.min(currentIndex + 1, photo.albumPhotos.length - 1)
+      : Math.max(currentIndex - 1, 0);
+    
+    if (newIndex !== currentIndex) {
+      setCurrentIndex(newIndex);
+      handleHapticFeedback('light');
+    }
+  }, [photo, currentIndex, handleHapticFeedback]);
   
   // Swipe gesture handler
   const swipeGesture = useMemo(() => {
@@ -388,6 +283,56 @@ export default function PhotoDetailScreen() {
     });
   }, [swipeAnim, currentIndex, photo, handleHapticFeedback]);
 
+  // Pinch to zoom gesture
+  const zoomGesture = useMemo(() => {
+    let initialDistance = 0;
+    let initialScale = 1;
+    
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const touches = (gestureState as any).touches;
+        return touches && touches.length === 2;
+      },
+      onPanResponderGrant: (_, gestureState) => {
+        const touches = (gestureState as any).touches;
+        if (touches && touches.length === 2) {
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          initialDistance = Math.sqrt(dx * dx + dy * dy);
+          initialScale = (scaleAnim as any)._value;
+        }
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const touches = (gestureState as any).touches;
+        if (touches && touches.length === 2) {
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const scale = Math.max(1, Math.min(3, initialScale * (distance / initialDistance)));
+          scaleAnim.setValue(scale);
+        }
+      },
+      onPanResponderRelease: () => {
+        const currentScale = (scaleAnim as any)._value;
+        if (currentScale < 1.2) {
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+          }).start();
+          Animated.spring(translateXAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+          Animated.spring(translateYAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    });
+  }, [scaleAnim, translateXAnim, translateYAnim]);
+
   if (!photo) {
     return (
       <View style={styles.container}>
@@ -414,87 +359,95 @@ export default function PhotoDetailScreen() {
         {/* Header */}
         {showActions && (
           <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
-          {Platform.OS !== 'web' ? (
-            <BlurView intensity={30} style={styles.headerBlur}>
-              <View style={styles.headerContent}>
-                <Pressable style={styles.headerButton} onPress={() => router.back()}>
-                  <ArrowLeft color="#FFFFFF" size={24} />
-                </Pressable>
-                <View style={styles.headerInfo}>
-                  <Text style={styles.albumName}>{currentPhoto?.albumName}</Text>
-                  <Text style={styles.photoIndex}>{(currentPhoto?.index || 0) + 1} / {albums.find(a => a.id === currentPhoto?.albumId)?.photos.length || 0}</Text>
-                  {slideshowMode && (
-                    <Text style={styles.slideshowIndicator}>Mode Diaporama</Text>
-                  )}
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={30} style={styles.headerBlur}>
+                <View style={styles.headerContent}>
+                  <Pressable style={styles.headerButton} onPress={() => router.back()}>
+                    <ArrowLeft color="#FFFFFF" size={24} />
+                  </Pressable>
+                  <View style={styles.headerInfo}>
+                    <Text style={styles.albumName}>{currentPhoto?.albumName}</Text>
+                    <Text style={styles.photoIndex}>{(currentPhoto?.index || 0) + 1} / {photo.albumPhotos.length}</Text>
+                  </View>
+                  <View style={styles.headerActions}>
+                    <Pressable style={styles.headerButton} onPress={handleShare}>
+                      <Share2 color="#FFFFFF" size={20} />
+                    </Pressable>
+                  </View>
                 </View>
-                <View style={styles.headerActions}>
-                  <Pressable style={styles.headerButton} onPress={startSlideshow}>
-                    <Play color="#FFFFFF" size={20} />
+              </BlurView>
+            ) : (
+              <View style={[styles.headerBlur, styles.webBlur]}>
+                <View style={styles.headerContent}>
+                  <Pressable style={styles.headerButton} onPress={() => router.back()}>
+                    <ArrowLeft color="#FFFFFF" size={24} />
                   </Pressable>
-                  <Pressable style={styles.headerButton} onPress={handleShare}>
-                    <Share2 color="#FFFFFF" size={20} />
-                  </Pressable>
-                </View>
-              </View>
-            </BlurView>
-          ) : (
-            <View style={[styles.headerBlur, styles.webBlur]}>
-              <View style={styles.headerContent}>
-                <Pressable style={styles.headerButton} onPress={() => router.back()}>
-                  <ArrowLeft color="#FFFFFF" size={24} />
-                </Pressable>
-                <View style={styles.headerInfo}>
-                  <Text style={styles.albumName}>{currentPhoto?.albumName}</Text>
-                  <Text style={styles.photoIndex}>{(currentPhoto?.index || 0) + 1} / {albums.find(a => a.id === currentPhoto?.albumId)?.photos.length || 0}</Text>
-                  {slideshowMode && (
-                    <Text style={styles.slideshowIndicator}>Mode Diaporama</Text>
-                  )}
-                </View>
-                <View style={styles.headerActions}>
-                  <Pressable style={styles.headerButton} onPress={startSlideshow}>
-                    <Play color="#FFFFFF" size={20} />
-                  </Pressable>
-                  <Pressable style={styles.headerButton} onPress={handleShare}>
-                    <Share2 color="#FFFFFF" size={20} />
-                  </Pressable>
+                  <View style={styles.headerInfo}>
+                    <Text style={styles.albumName}>{currentPhoto?.albumName}</Text>
+                    <Text style={styles.photoIndex}>{(currentPhoto?.index || 0) + 1} / {photo.albumPhotos.length}</Text>
+                  </View>
+                  <View style={styles.headerActions}>
+                    <Pressable style={styles.headerButton} onPress={handleShare}>
+                      <Share2 color="#FFFFFF" size={20} />
+                    </Pressable>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
+            )}
           </View>
         )}
         
-        {/* Photo */}
+        {/* Photo Container */}
         <View style={styles.photoContainer}>
           <Animated.View 
             style={[
               styles.photoWrapper, 
               { 
-                opacity: fadeAnim,
-                transform: [{ translateX: swipeAnim }]
+                transform: [
+                  { translateX: swipeAnim },
+                  { scale: scaleAnim },
+                  { translateX: translateXAnim },
+                  { translateY: translateYAnim }
+                ]
               }
             ]}
             {...swipeGesture.panHandlers}
+            {...zoomGesture.panHandlers}
           >
             <Pressable onPress={toggleActions} style={styles.photoTouchable}>
-              <Pressable onPress={toggleFullscreen} style={styles.photoImageContainer}>
-                <Image 
-                  source={{ uri: currentPhoto?.uri || '' }} 
-                  style={styles.photo} 
-                  contentFit="contain"
-                  transition={300}
-                />
-                {!showFullscreen && (
-                  <View style={styles.zoomIndicator}>
-                    <ZoomIn color="#FFFFFF" size={20} />
-                  </View>
-                )}
-              </Pressable>
+              <Image 
+                source={{ uri: currentPhoto?.uri || '' }} 
+                style={styles.photo} 
+                contentFit="contain"
+                transition={300}
+              />
             </Pressable>
           </Animated.View>
           
+          {/* Navigation arrows */}
+          {photo.albumPhotos.length > 1 && showActions && (
+            <>
+              {currentIndex > 0 && (
+                <Pressable 
+                  style={[styles.navButton, styles.navButtonLeft]} 
+                  onPress={() => navigatePhoto('prev')}
+                >
+                  <ChevronLeft color="#FFFFFF" size={32} />
+                </Pressable>
+              )}
+              {currentIndex < photo.albumPhotos.length - 1 && (
+                <Pressable 
+                  style={[styles.navButton, styles.navButtonRight]} 
+                  onPress={() => navigatePhoto('next')}
+                >
+                  <ChevronRight color="#FFFFFF" size={32} />
+                </Pressable>
+              )}
+            </>
+          )}
+          
           {/* Swipe indicators */}
-          {photo && photo.albumPhotos.length > 1 && (
+          {photo && photo.albumPhotos.length > 1 && showActions && (
             <View style={styles.swipeIndicators}>
               {photo.albumPhotos.map((_, index) => (
                 <View 
@@ -508,147 +461,72 @@ export default function PhotoDetailScreen() {
             </View>
           )}
         </View>
-          
-          {/* Slideshow Controls */}
-          {slideshowMode && (
-            <View style={styles.slideshowControls}>
-              {Platform.OS !== 'web' ? (
-                <BlurView intensity={30} style={styles.slideshowControlsBlur}>
-                  <View style={styles.slideshowControlsContent}>
-                    <Pressable style={styles.slideshowButton} onPress={previousPhoto}>
-                      <SkipBack color="#FFFFFF" size={24} />
-                    </Pressable>
-                    
-                    <Pressable style={styles.slideshowButton} onPress={togglePlayPause}>
-                      {isPlaying ? (
-                        <Pause color="#FFFFFF" size={28} />
-                      ) : (
-                        <Play color="#FFFFFF" size={28} />
-                      )}
-                    </Pressable>
-                    
-                    <Pressable style={styles.slideshowButton} onPress={nextPhoto}>
-                      <SkipForward color="#FFFFFF" size={24} />
-                    </Pressable>
-                    
-                    <Pressable style={styles.exitSlideshowButton} onPress={stopSlideshow}>
-                      <Text style={styles.exitSlideshowText}>Quitter</Text>
-                    </Pressable>
-                  </View>
-                </BlurView>
-              ) : (
-                <View style={[styles.slideshowControlsBlur, styles.webBlur]}>
-                  <View style={styles.slideshowControlsContent}>
-                    <Pressable style={styles.slideshowButton} onPress={previousPhoto}>
-                      <SkipBack color="#FFFFFF" size={24} />
-                    </Pressable>
-                    
-                    <Pressable style={styles.slideshowButton} onPress={togglePlayPause}>
-                      {isPlaying ? (
-                        <Pause color="#FFFFFF" size={28} />
-                      ) : (
-                        <Play color="#FFFFFF" size={28} />
-                      )}
-                    </Pressable>
-                    
-                    <Pressable style={styles.slideshowButton} onPress={nextPhoto}>
-                      <SkipForward color="#FFFFFF" size={24} />
-                    </Pressable>
-                    
-                    <Pressable style={styles.exitSlideshowButton} onPress={stopSlideshow}>
-                      <Text style={styles.exitSlideshowText}>Quitter</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
         
         {/* Actions */}
         {showActions && (
           <View style={styles.actions}>
-          {Platform.OS !== 'web' ? (
-            <BlurView intensity={30} style={styles.actionsBlur}>
-              <View style={styles.actionsContent}>
-                <View style={styles.leftActions}>
-                  <Pressable style={styles.actionButton} onPress={handleLike}>
-                    <Heart 
-                      color={isLiked ? '#FF6B6B' : '#FFFFFF'} 
-                      size={28} 
-                      fill={isLiked ? '#FF6B6B' : 'transparent'}
-                    />
-                    <Text style={styles.actionCount}>{likes.length}</Text>
-                  </Pressable>
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={30} style={styles.actionsBlur}>
+                <View style={styles.actionsContent}>
+                  <View style={styles.leftActions}>
+                    <Pressable style={styles.actionButton} onPress={handleLike}>
+                      <Heart 
+                        color={isLiked ? '#FF6B6B' : '#FFFFFF'} 
+                        size={28} 
+                        fill={isLiked ? '#FF6B6B' : 'transparent'}
+                      />
+                      <Text style={styles.actionCount}>{likes.length}</Text>
+                    </Pressable>
+                    
+                    <Pressable style={styles.actionButton} onPress={() => setShowComments(!showComments)}>
+                      <MessageCircle color="#FFFFFF" size={28} />
+                      <Text style={styles.actionCount}>{photoComments.length}</Text>
+                    </Pressable>
+                  </View>
                   
-                  <Pressable style={styles.actionButton} onPress={() => {
-                    setShowComments(!showComments);
-                    if (Platform.OS !== 'web') {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
-                  }}>
-                    <MessageCircle color="#FFFFFF" size={28} />
-                    <Text style={styles.actionCount}>{photoComments.length}</Text>
-                  </Pressable>
-                  
-                  <Pressable style={styles.actionButton} onPress={() => setShowTagInput(true)}>
-                    <Tag color="#FFFFFF" size={28} />
-                    <Text style={styles.actionCount}>{photoTags.length}</Text>
+                  <Pressable 
+                    style={[styles.saveButton, isDownloading && styles.disabledButton]} 
+                    onPress={handleSave}
+                    disabled={isDownloading}
+                  >
+                    <Download color={isDownloading ? "#666666" : "#FFFFFF"} size={24} />
                   </Pressable>
                 </View>
-                
-                <Pressable 
-                  style={[styles.saveButton, isDownloading && styles.disabledButton]} 
-                  onPress={handleSave}
-                  disabled={isDownloading}
-                >
-                  <Download color={isDownloading ? "#666666" : "#FFFFFF"} size={24} />
-                </Pressable>
-              </View>
-            </BlurView>
-          ) : (
-            <View style={[styles.actionsBlur, styles.webBlur]}>
-              <View style={styles.actionsContent}>
-                <View style={styles.leftActions}>
-                  <Pressable style={styles.actionButton} onPress={handleLike}>
-                    <Heart 
-                      color={isLiked ? '#FF6B6B' : '#FFFFFF'} 
-                      size={28} 
-                      fill={isLiked ? '#FF6B6B' : 'transparent'}
-                    />
-                    <Text style={styles.actionCount}>{likes.length}</Text>
-                  </Pressable>
+              </BlurView>
+            ) : (
+              <View style={[styles.actionsBlur, styles.webBlur]}>
+                <View style={styles.actionsContent}>
+                  <View style={styles.leftActions}>
+                    <Pressable style={styles.actionButton} onPress={handleLike}>
+                      <Heart 
+                        color={isLiked ? '#FF6B6B' : '#FFFFFF'} 
+                        size={28} 
+                        fill={isLiked ? '#FF6B6B' : 'transparent'}
+                      />
+                      <Text style={styles.actionCount}>{likes.length}</Text>
+                    </Pressable>
+                    
+                    <Pressable style={styles.actionButton} onPress={() => setShowComments(!showComments)}>
+                      <MessageCircle color="#FFFFFF" size={28} />
+                      <Text style={styles.actionCount}>{photoComments.length}</Text>
+                    </Pressable>
+                  </View>
                   
-                  <Pressable style={styles.actionButton} onPress={() => {
-                    setShowComments(!showComments);
-                    if (Platform.OS !== 'web') {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
-                  }}>
-                    <MessageCircle color="#FFFFFF" size={28} />
-                    <Text style={styles.actionCount}>{photoComments.length}</Text>
-                  </Pressable>
-                  
-                  <Pressable style={styles.actionButton} onPress={() => setShowTagInput(true)}>
-                    <Tag color="#FFFFFF" size={28} />
-                    <Text style={styles.actionCount}>{photoTags.length}</Text>
+                  <Pressable 
+                    style={[styles.saveButton, isDownloading && styles.disabledButton]} 
+                    onPress={handleSave}
+                    disabled={isDownloading}
+                  >
+                    <Download color={isDownloading ? "#666666" : "#FFFFFF"} size={24} />
                   </Pressable>
                 </View>
-                
-                <Pressable 
-                  style={[styles.saveButton, isDownloading && styles.disabledButton]} 
-                  onPress={handleSave}
-                  disabled={isDownloading}
-                >
-                  <Download color={isDownloading ? "#666666" : "#FFFFFF"} size={24} />
-                </Pressable>
               </View>
-            </View>
-          )}
+            )}
           </View>
         )}
         
         {/* Comments Section */}
-        {showComments && !slideshowMode && showActions && (
+        {showComments && showActions && (
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={[styles.commentsContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 0 }]}
@@ -656,7 +534,12 @@ export default function PhotoDetailScreen() {
             {Platform.OS !== 'web' ? (
               <BlurView intensity={40} style={styles.commentsBlur}>
                 <View style={styles.commentsContent}>
-                  <Text style={styles.commentsTitle}>Commentaires ({photoComments.length})</Text>
+                  <View style={styles.commentsHeader}>
+                    <Text style={styles.commentsTitle}>Commentaires ({photoComments.length})</Text>
+                    <Pressable onPress={() => setShowComments(false)}>
+                      <X color="#FFFFFF" size={20} />
+                    </Pressable>
+                  </View>
                   
                   <ScrollView style={styles.commentsList} showsVerticalScrollIndicator={false}>
                     {photoComments.map(comment => (
@@ -703,7 +586,12 @@ export default function PhotoDetailScreen() {
             ) : (
               <View style={[styles.commentsBlur, styles.webBlur]}>
                 <View style={styles.commentsContent}>
-                  <Text style={styles.commentsTitle}>Commentaires ({photoComments.length})</Text>
+                  <View style={styles.commentsHeader}>
+                    <Text style={styles.commentsTitle}>Commentaires ({photoComments.length})</Text>
+                    <Pressable onPress={() => setShowComments(false)}>
+                      <X color="#FFFFFF" size={20} />
+                    </Pressable>
+                  </View>
                   
                   <ScrollView style={styles.commentsList} showsVerticalScrollIndicator={false}>
                     {photoComments.map(comment => (
@@ -750,178 +638,6 @@ export default function PhotoDetailScreen() {
             )}
           </KeyboardAvoidingView>
         )}
-        
-        {/* Tags Section */}
-        {photoTags.length > 0 && !slideshowMode && showActions && (
-          <View style={styles.tagsContainer}>
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={20} style={styles.tagsBlur}>
-                <View style={styles.tagsContent}>
-                  <Text style={styles.tagsTitle}>Tags</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.tagsList}>
-                      {photoTags.map((tag, index) => (
-                        <Pressable 
-                          key={index} 
-                          style={styles.tagChip}
-                          onPress={() => handleRemoveTag(tag)}
-                        >
-                          <Text style={styles.tagText}>#{tag}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-              </BlurView>
-            ) : (
-              <View style={[styles.tagsBlur, styles.webBlur]}>
-                <View style={styles.tagsContent}>
-                  <Text style={styles.tagsTitle}>Tags</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.tagsList}>
-                      {photoTags.map((tag, index) => (
-                        <Pressable 
-                          key={index} 
-                          style={styles.tagChip}
-                          onPress={() => handleRemoveTag(tag)}
-                        >
-                          <Text style={styles.tagText}>#{tag}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-        
-        {/* Tag Input Modal */}
-        {showTagInput && (
-          <View style={styles.tagInputOverlay}>
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={40} style={styles.tagInputBlur}>
-                <View style={styles.tagInputContent}>
-                  <Text style={styles.tagInputTitle}>Ajouter un tag</Text>
-                  <View style={styles.tagInputRow}>
-                    <TextInput
-                      style={styles.tagInput}
-                      placeholder="Nom du tag..."
-                      placeholderTextColor="#A9AFBC"
-                      value={newTag}
-                      onChangeText={setNewTag}
-                      autoFocus
-                      maxLength={20}
-                    />
-                    <Pressable 
-                      style={[styles.addTagButton, { opacity: newTag.trim() ? 1 : 0.5 }]}
-                      onPress={handleAddTag}
-                      disabled={!newTag.trim()}
-                    >
-                      <Plus color="#000000" size={20} />
-                    </Pressable>
-                  </View>
-                  <Pressable style={styles.cancelTagButton} onPress={() => { setShowTagInput(false); setNewTag(''); }}>
-                    <Text style={styles.cancelTagText}>Annuler</Text>
-                  </Pressable>
-                </View>
-              </BlurView>
-            ) : (
-              <View style={[styles.tagInputBlur, styles.webBlur]}>
-                <View style={styles.tagInputContent}>
-                  <Text style={styles.tagInputTitle}>Ajouter un tag</Text>
-                  <View style={styles.tagInputRow}>
-                    <TextInput
-                      style={styles.tagInput}
-                      placeholder="Nom du tag..."
-                      placeholderTextColor="#A9AFBC"
-                      value={newTag}
-                      onChangeText={setNewTag}
-                      autoFocus
-                      maxLength={20}
-                    />
-                    <Pressable 
-                      style={[styles.addTagButton, { opacity: newTag.trim() ? 1 : 0.5 }]}
-                      onPress={handleAddTag}
-                      disabled={!newTag.trim()}
-                    >
-                      <Plus color="#000000" size={20} />
-                    </Pressable>
-                  </View>
-                  <Pressable style={styles.cancelTagButton} onPress={() => { setShowTagInput(false); setNewTag(''); }}>
-                    <Text style={styles.cancelTagText}>Annuler</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-        
-        {/* Fullscreen Modal */}
-        <Modal
-          visible={showFullscreen}
-          animationType="fade"
-          statusBarTranslucent
-          onRequestClose={() => setShowFullscreen(false)}
-        >
-          <View style={styles.fullscreenContainer}>
-            <LinearGradient colors={['#000000', '#000000']} style={StyleSheet.absoluteFillObject} />
-            
-            {/* Fullscreen Header */}
-            <SafeAreaView style={[styles.fullscreenHeader, { paddingTop: Math.max(insets.top, 12) }]} edges={['top']}>
-              <Pressable style={styles.fullscreenCloseButton} onPress={() => setShowFullscreen(false)} testID="close-fullscreen">
-                <X color="#FFFFFF" size={24} />
-              </Pressable>
-            </SafeAreaView>
-            
-            {/* Fullscreen Photo */}
-            <View style={styles.fullscreenPhotoContainer}>
-              <Image 
-                source={{ uri: currentPhoto?.uri || '' }} 
-                style={styles.fullscreenPhoto} 
-                contentFit="contain"
-                transition={300}
-              />
-            </View>
-            
-            {/* Fullscreen Actions */}
-            <SafeAreaView style={styles.fullscreenActions} edges={['bottom']}>
-              <View style={styles.fullscreenActionsContent}>
-                <Pressable style={styles.fullscreenActionButton} onPress={handleLike} testID="fs-like">
-                  <Heart 
-                    color={isLiked ? '#FF6B6B' : '#FFFFFF'} 
-                    size={28} 
-                    fill={isLiked ? '#FF6B6B' : 'transparent'}
-                  />
-                  <Text style={styles.fullscreenActionText}>{likes.length}</Text>
-                </Pressable>
-                
-                <Pressable style={styles.fullscreenActionButton} onPress={() => setShowUniversalComments(true)} testID="fs-comments">
-                  <MessageCircle color="#FFFFFF" size={28} />
-                  <Text style={styles.fullscreenActionText}>{photoComments.length}</Text>
-                </Pressable>
-                
-                <Pressable style={styles.fullscreenActionButton} onPress={handleShare} testID="fs-share">
-                  <Share2 color="#FFFFFF" size={28} />
-                  <Text style={styles.fullscreenActionText}>Partager</Text>
-                </Pressable>
-                
-                <Pressable style={styles.fullscreenActionButton} onPress={handleSave} testID="fs-download">
-                  <Download color="#FFFFFF" size={28} />
-                  <Text style={styles.fullscreenActionText}>Sauver</Text>
-                </Pressable>
-              </View>
-            </SafeAreaView>
-          </View>
-        </Modal>
-        
-        {/* Universal Comments Modal */}
-        <UniversalComments
-          visible={showUniversalComments}
-          onClose={() => setShowUniversalComments(false)}
-          photoId={currentPhoto?.uri || ''}
-          photoUri={currentPhoto?.uri}
-        />
       </SafeAreaView>
     </View>
   );
@@ -976,6 +692,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   photoContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -990,26 +710,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  photoImageContainer: {
+  photoWrapper: {
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  zoomIndicator: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 20,
-    padding: 8,
   },
   photo: {
     width: '100%',
     height: '100%',
     borderRadius: 16,
     backgroundColor: '#000000',
+  },
+  navButton: {
+    position: 'absolute',
+    top: '50%',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  navButtonLeft: {
+    left: 20,
+  },
+  navButtonRight: {
+    right: 20,
+  },
+  swipeIndicators: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    zIndex: 5,
+  },
+  swipeIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  activeSwipeIndicator: {
+    backgroundColor: '#FFD700',
+    width: 24,
   },
   actions: {
     position: 'absolute',
@@ -1048,12 +794,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
+  disabledButton: {
+    opacity: 0.5,
+  },
   commentsContainer: {
     position: 'absolute',
     bottom: 140,
     left: 0,
     right: 0,
-    maxHeight: '50%',
+    maxHeight: '60%',
     zIndex: 15,
   },
   commentsBlur: {
@@ -1065,11 +814,16 @@ const styles = StyleSheet.create({
   commentsContent: {
     padding: 20,
   },
+  commentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   commentsTitle: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 16,
   },
   commentsList: {
     maxHeight: 200,
@@ -1150,226 +904,5 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 16,
     fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  slideshowIndicator: {
-    color: '#FFD700',
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  photoWrapper: {
-    width: '100%',
-    height: '100%',
-  },
-  slideshowControls: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    zIndex: 25,
-  },
-  slideshowControlsBlur: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  slideshowControlsContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 20,
-  },
-  slideshowButton: {
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  exitSlideshowButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: '#FF3B30',
-  },
-  exitSlideshowText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  tagsContainer: {
-    position: 'absolute',
-    bottom: 200,
-    left: 0,
-    right: 0,
-    zIndex: 15,
-  },
-  tagsBlur: {
-    margin: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  tagsContent: {
-    padding: 16,
-  },
-  tagsTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  tagsList: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tagChip: {
-    backgroundColor: 'rgba(255,215,0,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.3)',
-  },
-  tagText: {
-    color: '#FFD700',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  tagInputOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 30,
-  },
-  tagInputBlur: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    margin: 20,
-  },
-  tagInputContent: {
-    padding: 24,
-    alignItems: 'center',
-    gap: 16,
-  },
-  tagInputTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  tagInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    width: '100%',
-  },
-  tagInput: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  addTagButton: {
-    backgroundColor: '#FFD700',
-    padding: 12,
-    borderRadius: 12,
-  },
-  cancelTagButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  cancelTagText: {
-    color: '#A9AFBC',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  fullscreenContainer: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  fullscreenHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  fullscreenCloseButton: {
-    alignSelf: 'flex-end',
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    marginTop: 8,
-  },
-  fullscreenPhotoContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullscreenPhoto: {
-    width: screenWidth,
-    height: screenHeight,
-  },
-  fullscreenActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  fullscreenActionsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  fullscreenActionButton: {
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-  },
-  fullscreenActionText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  swipeIndicators: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    zIndex: 5,
-  },
-  swipeIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  activeSwipeIndicator: {
-    backgroundColor: '#FFD700',
-    width: 24,
   },
 });
