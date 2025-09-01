@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,10 @@ import {
   Pressable,
   Alert,
   Platform,
-  Dimensions,
+
   ActivityIndicator,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
@@ -37,7 +37,7 @@ import { useImageCompression } from '@/providers/ImageCompressionProvider';
 import { useOfflineQueue } from '@/providers/OfflineQueueProvider';
 import { askMemoria, buildAISystemPrompt, buildAIMessages } from '@/lib/ai';
 
-const { width: screenWidth } = Dimensions.get('window');
+
 
 interface AISuggestion {
   id: string;
@@ -58,13 +58,10 @@ export default function AISuggestionsScreen() {
   const { showSuccess, showError } = useToast();
   const { 
     analyzePhotos, 
-    organizePhotos, 
-    generateActivityReport, 
-    isAnalyzing: aiIsAnalyzing, 
-    progress: aiProgress 
+    organizePhotos
   } = useAI();
-  const { compressMultipleImages, isCompressing } = useImageCompression();
-  const { addToQueue, pendingCount } = useOfflineQueue();
+  const { compressMultipleImages } = useImageCompression();
+  const { addToQueue } = useOfflineQueue();
   
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);

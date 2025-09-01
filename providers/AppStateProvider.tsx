@@ -256,22 +256,24 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     profileAvatar
   });
   
-  // Update ref when state changes
+  // Update ref when state changes - memoized to prevent unnecessary updates
+  const stateSnapshot = useMemo(() => ({
+    onboardingComplete,
+    displayName,
+    points,
+    albums,
+    groups,
+    comments,
+    photos,
+    favoriteAlbums,
+    favoriteGroups,
+    lastSync,
+    profileAvatar
+  }), [onboardingComplete, displayName, points, albums, groups, comments, photos, favoriteAlbums, favoriteGroups, lastSync, profileAvatar]);
+  
   useEffect(() => {
-    stateRef.current = {
-      onboardingComplete,
-      displayName,
-      points,
-      albums,
-      groups,
-      comments,
-      photos,
-      favoriteAlbums,
-      favoriteGroups,
-      lastSync,
-      profileAvatar
-    };
-  }, [onboardingComplete, displayName, points, albums, groups, comments, photos, favoriteAlbums, favoriteGroups, lastSync, profileAvatar]);
+    stateRef.current = stateSnapshot;
+  }, [stateSnapshot]);
 
   const persist = useCallback(
     async (next: { 
@@ -316,7 +318,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     });
   }, [persist]);
 
-  const createAlbum = useCallback(async (name: string, groupId?: string) => {
+  const createAlbum = useCallback(async (name: string, groupId?: string): Promise<Album> => {
     if (user && supabaseHooks.albums.createAlbum) {
       try {
         const supabaseAlbum = await supabaseHooks.albums.createAlbum({
@@ -367,7 +369,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     setAlbums(updatedAlbums);
     persist({ albums: updatedAlbums });
     return newAlbum;
-  }, [albums, persist, user, supabaseHooks]);
+  }, [albums, persist, user, supabaseHooks.albums.createAlbum]);
 
   const deleteAlbum = useCallback((albumId: string) => {
     const updatedAlbums = albums.filter(album => album.id !== albumId);
@@ -375,7 +377,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     persist({ albums: updatedAlbums });
   }, [albums, persist]);
 
-  const addPhotoToAlbum = useCallback(async (albumId: string, photoUri: string) => {
+  const addPhotoToAlbum = useCallback(async (albumId: string, photoUri: string): Promise<void> => {
     const newPhoto: Photo = {
       id: `${albumId}-${Date.now()}`,
       uri: photoUri,
@@ -743,20 +745,23 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     }
   }, [albums, addNotification]);
 
+  // Memoize sync data to prevent unnecessary re-creations
+  const syncDataSnapshot = useMemo(() => ({
+    photos,
+    comments,
+    albums,
+    groups,
+    lastSync
+  }), [photos, comments, albums, groups, lastSync]);
+  
   const syncData = useCallback(async (retryCount = 0) => {
     if (!mountedRef.current || !isInitialized) return;
     
     try {
       if (mountedRef.current) setIsOnline(true);
-      console.log('Starting sync...', { photosCount: photos.length, albumsCount: albums.length });
+      console.log('Starting sync...', { photosCount: syncDataSnapshot.photos.length, albumsCount: syncDataSnapshot.albums.length });
       
-      const result = await trpcClient.photos.sync.mutate({
-        photos,
-        comments,
-        albums,
-        groups,
-        lastSync
-      });
+      const result = await trpcClient.photos.sync.mutate(syncDataSnapshot);
       
       if (!mountedRef.current) return;
       
@@ -794,7 +799,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         }, delay);
       }
     }
-  }, [photos, comments, albums, groups, lastSync, persist, isInitialized]);
+  }, [syncDataSnapshot, persist, isInitialized]);
 
   const batchSelectPhotos = useCallback((photoIds: string[]) => {
     setSelectedPhotos(prev => {
@@ -1017,132 +1022,90 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     );
   }, [events]);
 
-  return useMemo(
-    () => ({ 
-      onboardingComplete, 
-      setOnboardingComplete, 
-      displayName, 
-      setDisplayName, 
-      points, 
-      addPoints,
-      albums,
-      groups,
-      comments,
-      photos,
-      events,
-      createAlbum,
-      deleteAlbum,
-      addPhotoToAlbum,
-      createGroup,
-      deleteGroup,
-      addComment,
-      deleteComment,
-      likePhoto,
-      unlikePhoto,
-      likeAlbum,
-      unlikeAlbum,
-      updateGroupCover,
-      joinGroupByCode,
-      updateProfile,
-      searchPhotos,
-      searchAlbums,
-      exportAlbum,
-      profileAvatar,
-      syncData,
-      isOnline,
-      lastSync,
-      pendingUploads,
-      batchSelectPhotos,
-      selectedPhotos,
-      clearSelection,
-      batchDeletePhotos,
-      batchMovePhotos,
-      favoriteAlbums,
-      toggleFavoriteAlbum,
-      favoriteGroups,
-      toggleFavoriteGroup,
-      updateAlbumCover,
-      getSmartAlbums,
-      notifications,
-      markNotificationRead,
-      addNotification,
-      batchArchivePhotos,
-      addTagToPhoto,
-      removeTagFromPhoto,
-      searchByTag,
-      setAlbumCoverTransform,
-      incrementAlbumView,
-      createTemporaryShareLink,
-      revokeShareLink,
-      createEvent,
-      deleteEvent,
-      joinEvent,
-      leaveEvent,
-      searchEvents
-    }),
-    [
-      onboardingComplete, 
-      setOnboardingComplete, 
-      displayName, 
-      setDisplayName, 
-      points, 
-      addPoints,
-      albums,
-      groups,
-      comments,
-      photos,
-      events,
-      createAlbum,
-      deleteAlbum,
-      addPhotoToAlbum,
-      createGroup,
-      deleteGroup,
-      addComment,
-      deleteComment,
-      likePhoto,
-      unlikePhoto,
-      likeAlbum,
-      unlikeAlbum,
-      updateGroupCover,
-      joinGroupByCode,
-      updateProfile,
-      searchPhotos,
-      searchAlbums,
-      exportAlbum,
-      profileAvatar,
-      syncData,
-      isOnline,
-      lastSync,
-      pendingUploads,
-      batchSelectPhotos,
-      selectedPhotos,
-      clearSelection,
-      batchDeletePhotos,
-      batchMovePhotos,
-      favoriteAlbums,
-      toggleFavoriteAlbum,
-      favoriteGroups,
-      toggleFavoriteGroup,
-      updateAlbumCover,
-      getSmartAlbums,
-      notifications,
-      markNotificationRead,
-      addNotification,
-      batchArchivePhotos,
-      addTagToPhoto,
-      removeTagFromPhoto,
-      searchByTag,
-      setAlbumCoverTransform,
-      incrementAlbumView,
-      createTemporaryShareLink,
-      revokeShareLink,
-      createEvent,
-      deleteEvent,
-      joinEvent,
-      leaveEvent,
-      searchEvents
-    ]
-  );
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({ 
+    onboardingComplete, 
+    setOnboardingComplete, 
+    displayName, 
+    setDisplayName, 
+    points, 
+    addPoints,
+    albums,
+    groups,
+    comments,
+    photos,
+    events,
+    createAlbum,
+    deleteAlbum,
+    addPhotoToAlbum,
+    createGroup,
+    deleteGroup,
+    addComment,
+    deleteComment,
+    likePhoto,
+    unlikePhoto,
+    likeAlbum,
+    unlikeAlbum,
+    updateGroupCover,
+    joinGroupByCode,
+    updateProfile,
+    searchPhotos,
+    searchAlbums,
+    exportAlbum,
+    profileAvatar,
+    syncData,
+    isOnline,
+    lastSync,
+    pendingUploads,
+    batchSelectPhotos,
+    selectedPhotos,
+    clearSelection,
+    batchDeletePhotos,
+    batchMovePhotos,
+    favoriteAlbums,
+    toggleFavoriteAlbum,
+    favoriteGroups,
+    toggleFavoriteGroup,
+    updateAlbumCover,
+    getSmartAlbums,
+    notifications,
+    markNotificationRead,
+    addNotification,
+    batchArchivePhotos,
+    addTagToPhoto,
+    removeTagFromPhoto,
+    searchByTag,
+    setAlbumCoverTransform,
+    incrementAlbumView,
+    createTemporaryShareLink,
+    revokeShareLink,
+    createEvent,
+    deleteEvent,
+    joinEvent,
+    leaveEvent,
+    searchEvents
+  }), [
+    // Core state
+    onboardingComplete, displayName, points, profileAvatar, isOnline, lastSync,
+    // Data arrays
+    albums, groups, comments, photos, events, notifications,
+    // Selection state
+    selectedPhotos, pendingUploads, favoriteAlbums, favoriteGroups,
+    // Stable callbacks (these shouldn't change often)
+    setOnboardingComplete, setDisplayName, addPoints, createAlbum, deleteAlbum,
+    addPhotoToAlbum, createGroup, deleteGroup, addComment, deleteComment,
+    likePhoto, unlikePhoto, likeAlbum, unlikeAlbum, updateGroupCover,
+    joinGroupByCode, updateProfile, syncData, batchSelectPhotos, clearSelection,
+    batchDeletePhotos, batchMovePhotos, toggleFavoriteAlbum, toggleFavoriteGroup,
+    updateAlbumCover, markNotificationRead, addNotification, batchArchivePhotos,
+    addTagToPhoto, removeTagFromPhoto, setAlbumCoverTransform, incrementAlbumView,
+    createTemporaryShareLink, revokeShareLink, createEvent, deleteEvent,
+    joinEvent, leaveEvent,
+    // Computed functions (these depend on state but are stable)
+    searchPhotos, searchAlbums, exportAlbum, getSmartAlbums, searchByTag, searchEvents
+  ]);
+  
+  return contextValue;
 });
 
 export type { Album, Group, Comment, Photo, Event };
