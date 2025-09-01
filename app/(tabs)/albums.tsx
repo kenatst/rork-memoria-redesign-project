@@ -558,7 +558,7 @@ export default function AlbumsScreen() {
               numColumns={viewMode === 'grid' ? 2 : 1}
               key={viewMode}
               estimatedItemSize={viewMode === 'grid' ? 280 : 100}
-              contentContainerStyle={[styles.albumsContent, { justifyContent: 'space-between' }]}
+              contentContainerStyle={[styles.albumsContent, { paddingBottom: 120 }]}
               showsVerticalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
               refreshControl={

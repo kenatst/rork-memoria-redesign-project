@@ -177,7 +177,7 @@ export default function AISuggestionsScreen() {
       } else {
         // Fallback to tRPC for specific criteria
         await suggestAlbumsMutation.mutateAsync({
-          photos: allPhotos.map((photo: any) => typeof photo === 'string' ? photo : photo.uri || photo),
+          photos: allPhotos.map((photo: { uri?: string; id?: string } | string) => typeof photo === 'string' ? photo : photo.uri || photo.id || ''),
           criteria: selectedCriteria,
           maxSuggestions: 5,
         });
