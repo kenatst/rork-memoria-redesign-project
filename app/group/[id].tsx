@@ -239,7 +239,7 @@ export default function GroupDetailScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => router.back()} testID="back-btn">
             <ArrowLeft color="#FFD700" size={24} />

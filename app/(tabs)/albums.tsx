@@ -558,7 +558,7 @@ export default function AlbumsScreen() {
               numColumns={viewMode === 'grid' ? 2 : 1}
               key={viewMode}
               estimatedItemSize={viewMode === 'grid' ? 280 : 100}
-              contentContainerStyle={[styles.albumsContent, { paddingBottom: 120 }]}
+              contentContainerStyle={styles.albumsContent}
               showsVerticalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
               refreshControl={
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#131417',
-    height: 260,
+    height: 280,
     width: (screenWidth - 48) / 2,
   },
   albumImageContainer: {
@@ -889,16 +889,16 @@ const styles = StyleSheet.create({
   },
   albumInfo: {
     padding: 16,
-    height: 120,
+    height: 140,
     justifyContent: 'flex-start',
   },
   albumName: {
     fontSize: 16,
     fontWeight: '700',
     color: Colors.palette.taupeDeep,
-    marginBottom: 4,
-    minHeight: 44,
-    lineHeight: 22
+    marginBottom: 8,
+    minHeight: 48,
+    lineHeight: 24
   },
   albumStats: {
     fontSize: 12,

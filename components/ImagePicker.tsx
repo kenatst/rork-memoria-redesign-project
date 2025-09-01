@@ -59,6 +59,7 @@ export default function ImagePickerComponent({
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
+        allowsMultipleSelection: false, // Single selection for cover image
       });
 
       if (!result.canceled && result.assets[0]) {
