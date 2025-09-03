@@ -19,6 +19,7 @@ import PerformanceProvider from "@/providers/PerformanceProvider";
 import { SupabaseProvider } from "@/providers/SupabaseProvider";
 import NavigationOptimizer from "@/components/NavigationOptimizer";
 import Toast from 'react-native-toast-message';
+import Colors from "@/constants/colors";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch((e) => console.log("Splash error", e));
@@ -28,10 +29,10 @@ const queryClient = new QueryClient();
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ 
-      headerBackTitle: "Back",
-      headerStyle: { backgroundColor: '#000000' },
-      headerTintColor: '#FFFFFF',
-      headerTitleStyle: { fontWeight: '700' }
+      headerBackTitle: "Retour",
+      headerStyle: { backgroundColor: Colors.light.background },
+      headerTintColor: Colors.palette.taupeDeep,
+      headerTitleStyle: { fontWeight: '800', color: Colors.palette.taupeDeep }
     }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
@@ -39,25 +40,25 @@ function RootLayoutNav() {
       <Stack.Screen name="qr-scan" options={{ 
         title: "Scanner QR", 
         presentation: "modal",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="notifications" options={{ 
         title: "Notifications", 
         presentation: "modal",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
 
       <Stack.Screen name="settings" options={{ 
         title: "Paramètres",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="modal" options={{ 
         title: "Modal",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="album/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="album/[id]/mini-film" options={{ headerShown: false }} />
@@ -66,59 +67,59 @@ function RootLayoutNav() {
       <Stack.Screen name="photo/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="create-event" options={{ 
         title: "Créer un événement",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="notification-settings" options={{ 
         title: "Paramètres notifications",
         presentation: "modal",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="analytics" options={{ 
         title: "Analytics",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="social-share" options={{ 
         title: "Partage Social",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="collaboration" options={{ 
         title: "Collaboration",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="video-studio" options={{ 
         title: "Studio Vidéo",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="ai-suggestions" options={{ 
         title: "Suggestions IA",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="cloudinary-test" options={{ 
         title: "Test Cloudinary",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="integrations-test" options={{ 
         title: "Tests d'Intégrations",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="performance-dashboard" options={{ 
         title: "Performance",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
       <Stack.Screen name="supabase-test" options={{ 
         title: "Test Supabase",
-        headerStyle: { backgroundColor: '#000000' },
-        headerTintColor: '#FFFFFF'
+        headerStyle: { backgroundColor: Colors.light.background },
+        headerTintColor: Colors.palette.taupeDeep
       }} />
     </Stack>
   );
@@ -147,7 +148,7 @@ export default function RootLayout() {
                             preloadRoutes={['/(tabs)/albums', '/(tabs)/capture', '/settings']}
                           >
                             <GestureHandlerRootView style={{ flex: 1 }}>
-                              <StatusBar style="light" backgroundColor="#000000" />
+                              <StatusBar style="dark" backgroundColor="transparent" />
                               <ErrorBoundary>
                                 <StabilityErrorBoundary>
                                   <RootLayoutNav />

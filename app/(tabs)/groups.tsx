@@ -14,13 +14,7 @@ import { useAccessibility } from '@/components/AccessibilityProvider';
 import * as Haptics from 'expo-haptics';
 import { Dimensions } from 'react-native';
 
-type UIGroup = {
-  id: string;
-  name: string;
-  members: number;
-  cover: string;
-  role: 'owner' | 'admin' | 'member';
-};
+type UIGroup = { id: string; name: string; members: number; cover: string; role: 'owner' | 'admin' | 'member' };
 
 export default function GroupsScreen() {
   const router = useRouter();
@@ -35,7 +29,6 @@ export default function GroupsScreen() {
   const [newDescription, setNewDescription] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'family' | 'friends' | 'couple'>('all');
-  const screenWidth = Dimensions.get('window').width;
 
   useEffect(() => {
     const mockGroups: UIGroup[] = (persistedGroups as PersistedGroup[]).map((group: PersistedGroup) => ({
@@ -46,7 +39,6 @@ export default function GroupsScreen() {
       role: 'owner'
     }));
     setGroups(mockGroups);
-    
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
@@ -62,7 +54,7 @@ export default function GroupsScreen() {
         {Platform.OS !== 'web' ? (
           <BlurView intensity={20} style={styles.headerBlur}>
             <View style={styles.headerContent}>
-              <Users2 color="#FFD700" size={24} />
+              <Users2 color={Colors.palette.taupeDeep} size={24} />
               <Text style={styles.headerTitle}>Groupes</Text>
               <Pressable 
                 style={styles.createBtn} 
@@ -76,7 +68,7 @@ export default function GroupsScreen() {
                 accessibilityLabel={getAccessibleLabel('Créer un nouveau groupe', 'Appuyez pour créer un nouveau groupe')}
                 accessibilityRole="button"
               >
-                <Plus color="#000" size={18} />
+                <Plus color={Colors.palette.taupeDeep} size={18} />
                 <Text style={styles.createText}>Nouveau</Text>
               </Pressable>
             </View>
@@ -84,7 +76,7 @@ export default function GroupsScreen() {
         ) : (
           <View style={[styles.headerBlur, styles.webBlur]}>
             <View style={styles.headerContent}>
-              <Users2 color="#FFD700" size={24} />
+              <Users2 color={Colors.palette.taupeDeep} size={24} />
               <Text style={styles.headerTitle}>Groupes</Text>
               <Pressable 
                 style={styles.createBtn} 
@@ -98,7 +90,7 @@ export default function GroupsScreen() {
                 accessibilityLabel={getAccessibleLabel('Créer un nouveau groupe', 'Appuyez pour créer un nouveau groupe')}
                 accessibilityRole="button"
               >
-                <Plus color="#000" size={18} />
+                <Plus color={Colors.palette.taupeDeep} size={18} />
                 <Text style={styles.createText}>Nouveau</Text>
               </Pressable>
             </View>
@@ -121,8 +113,8 @@ export default function GroupsScreen() {
         </View>
 
         <Pressable style={styles.createGroupCard} onPress={() => setShowCreate(true)} testID="inline-create-group">
-          <LinearGradient colors={['#A89365', '#DCC39A']} style={styles.createGroupGradient}>
-            <Plus color="#000" size={20} />
+          <LinearGradient colors={[Colors.palette.accentGoldLight, Colors.palette.accentGold]} style={styles.createGroupGradient}>
+            <Plus color={Colors.palette.taupeDeep} size={20} />
             <View style={{ alignItems: 'flex-start' }}>
               <Text style={styles.createGroupTitle}>Créer un groupe</Text>
               <Text style={styles.createGroupSubtitle}>Invitez vos proches</Text>
@@ -150,7 +142,7 @@ export default function GroupsScreen() {
               <Text numberOfLines={1} style={styles.name}>{g.name}</Text>
               <View style={styles.badges}>
                 {g.role === 'owner' && (
-                  <View style={[styles.roleBadge, { backgroundColor: '#FFD700' }]}>
+                  <View style={[styles.roleBadge, { backgroundColor: Colors.palette.accentGold }]}>
                     <Crown color="#000" size={12} />
                   </View>
                 )}
@@ -199,45 +191,18 @@ export default function GroupsScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
             <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Nouveau groupe</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nom du groupe"
-              placeholderTextColor="#A9AFBC"
-              value={newName}
-              onChangeText={setNewName}
-              testID="group-name-input"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Description (optionnel)"
-              placeholderTextColor="#A9AFBC"
-              value={newDescription}
-              onChangeText={setNewDescription}
-              testID="group-description-input"
-              multiline
-              numberOfLines={3}
-            />
+            <TextInput style={styles.input} placeholder="Nom du groupe" placeholderTextColor="#A9AFBC" value={newName} onChangeText={setNewName} testID="group-name-input" />
+            <TextInput style={styles.input} placeholder="Description (optionnel)" placeholderTextColor="#A9AFBC" value={newDescription} onChangeText={setNewDescription} testID="group-description-input" multiline numberOfLines={3} />
             <View style={styles.modalActions}>
               <Pressable style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setShowCreate(false)}>
                 <Text style={styles.cancelText}>Annuler</Text>
               </Pressable>
-              <Pressable
-                style={[styles.modalBtn, styles.createConfirmBtn, isCreating && styles.disabledBtn]}
-                onPress={async () => {
+              <Pressable style={[styles.modalBtn, styles.createConfirmBtn, isCreating && styles.disabledBtn]} onPress={async () => {
                   if (isCreating) return;
-                  
-                  if (!newName.trim()) {
-                    showError('Nom requis', 'Veuillez saisir un nom pour votre groupe');
-                    return;
-                  }
-                  
+                  if (!newName.trim()) { showError('Nom requis', 'Veuillez saisir un nom pour votre groupe'); return; }
                   setIsCreating(true);
                   try {
-                    if (Platform.OS !== 'web') {
-                      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    }
-                    
-                    // Utiliser le provider pour créer le groupe
+                    if (Platform.OS !== 'web') { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }
                     await createGroup(newName.trim(), newDescription.trim() || undefined);
                     setShowCreate(false);
                     setNewName('');
@@ -248,18 +213,9 @@ export default function GroupsScreen() {
                     console.error('Error creating group:', error);
                     showError('Erreur de création', 'Impossible de créer le groupe. Veuillez réessayer.');
                     announceForAccessibility('Erreur lors de la création du groupe');
-                  } finally {
-                    setIsCreating(false);
-                  }
-                }}
-                testID="confirm-create-group"
-                disabled={isCreating}
-                accessibilityLabel={getAccessibleLabel('Créer le groupe', 'Confirmer la création du groupe')}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.createConfirmText, isCreating && styles.disabledText]}>
-                  {isCreating ? 'Création...' : 'Créer'}
-                </Text>
+                  } finally { setIsCreating(false); }
+                }} testID="confirm-create-group" disabled={isCreating} accessibilityLabel={getAccessibleLabel('Créer le groupe', 'Confirmer la création du groupe')} accessibilityRole="button">
+                <Text style={[styles.createConfirmText, isCreating && styles.disabledText]}>{isCreating ? 'Création...' : 'Créer'}</Text>
               </Pressable>
             </View>
             </View>
@@ -277,17 +233,17 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 8 },
   headerBlur: { borderRadius: 16, overflow: 'hidden' },
   webBlur: { backgroundColor: 'transparent' },
-  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8' },
-  headerTitle: { color: Colors.palette.taupeDeep, fontSize: 20, fontWeight: '800' },
-  createBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFD700', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
-  createText: { color: '#000', fontSize: 12, fontWeight: '800' },
+  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8', borderRadius: 16 },
+  headerTitle: { color: Colors.palette.taupeDeep, fontSize: 22, fontWeight: '800' },
+  createBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#EBE3D8' },
+  createText: { color: Colors.palette.taupeDeep, fontSize: 12, fontWeight: '800' },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 16, paddingBottom: 140 },
   filtersRow: { flexDirection: 'row', gap: 10, paddingBottom: 8 },
   filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.08)' },
-  filterChipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
+  filterChipActive: { backgroundColor: 'rgba(214,192,143,0.25)' },
   filterText: { color: Colors.palette.taupe, fontWeight: '700' },
-  filterTextActive: { color: '#FFD700' },
+  filterTextActive: { color: Colors.palette.taupeDeep },
   createGroupCard: { borderRadius: 16, overflow: 'hidden' },
   createGroupGradient: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   createGroupTitle: { color: '#000', fontSize: 14, fontWeight: '800' },
@@ -301,9 +257,9 @@ const styles = StyleSheet.create({
   roleBadge: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10 },
   metaRow: { position: 'absolute', left: 12, right: 12, bottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   meta: { color: Colors.palette.taupe, fontSize: 12 },
-  pinBtn: { backgroundColor: 'rgba(255,215,0,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  pinText: { color: '#FFD700', fontSize: 12, fontWeight: '800' },
-  noteBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFD700', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 },
+  pinBtn: { backgroundColor: 'rgba(214,192,143,0.18)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  pinText: { color: Colors.palette.taupeDeep, fontSize: 12, fontWeight: '800' },
+  noteBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.palette.accentGold, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 },
   noteText: { color: '#000', fontSize: 12, fontWeight: '800' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   keyboardView: { flex: 1, justifyContent: 'flex-end' },

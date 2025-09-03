@@ -68,7 +68,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: CustomT
     <View style={styles.container} testID="custom-tabbar">
       <View style={styles.bar} />
       <View style={styles.content}>
-        {items.map((item: any, i: number) => {
+        {items.map((item: any) => {
           const isCenter = item.name === 'capture';
           const color = item.isFocused ? Colors.palette.taupeDeep : Colors.light.tabIconDefault;
 
@@ -125,22 +125,21 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   bar: {
-    backgroundColor: Colors.light.background,
-    borderTopWidth: 1,
-    borderTopColor: '#E7E0D6',
-    height: 64,
+    backgroundColor: 'rgba(250,247,242,0.85)',
+    borderTopWidth: 0,
+    height: 68,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: -2 },
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: -6 },
+    shadowRadius: 12,
+    elevation: 6,
   },
   content: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 64,
+    height: 68,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -163,18 +162,20 @@ const styles = StyleSheet.create({
   },
   fabShadow: {
     shadowColor: Colors.palette.accentGold,
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.35,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 16,
-    elevation: 6,
-    borderRadius: 28,
+    elevation: 8,
+    borderRadius: 30,
   },
   fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: Colors.palette.accentGold,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.palette.accentGoldDark,
   },
 });
