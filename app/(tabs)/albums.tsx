@@ -220,6 +220,10 @@ export default function AlbumsScreen() {
               colors={['transparent', 'rgba(0,0,0,0.7)']}
               style={styles.albumOverlay}
             />
+
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{album.photoCount}</Text>
+            </View>
             
             {/* Status badges */}
             {album.isActive && (
@@ -464,7 +468,10 @@ export default function AlbumsScreen() {
           <Pressable style={styles.createCard} onPress={() => { handleHaptic('medium'); setShowCreate(true); }} testID="create-album">
             <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.createGradient}>
               <Plus color="#000" size={24} />
-              <Text style={styles.createTitle}>Créer un nouvel album</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={styles.createTitle}>Créer un album</Text>
+                <Text style={{ color: '#1a1a1a', fontWeight: '600', marginTop: 2 }}>Organisez vos souvenirs</Text>
+              </View>
             </LinearGradient>
           </Pressable>
         </View>
@@ -522,6 +529,10 @@ export default function AlbumsScreen() {
                           colors={['transparent', 'rgba(0,0,0,0.8)']}
                           style={styles.albumOverlay}
                         />
+
+                        <View style={styles.countBadge}>
+                          <Text style={styles.countText}>{album.photoCount}</Text>
+                        </View>
                         
                         {/* Favorite Button */}
                         <Pressable
@@ -932,6 +943,9 @@ const styles = StyleSheet.create({
   liveText: { color: '#000000', fontSize: 10, fontWeight: '800' },
   typeBadge: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.3)' },
   privacyBadge: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
+
+  countBadge: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 14, paddingHorizontal: 8, height: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  countText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 }
 
   albumMeta: { flexDirection: 'row', alignItems: 'center' },
 
