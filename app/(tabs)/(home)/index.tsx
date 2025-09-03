@@ -1,724 +1,200 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { View, StyleSheet, Text, ScrollView, Pressable, RefreshControl, Animated, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Redirect } from "expo-router";
-import { Image } from "expo-image";
-import Colors from "@/constants/colors";
-import { Sparkles, QrCode, Images as ImagesIcon, Bell, Calendar, Zap, Shield, Globe, Wifi, WifiOff, Share2, BarChart3 } from "lucide-react-native";
-import { useAppState } from "@/providers/AppStateProvider";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import * as Haptics from "expo-haptics";
-import { useAuth } from "@/providers/AuthProvider";
-import { useOfflineQueue } from "@/providers/OfflineQueueProvider";
-import { useAI } from "@/providers/AIProvider";
-import { useImageCompression } from "@/providers/ImageCompressionProvider";
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { View, StyleSheet, Text, ScrollView, Pressable, RefreshControl, Animated, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, Redirect } from 'expo-router';
+import { Image } from 'expo-image';
+import Colors from '@/constants/colors';
+import { Plus, Users2, FolderOpen, Camera, ChevronRight, Shield, Clock } from 'lucide-react-native';
+import { useAppState } from '@/providers/AppStateProvider';
+import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { displayName, points, onboardingComplete, getSmartAlbums, favoriteAlbums, toggleFavoriteAlbum, favoriteGroups } = useAppState() as any;
-  const { isAuthenticated } = useAuth();
-  const { pendingCount, failedCount, processQueue } = useOfflineQueue();
-  const { generateActivityReport, isAnalyzing } = useAI();
-  const { isCompressing } = useImageCompression();
+  const { displayName, onboardingComplete, groups, albums } = useAppState() as any;
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [notifications, setNotifications] = useState<number>(3);
-  const fadeAnim = useState(() => new Animated.Value(0))[0];
-  const scaleAnim = useState(() => new Animated.Value(0.9))[0];
-  const glowAnim = useState(() => new Animated.Value(0))[0];
-  const pulseAnim = useState(() => new Animated.Value(1))[0];
-  const floatAnim = useState(() => new Animated.Value(0))[0];
-
+  const fade = useState(() => new Animated.Value(0))[0];
+  const slide = useState(() => new Animated.Value(20))[0];
 
   useEffect(() => {
-    // Animations d'entrée révolutionnaires
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 40,
-        friction: 8,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.spring(slide, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
     ]).start();
-
-    // Animation de glow pulsant
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Animation de pulse pour les notifications
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.2,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Animation de flottement
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Simulation de statut réseau
-    const networkInterval = setInterval(() => {
-      setIsOnline(prev => Math.random() > 0.1 ? true : prev);
-    }, 5000);
-
-    return () => clearInterval(networkInterval);
   }, []);
 
-  const handleHapticFeedback = () => {
+  const handleHaptic = useCallback(() => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-  };
+  }, []);
 
   const handleRefresh = async () => {
-    handleHapticFeedback();
+    handleHaptic();
     setRefreshing(true);
-    // Simulation de sync intelligente
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setNotifications(prev => prev + Math.floor(Math.random() * 3));
+    await new Promise((r) => setTimeout(r, 800));
     setRefreshing(false);
   };
 
-  const { albums } = useAppState();
-  
-  const heroImages = useMemo(() => {
-    const albumPhotos = albums.flatMap(album => album.photos).slice(0, 3);
-    if (albumPhotos.length === 0) {
-      return [
-        "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=2000&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=2000&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2000&auto=format&fit=crop",
-      ];
-    }
-    return albumPhotos;
+  const stats = useMemo(() => {
+    const photosCount = albums?.reduce((sum: number, a: any) => sum + (a.photos?.length ?? 0), 0) ?? 0;
+    const videosCount = albums?.reduce((sum: number, a: any) => sum + (a.videos?.length ?? 0), 0) ?? 0;
+    return [
+      { label: 'Photos', value: photosCount },
+      { label: 'Vidéos', value: videosCount },
+      { label: 'Albums', value: albums?.length ?? 0 },
+    ] as const;
   }, [albums]);
 
-  if (!isAuthenticated || !onboardingComplete) {
+  if (!onboardingComplete) {
     return <Redirect href="/onboarding" />;
   }
 
+  const recentGroups = (groups ?? []).slice(0, 6);
+  const recentAlbums = (albums ?? []).slice(0, 5);
+
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#000000', '#0B0B0D', '#131417']}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      
-      <Animated.View style={[styles.animatedContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <ScrollView
-          style={styles.scrollView}
+          style={styles.scroll}
           contentContainerStyle={styles.content}
-          testID="home-scroll"
+          testID="dashboard-scroll"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
               tintColor={Colors.palette.accentGold}
               colors={[Colors.palette.accentGold]}
-              progressBackgroundColor="#1a1a1a"
+              progressBackgroundColor={Colors.light.background}
             />
           }
         >
-
-
-          <View style={styles.hero} testID="home-hero">
-            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-              {heroImages.map((uri, index) => (
-                <View key={uri} style={styles.heroImageContainer}>
-                  <Image
-                    source={{ uri }}
-                    style={styles.heroImage}
-                    contentFit="cover"
-                    transition={500}
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']}
-                    style={styles.heroGradient}
-                  />
-                </View>
-              ))}
-            </ScrollView>
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={20} style={styles.heroOverlay}>
-                <Animated.View style={{ opacity: glowAnim }}>
-                  <ImagesIcon color={Colors.palette.accentGold} size={32} />
-                </Animated.View>
-                <Text style={styles.heroTitle}>Vos Albums Photos</Text>
-                <Text style={styles.heroSubtitle}>Accès direct • Organisation intelligente • Partage instantané</Text>
-              </BlurView>
-            ) : (
-              <View style={[styles.heroOverlay, styles.webBlur]}>
-                <Animated.View style={{ opacity: glowAnim }}>
-                  <ImagesIcon color={Colors.palette.accentGold} size={32} />
-                </Animated.View>
-                <Text style={styles.heroTitle}>Vos Albums Photos</Text>
-                <Text style={styles.heroSubtitle}>Accès direct • Organisation intelligente • Partage instantané</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Accès rapide favoris */}
-          {(favoriteAlbums.length > 0 || favoriteGroups.length > 0) && (
-            <View style={styles.quickRow}>
-              <Text style={styles.quickTitle}>Accès rapide</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {favoriteAlbums.map((id: string) => {
-                  const a = albums.find(al => al.id === id);
-                  if (!a) return null;
-                  return (
-                    <Pressable key={`fav-alb-${id}`} style={styles.quickChip} onPress={() => router.push(`/album/${id}`)} testID={`quick-album-${id}`}>
-                      <Image source={{ uri: a.coverImage || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=400&auto=format&fit=crop' }} style={styles.quickAvatar} contentFit="cover" />
-                      <Text numberOfLines={1} style={styles.quickText}>{a.name}</Text>
-                    </Pressable>
-                  );
-                })}
-                {favoriteGroups.map((id: string) => (
-                  <Pressable key={`fav-grp-${id}`} style={styles.quickChip} onPress={() => router.push(`/group/${id}`)} testID={`quick-group-${id}`}>
-                    <Image source={{ uri: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=400&auto=format&fit=crop' }} style={styles.quickAvatar} contentFit="cover" />
-                    <Text numberOfLines={1} style={styles.quickText}>Groupe</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+          <Animated.View style={[styles.header, { opacity: fade, transform: [{ translateY: slide }] }]}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.brand}>Memoria</Text>
+              <Text style={styles.period}>Ce mois</Text>
             </View>
-          )}
-
-          <View style={styles.actionsGrid}>
             <Pressable
-              style={[styles.card, styles.primaryCard]}
-              onPress={() => {
-                handleHapticFeedback();
-                router.push("/qr-scan");
-              }}
-              testID="scan-qr"
+              onPress={() => router.push('/profile')}
+              style={styles.avatarBtn}
+              testID="open-profile"
             >
-              <LinearGradient
-                colors={['#1a1a1a', '#2d2d2d']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardIcon}>
-                  <QrCode color={Colors.palette.accentGold} size={28} />
-                </View>
-                <Text style={styles.cardTitle}>Scanner QR</Text>
-                <Text style={styles.cardSub}>Invitations • Partage instantané</Text>
-              </LinearGradient>
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop' }}
+                style={styles.avatar}
+              />
             </Pressable>
+          </Animated.View>
 
-            <Pressable
-              style={[styles.card, styles.secondaryCard]}
-              onPress={() => {
-                handleHapticFeedback();
-                router.push("/(tabs)/albums");
-              }}
-              testID="open-albums"
-            >
-              <LinearGradient
-                colors={['#131417', '#2A2D34']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardIcon}>
-                  <ImagesIcon color={Colors.palette.taupeDeep} size={28} />
-                </View>
-                <Text style={styles.cardTitle}>Albums</Text>
-                <Text style={styles.cardSub}>Vos collections photos</Text>
-              </LinearGradient>
-            </Pressable>
-
-            <Pressable
-              style={[styles.card, styles.tertiaryCard]}
-              onPress={() => {
-                handleHapticFeedback();
-                router.push("/(tabs)/capture");
-              }}
-              testID="open-capture"
-            >
-              <LinearGradient
-                colors={['#0B0B0D', '#1a1a1a']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardIcon}>
-                  <ImagesIcon color={Colors.palette.taupe} size={28} />
-                </View>
-                <Text style={styles.cardTitle}>Capture</Text>
-                <Text style={styles.cardSub}>Caméra rapide</Text>
-              </LinearGradient>
-            </Pressable>
-
-            <Pressable
-              style={[styles.card, styles.quaternaryCard]}
-              onPress={() => {
-                handleHapticFeedback();
-                router.push("/(tabs)/groups");
-              }}
-              testID="open-groups"
-            >
-              <LinearGradient
-                colors={['#2A2D34', '#131417']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardIcon}>
-                  <Shield color={Colors.palette.taupe} size={28} />
-                </View>
-                <Text style={styles.cardTitle}>Groupes</Text>
-                <Text style={styles.cardSub}>Albums partagés</Text>
-              </LinearGradient>
-            </Pressable>
-
-            <Pressable
-              style={[styles.card, styles.eventCard]}
-              onPress={() => {
-                handleHapticFeedback();
-                router.push("/create-event");
-              }}
-              testID="create-event"
-            >
-              <LinearGradient
-                colors={['#1a1a2e', '#16213e']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardIcon}>
-                  <Calendar color={Colors.palette.accentGold} size={28} />
-                </View>
-                <Text style={styles.cardTitle}>Événement</Text>
-                <Text style={styles.cardSub}>Créer avec localisation</Text>
-              </LinearGradient>
-            </Pressable>
-            
-            <Pressable
-              style={[styles.card, styles.aiCard]}
-              onPress={() => {
-                handleHapticFeedback();
-                router.push("/ai-suggestions");
-              }}
-              testID="ai-suggestions"
-            >
-              <LinearGradient
-                colors={['#2d1b69', '#1a1a2e']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardIcon}>
-                  <Sparkles color={Colors.palette.accentGold} size={28} />
-                </View>
-                <Text style={styles.cardTitle}>IA Suggestions</Text>
-                <Text style={styles.cardSub}>Albums intelligents</Text>
-                {isAnalyzing && (
-                  <View style={styles.processingBadge}>
-                    <Text style={styles.processingText}>Analyse...</Text>
-                  </View>
-                )}
-              </LinearGradient>
-            </Pressable>
-
-
-          </View>
-
-          {/* Status Cards */}
-          <View style={styles.statusSection}>
-            {/* Offline Queue Status */}
-            {(pendingCount > 0 || failedCount > 0) && (
-              <Pressable 
-                style={styles.statusCard}
-                onPress={() => {
-                  handleHapticFeedback();
-                  processQueue();
-                }}
-              >
-                <LinearGradient
-                  colors={failedCount > 0 ? ['#FF4444', '#CC0000'] : ['#FFA500', '#FF8C00']}
-                  style={styles.statusGradient}
-                >
-                  <View style={styles.statusIcon}>
-                    {failedCount > 0 ? (
-                      <WifiOff color="#FFFFFF" size={20} />
-                    ) : (
-                      <Wifi color="#FFFFFF" size={20} />
-                    )}
-                  </View>
-                  <View style={styles.statusContent}>
-                    <Text style={styles.statusTitle}>
-                      {failedCount > 0 ? 'Synchronisation échouée' : 'Synchronisation en attente'}
-                    </Text>
-                    <Text style={styles.statusSubtitle}>
-                      {pendingCount} en attente{failedCount > 0 ? `, ${failedCount} échouées` : ''}
-                    </Text>
-                  </View>
-                  <Text style={styles.statusAction}>Synchroniser</Text>
-                </LinearGradient>
-              </Pressable>
-            )}
-            
-            {/* Compression Status */}
-            {isCompressing && (
-              <View style={styles.statusCard}>
-                <LinearGradient
-                  colors={['#00FF00', '#00CC00']}
-                  style={styles.statusGradient}
-                >
-                  <View style={styles.statusIcon}>
-                    <BarChart3 color="#FFFFFF" size={20} />
-                  </View>
-                  <View style={styles.statusContent}>
-                    <Text style={styles.statusTitle}>Compression en cours</Text>
-                    <Text style={styles.statusSubtitle}>Optimisation des images...</Text>
-                  </View>
-                </LinearGradient>
+          <View style={styles.statsRow}>
+            {stats.map((s, idx) => (
+              <View key={s.label + idx} style={styles.statCard} testID={`stat-${s.label}`}>
+                <Text style={styles.statValue}>{s.value}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
               </View>
+            ))}
+          </View>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Groupes récents</Text>
+            <Pressable onPress={() => router.push('/(tabs)/groups')} style={styles.seeAll} testID="see-all-groups">
+              <Text style={styles.seeAllText}>Voir tout</Text>
+              <ChevronRight color={Colors.palette.taupe} size={16} />
+            </Pressable>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.groupsRow}>
+            {recentGroups.map((g: any) => (
+              <Pressable key={g.id} style={styles.groupCard} onPress={() => router.push(`/group/${g.id}`)} testID={`group-${g.id}`}>
+                <Image source={{ uri: g.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1200&auto=format&fit=crop' }} style={styles.groupCover} contentFit="cover" />
+                <View style={styles.groupInfo}>
+                  <Text style={styles.groupName} numberOfLines={1}>{g.name}</Text>
+                  <Text style={styles.groupMeta} numberOfLines={1}>{(g.members?.length ?? 0)} membres</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Albums récents</Text>
+            <Pressable onPress={() => router.push('/(tabs)/albums')} style={styles.seeAll} testID="see-all-albums">
+              <Text style={styles.seeAllText}>Voir tout</Text>
+              <ChevronRight color={Colors.palette.taupe} size={16} />
+            </Pressable>
+          </View>
+
+          <View style={styles.albumHighlight}>
+            {recentAlbums.length > 0 ? (
+              <>
+                <View style={styles.highlightLeft}>
+                  <Image source={{ uri: recentAlbums[0].coverImage || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop' }} style={styles.highlightMain} contentFit="cover" />
+                </View>
+                <View style={styles.highlightRight}>
+                  {(recentAlbums[1]?.photos ?? []).slice(0,3).length > 0 ? (
+                    <Image source={{ uri: recentAlbums[1].coverImage || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=1200&auto=format&fit=crop' }} style={styles.highlightSmall} contentFit="cover" />
+                  ) : (
+                    <Image source={{ uri: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=1200&auto=format&fit=crop' }} style={styles.highlightSmall} contentFit="cover" />
+                  )}
+                  <Image source={{ uri: recentAlbums[2]?.coverImage || 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1200&auto=format&fit=crop' }} style={styles.highlightSmall} contentFit="cover" />
+                </View>
+              </>
+            ) : (
+              <View style={styles.albumEmpty}><Text style={styles.albumEmptyText}>Créez votre premier album</Text></View>
             )}
           </View>
 
+          <View style={styles.ctaRow}>
+            <Pressable style={[styles.ctaCard, styles.ctaPrimary]} onPress={() => { handleHaptic(); router.push('/(tabs)/albums'); }} testID="cta-create-album">
+              <Plus color="#000" size={18} />
+              <Text style={styles.ctaText}>Créer un album</Text>
+            </Pressable>
+            <Pressable style={[styles.ctaCard, styles.ctaSecondary]} onPress={() => router.push('/(tabs)/groups')} testID="cta-create-group">
+              <Users2 color={Colors.palette.taupeDeep} size={18} />
+              <Text style={styles.ctaTextSecondary}>Créer un groupe</Text>
+            </Pressable>
+          </View>
         </ScrollView>
-      </Animated.View>
       </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  safeArea: {
-    flex: 1,
-    paddingTop: 0,
-  },
-  animatedContainer: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingBottom: 120,
-  },
-
-  offlineIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  offlineText: {
-    color: '#FF4444',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  actionButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-
-  hero: {
-    height: 320,
-    borderRadius: 24,
-    marginHorizontal: 20,
-    marginTop: 20,
-    overflow: "hidden",
-    backgroundColor: '#1a1a1a',
-  },
-  heroImageContainer: {
-    width: 340,
-    height: 320,
-    marginRight: 8,
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  heroGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  heroOverlay: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    bottom: 20,
-    padding: 20,
-    borderRadius: 16,
-    alignItems: 'center',
-    gap: 8,
-  },
-  webBlur: {
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    backdropFilter: 'blur(20px)',
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "900",
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    color: "#E8EAF0",
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.9,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: 'wrap',
-    gap: 16,
-    paddingHorizontal: 20,
-    marginTop: 24,
-  },
-  card: {
-    width: '47%',
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  primaryCard: {},
-  secondaryCard: {},
-  tertiaryCard: {},
-  quaternaryCard: {},
-  eventCard: {},
-  aiCard: {},
-  processingBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  processingText: {
-    color: '#FFD700',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  statusSection: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  statusCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  statusGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-  },
-  statusIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusContent: {
-    flex: 1,
-  },
-  statusTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  statusSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-  },
-  statusAction: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  cardGradient: {
-    padding: 20,
-    minHeight: 120,
-    justifyContent: 'space-between',
-  },
-  cardIcon: {
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: Colors.palette.taupeDeep,
-    marginBottom: 4,
-  },
-  cardSub: {
-    fontSize: 12,
-    color: Colors.palette.taupe,
-    opacity: 0.8,
-  },
-  section: {
-    marginTop: 32,
-    paddingHorizontal: 20,
-  },
-  quickRow: { marginTop: 16, paddingHorizontal: 20, gap: 8 },
-  quickTitle: { color: Colors.palette.taupeDeep, fontSize: 16, fontWeight: '800' },
-  quickChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#131417', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, marginRight: 10, gap: 8 },
-  quickAvatar: { width: 28, height: 28 },
-  quickText: { color: '#fff', fontSize: 12, maxWidth: 120 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: Colors.palette.taupeDeep,
-  },
-  sectionSub: {
-    fontSize: 13,
-    color: Colors.palette.taupe,
-    marginTop: 4,
-    opacity: 0.8,
-  },
-  albumCard: {
-    width: 180,
-    marginRight: 16,
-    borderRadius: 16,
-    backgroundColor: '#131417',
-    overflow: "hidden",
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  albumImageContainer: {
-    position: 'relative',
-  },
-  albumCover: {
-    width: "100%",
-    height: 120,
-  },
-  albumOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  statusBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  pinBtn: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(255,215,0,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  pinText: { color: Colors.palette.accentGold, fontSize: 10, fontWeight: '800' },
-  liveBadge: {
-    backgroundColor: '#FF4444',
-  },
-  privateBadge: {
-    backgroundColor: '#9B59B6',
-  },
-  publicBadge: {
-    backgroundColor: '#2ECC71',
-  },
-  endingBadge: {
-    backgroundColor: '#F39C12',
-  },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  albumInfo: {
-    padding: 12,
-    gap: 4,
-  },
-  albumTitle: {
-    color: Colors.palette.taupeDeep,
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  albumMeta: {
-    color: Colors.palette.taupe,
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    color: Colors.palette.taupeDeep,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    color: Colors.palette.taupe,
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.8,
-  },
-
+  container: { flex: 1, backgroundColor: Colors.light.background },
+  safeArea: { flex: 1 },
+  scroll: { flex: 1 },
+  content: { paddingBottom: 120 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 },
+  headerLeft: { gap: 2 },
+  brand: { fontSize: 28, fontWeight: '900', color: Colors.palette.taupeDeep },
+  period: { fontSize: 12, color: Colors.palette.taupe },
+  avatarBtn: { width: 36, height: 36, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: Colors.palette.taupeSoft },
+  avatar: { width: '100%', height: '100%' },
+  statsRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 20 },
+  statCard: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 18, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 2 },
+  statValue: { fontSize: 22, fontWeight: '900', color: Colors.palette.taupeDeep },
+  statLabel: { marginTop: 4, fontSize: 12, color: Colors.palette.taupe },
+  sectionHeader: { marginTop: 24, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: Colors.palette.taupeDeep },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10, backgroundColor: '#FFFFFF' },
+  seeAllText: { color: Colors.palette.taupe, fontSize: 12, fontWeight: '700' },
+  groupsRow: { paddingHorizontal: 20, gap: 12, paddingVertical: 12 },
+  groupCard: { width: 160, borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF' },
+  groupCover: { width: '100%', height: 110 },
+  groupInfo: { padding: 10, gap: 2 },
+  groupName: { color: Colors.palette.taupeDeep, fontWeight: '700' },
+  groupMeta: { color: Colors.palette.taupe, fontSize: 12 },
+  albumHighlight: { marginTop: 8, marginHorizontal: 20, backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden', flexDirection: 'row', gap: 8, padding: 8 },
+  highlightLeft: { flex: 2 },
+  highlightRight: { flex: 1, gap: 8 },
+  highlightMain: { width: '100%', height: 140, borderRadius: 12 },
+  highlightSmall: { width: '100%', height: 66, borderRadius: 12 },
+  albumEmpty: { padding: 24, alignItems: 'center', justifyContent: 'center' },
+  albumEmptyText: { color: Colors.palette.taupe, fontWeight: '700' },
+  ctaRow: { marginTop: 16, paddingHorizontal: 20, flexDirection: 'row', gap: 12 },
+  ctaCard: { flex: 1, borderRadius: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  ctaPrimary: { backgroundColor: Colors.palette.accentGold },
+  ctaSecondary: { backgroundColor: '#FFFFFF' },
+  ctaText: { color: '#000', fontWeight: '800' },
+  ctaTextSecondary: { color: Colors.palette.taupeDeep, fontWeight: '800' },
 });
