@@ -1,23 +1,23 @@
 const palette = {
-  beige: "#0B0B0D",
-  cream: "#131417",
-  taupe: "#A9AFBC",
-  taupeSoft: "#2A2D34",
-  taupeDeep: "#E8EAF0",
-  accentGold: "#FFD700",
-  error: "#FF6B6B",
-  success: "#4ADE80",
-  warning: "#FFA500",
-  info: "#3B82F6",
+  beige: "#F5EFE6",
+  cream: "#FAF7F2",
+  taupe: "#7A6F63",
+  taupeSoft: "#EDE4D8",
+  taupeDeep: "#2C2C2C",
+  accentGold: "#D6C08F",
+  error: "#E74C3C",
+  success: "#2ECC71",
+  warning: "#F1C40F",
+  info: "#3498DB",
 } as const;
 
 export default {
   light: {
-    text: "#FFFFFF",
-    background: "#0B0B0D",
-    tint: "#FFFFFF",
-    tabIconDefault: "#A9AFBC",
-    tabIconSelected: "#FFFFFF",
+    text: "#2C2C2C",
+    background: "#FAF7F2",
+    tint: "#2C2C2C",
+    tabIconDefault: "#AFA193",
+    tabIconSelected: "#2C2C2C",
   },
   palette,
 };
