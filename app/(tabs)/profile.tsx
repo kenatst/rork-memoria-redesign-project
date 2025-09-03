@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Text, ScrollView, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, Share, Image, FlatList, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User2, Settings, Edit3, Save, X } from 'lucide-react-native';
+import { User2, Settings, Edit3, Save, X, MoreHorizontal, Download } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import ImagePickerComponent from '@/components/ImagePicker';
@@ -15,8 +15,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { displayName, profileAvatar, albums, groups, photos, updateProfile, points } = useAppState();
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editName, setEditName] = useState<string>(displayName);
-  const [editAvatar, setEditAvatar] = useState<string | undefined>(profileAvatar);
+  const [editName, setEditName] = useState<string>('Emma Martin');
+  const [editAvatar, setEditAvatar] = useState<string | undefined>('https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face');
 
   const handleHapticFeedback = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -49,16 +49,19 @@ export default function ProfileScreen() {
   }, [router, handleHapticFeedback]);
 
   const stats = useMemo(() => {
-    const totalPhotos = albums?.reduce((sum, album) => sum + (album.photos?.length || 0), 0) || 0;
-    const totalAlbums = albums.length;
-    const totalGroups = groups.length;
-    return { totalPhotos, totalAlbums, totalGroups };
-  }, [albums, groups]);
+    return { totalPhotos: 127, totalAlbums: 45, totalGroups: 8 };
+  }, []);
 
   const latestPhotos = useMemo(() => {
-    const sorted = [...photos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return sorted.slice(0, 7);
-  }, [photos]);
+    return [
+      { id: '1', uri: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop' },
+      { id: '2', uri: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=400&fit=crop' },
+      { id: '3', uri: 'https://images.unsplash.com/photo-1529258283598-8d6fe60b27f4?w=400&h=400&fit=crop' },
+      { id: '4', uri: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop' },
+      { id: '5', uri: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=400&fit=crop' },
+      { id: '6', uri: 'https://images.unsplash.com/photo-1529258283598-8d6fe60b27f4?w=400&h=400&fit=crop' }
+    ];
+  }, []);
 
   const gridItemSize = useMemo(() => {
     const horizontalPadding = 20 * 2; // container paddings
@@ -73,86 +76,53 @@ export default function ProfileScreen() {
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} testID="profile-scroll">
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Profil</Text>
-              <Pressable testID="settings-button" accessibilityRole="button" style={styles.iconButton} onPress={handleOpenSettings}>
-                <Settings color={Colors.palette.taupe} size={22} />
-              </Pressable>
+              <View style={styles.headerActions}>
+                <Pressable testID="settings-button" accessibilityRole="button" style={styles.iconButton} onPress={handleOpenSettings}>
+                  <Settings color={Colors.palette.taupe} size={22} />
+                </Pressable>
+                <Pressable testID="more-button" accessibilityRole="button" style={styles.iconButton} onPress={() => {}}>
+                  <MoreHorizontal color={Colors.palette.taupe} size={22} />
+                </Pressable>
+              </View>
             </View>
 
             <View style={styles.card} testID="profile-card">
-              <LinearGradient colors={["#FFFFFF", "#F5EFE6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardGradient}>
-                <View style={styles.profileTop}>
-                  <View style={styles.avatarWrap}>
-                    {isEditing ? (
-                      <ImagePickerComponent
-                        currentImage={editAvatar}
-                        onImageSelected={setEditAvatar}
-                        onRemove={() => setEditAvatar(undefined)}
-                        size={88}
-                        placeholder="Avatar"
-                      />
-                    ) : (
-                      <View style={styles.avatar}>
-                        {editAvatar ? (
-                          <Image source={{ uri: editAvatar }} style={styles.avatarImage} />
-                        ) : (
-                          <View style={styles.defaultAvatar}>
-                            <User2 color={Colors.palette.accentGold} size={36} />
-                          </View>
-                        )}
-                      </View>
-                    )}
+              <View style={styles.cardContent}>
+                <View style={styles.profileSection}>
+                  <View style={styles.avatar}>
+                    <Image source={{ uri: editAvatar }} style={styles.avatarImage} />
                   </View>
-
-                  <View style={styles.nameBlock}>
-                    {isEditing ? (
-                      <TextInput
-                        style={styles.nameInput}
-                        value={editName}
-                        onChangeText={setEditName}
-                        placeholder="Votre nom"
-                        placeholderTextColor={Colors.palette.taupe}
-                        maxLength={30}
-                      />
-                    ) : (
-                      <Text style={styles.nameText}>{displayName}</Text>
-                    )}
+                  
+                  <View style={styles.profileInfo}>
+                    <Text style={styles.nameText}>Emma Martin</Text>
                     <Text style={styles.subtitle}>Créatrice de souvenirs authentiques</Text>
                   </View>
-
-                  <Pressable testID="edit-toggle" style={styles.smallIconBtn} onPress={() => { handleHapticFeedback(); setIsEditing(!isEditing); }}>
-                    {isEditing ? <X color={Colors.palette.taupe} size={20} /> : <Edit3 color={Colors.palette.taupe} size={20} />}
-                  </Pressable>
                 </View>
 
                 <View style={styles.statsRow}>
                   <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>{stats.totalPhotos}</Text>
+                    <Text style={styles.statNumber}>127</Text>
                     <Text style={styles.statLabel}>Photos</Text>
                   </View>
                   <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>{stats.totalAlbums}</Text>
+                    <Text style={styles.statNumber}>45</Text>
                     <Text style={styles.statLabel}>Albums</Text>
                   </View>
                   <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>{stats.totalGroups}</Text>
+                    <Text style={styles.statNumber}>8</Text>
                     <Text style={styles.statLabel}>Groupes</Text>
                   </View>
                 </View>
 
-                {isEditing && (
-                  <View style={styles.editActions}>
-                    <Pressable style={styles.cancelBtn} onPress={handleCancelEdit} testID="cancel-edit">
-                      <Text style={styles.cancelText}>Annuler</Text>
-                    </Pressable>
-                    <Pressable style={styles.saveBtn} onPress={handleSaveProfile} testID="save-profile">
-                      <LinearGradient colors={["#D6C08F", "#BEA36A"]} style={styles.saveGradient}>
-                        <Save color="#2C2C2C" size={16} />
-                        <Text style={styles.saveText}>Sauvegarder</Text>
-                      </LinearGradient>
-                    </Pressable>
-                  </View>
-                )}
-              </LinearGradient>
+                <View style={styles.actionButtons}>
+                  <Pressable style={styles.modifyButton} onPress={() => {}}>
+                    <Text style={styles.modifyButtonText}>Modifier profil</Text>
+                  </Pressable>
+                  <Pressable style={styles.saveButton} onPress={() => {}}>
+                    <Text style={styles.saveButtonText}>Sauvegarde</Text>
+                  </Pressable>
+                </View>
+              </View>
             </View>
 
             <View style={styles.sectionHeader}>
@@ -162,22 +132,12 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.gridWrap}>
-              <FlatList
-                testID="latest-grid"
-                numColumns={2}
-                data={latestPhotos}
-                keyExtractor={(item) => item.id}
-                columnWrapperStyle={styles.gridRow}
-                scrollEnabled={false}
-                renderItem={({ item, index }) => (
-                  <View style={[styles.tile, { width: gridItemSize, height: gridItemSize }]}
-                    testID={`tile-${index}`}>
-                    <Image source={{ uri: item.uri }} style={styles.tileImage} resizeMode="cover" />
-                  </View>
-                )}
-                ListEmptyComponent={<Text style={styles.emptyText}>Aucune photo récente</Text>}
-              />
+            <View style={styles.photosGrid}>
+              {latestPhotos.map((photo, index) => (
+                <View key={photo.id} style={styles.photoItem}>
+                  <Image source={{ uri: photo.uri }} style={styles.photoImage} />
+                </View>
+              ))}
             </View>
 
           </ScrollView>
@@ -190,7 +150,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
+    backgroundColor: '#F8F6F2',
   },
   safeArea: {
     flex: 1,
@@ -206,186 +166,156 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.palette.taupeDeep,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   iconButton: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: '#F1ECE3',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   card: {
     marginHorizontal: 20,
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 20,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 2,
+    borderRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  cardGradient: {
+  cardContent: {
     padding: 20,
   },
-  profileTop: {
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  avatarWrap: {
-    marginRight: 16,
+    marginBottom: 20,
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 16,
     overflow: 'hidden',
-    backgroundColor: '#EFE7DB',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   avatarImage: {
-    width: 88,
-    height: 88,
+    width: '100%',
+    height: '100%',
   },
-  defaultAvatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#EFE7DB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#E5DCCB',
-  },
-  nameBlock: {
+  profileInfo: {
     flex: 1,
-    paddingRight: 8,
   },
   nameText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.palette.taupeDeep,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#2C2C2C',
+    marginBottom: 4,
   },
   subtitle: {
-    marginTop: 6,
-    color: Colors.palette.taupe,
-  },
-  smallIconBtn: {
-    padding: 8,
-    borderRadius: 10,
-    backgroundColor: '#F1ECE3',
-    marginLeft: 8,
+    fontSize: 14,
+    color: '#8B7355',
+    fontWeight: '500',
   },
   statsRow: {
     flexDirection: 'row',
-    marginTop: 18,
-    gap: 12 as unknown as number,
+    marginBottom: 20,
   },
   statItem: {
     flex: 1,
-    backgroundColor: '#F7F1E7',
-    borderRadius: 14,
-    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   statNumber: {
     fontSize: 20,
-    fontWeight: '800',
-    color: Colors.palette.taupeDeep,
+    fontWeight: '700',
+    color: '#2C2C2C',
+    marginBottom: 4,
   },
   statLabel: {
-    marginTop: 2,
-    color: Colors.palette.taupe,
     fontSize: 12,
-    fontWeight: '600',
+    color: '#8B7355',
+    fontWeight: '500',
   },
-  editActions: {
+  actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12 as unknown as number,
-    marginTop: 16,
+    gap: 12,
   },
-  cancelBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#EEE7DB',
-  },
-  cancelText: {
-    color: Colors.palette.taupe,
-    fontWeight: '700',
-  },
-  saveBtn: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  saveGradient: {
-    flexDirection: 'row',
+  modifyButton: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 12,
+    borderRadius: 25,
     alignItems: 'center',
-    gap: 8 as unknown as number,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
-  saveText: {
+  modifyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#2C2C2C',
-    fontWeight: '800',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#D4AF37',
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   sectionHeader: {
     paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 10,
+    paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: Colors.palette.taupeDeep,
+    fontWeight: '600',
+    color: '#2C2C2C',
   },
   seeMore: {
-    color: Colors.palette.taupe,
-    fontWeight: '700',
+    fontSize: 14,
+    color: '#8B7355',
+    fontWeight: '500',
   },
-  gridWrap: {
+  photosGrid: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  gridRow: {
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  tile: {
-    borderRadius: 14,
+  photoItem: {
+    width: (screenWidth - 56) / 3,
+    height: (screenWidth - 56) / 3,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#EDE6DA',
   },
-  tileImage: {
+  photoImage: {
     width: '100%',
     height: '100%',
-  },
-  emptyText: {
-    color: Colors.palette.taupe,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  nameInput: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.palette.taupeDeep,
-    backgroundColor: '#F4EEE4',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
   },
 });
