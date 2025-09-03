@@ -22,6 +22,10 @@ import { AlbumCard } from '@/components/AlbumCard';
 import { ROUTES } from '@/constants/routes';
 
 const { width: screenWidth } = Dimensions.get('window');
+const CARD_GAP = 16 as const;
+const H_PADDING = 20 as const;
+const CARD_WIDTH = (screenWidth - H_PADDING * 2 - CARD_GAP) / 2;
+const CARD_HEIGHT = Math.round(CARD_WIDTH * 1.2);
 
 interface GroupRef { id: string; name: string; color: string }
 
@@ -510,15 +514,15 @@ export default function AlbumsScreen() {
               renderItem={({ item: album, index }: { item: Album; index: number }) => {
                 const isFavorite = favoriteAlbumIds.includes(album.id);
                 return (
-                  <Animated.View style={[styles.albumItem, { opacity: mainFadeAnim, width: (screenWidth - 48) / 2 }]}>
+                  <Animated.View style={[styles.albumItem, { opacity: mainFadeAnim, width: CARD_WIDTH }]}>
                     <Pressable
-                      style={styles.albumPressable}
+                      style={[styles.albumPressable, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
                       onPress={() => {
                         handleHaptic('medium');
                         router.push(`/album/${album.id}` as any);
                       }}
                     >
-                      <View style={styles.albumImageContainer}>
+                      <View style={[styles.albumImageContainer, { height: Math.round(CARD_HEIGHT * 0.6) }]}> 
                         <Image
                           source={{ uri: album.coverImage }}
                           style={styles.albumImage}
@@ -865,12 +869,9 @@ const styles = StyleSheet.create({
   albumPressable: {
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#131417',
-    height: 280,
-    width: (screenWidth - 48) / 2,
+    backgroundColor: '#131417'
   },
   albumImageContainer: {
-    height: 140,
     position: 'relative'
   },
   albumImage: {
@@ -925,7 +926,7 @@ const styles = StyleSheet.create({
   flashListContent: { paddingBottom: 20 },
   albumsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   albumsList: { gap: 12 },
-  albumCard: { width: (screenWidth - 48) / 2, borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
+  albumCard: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
   albumListItem: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
 
   albumBlur: { borderRadius: 16 },
@@ -980,7 +981,7 @@ const styles = StyleSheet.create({
   createBtn: { backgroundColor: '#FFD700' },
   cancelText: { color: Colors.palette.taupe, fontWeight: '700' },
   createText: { color: '#000000', fontWeight: '800' },
-  gridItem: { width: (screenWidth - 56) / 2, marginBottom: 16 },
+  gridItem: { marginBottom: 16 },
   listItem: { marginBottom: 12 },
   statusBadge: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
   statusText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
