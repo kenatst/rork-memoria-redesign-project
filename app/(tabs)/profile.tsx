@@ -150,7 +150,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F6F2',
+    backgroundColor: Colors.palette.beige,
   },
   safeArea: {
     flex: 1,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.palette.card,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.palette.card,
     borderRadius: 20,
     marginBottom: 24,
     shadowColor: '#000',
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   },
   modifyButton: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.palette.card,
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#D4AF37',
+    backgroundColor: Colors.palette.accentGold,
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',

@@ -195,7 +195,7 @@ export default function AlbumsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.light.background }]} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.palette.beige }]} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>
         <View style={styles.header}>
@@ -323,7 +323,7 @@ export default function AlbumsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
+  container: { flex: 1, backgroundColor: Colors.palette.beige },
   safeArea: { flex: 1 },
   content: { flex: 1 },
   header: { 
@@ -332,9 +332,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20, 
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.palette.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#EBE3D8',
+    borderBottomColor: Colors.palette.border,
     borderRadius: 16,
     marginHorizontal: 20,
     marginTop: 8
@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: Colors.palette.taupeDeep },
   headerActions: { flexDirection: 'row', gap: 10 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.palette.beige, borderWidth: 1, borderColor: '#EBE3D8' },
-  headerButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.palette.beige, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EBE3D8' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.palette.beige, borderWidth: 1, borderColor: Colors.palette.border },
+  headerButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.palette.beige, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.palette.border },
 
   createAlbumSection: { paddingHorizontal: 20, paddingVertical: 16 },
   createCard: { borderRadius: 16, overflow: 'hidden' },
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
 
   filtersContainer: { paddingVertical: 12 },
   filtersContent: { paddingHorizontal: 20, gap: 12 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.05)' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(214,192,143,0.12)' },
   filterChipActive: { backgroundColor: 'rgba(214,192,143,0.25)' },
   filterText: { color: Colors.palette.taupe, fontSize: 14, fontWeight: '600' },
   filterTextActive: { color: Colors.palette.taupeDeep, fontWeight: '800' },
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: Colors.palette.taupe, textAlign: 'center' },
 
   albumItem: { marginBottom: 16 },
-  albumPressable: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8' },
+  albumPressable: { borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.palette.card, borderWidth: 1, borderColor: Colors.palette.border },
   albumImageContainer: { position: 'relative' },
   albumImage: { width: '100%', height: '100%' },
   albumOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' },
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   searchResultsText: { color: Colors.palette.taupeDeep, fontSize: 14, fontWeight: '700', flex: 1 },
 
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: Colors.light.background, padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 12 },
+  modalCard: { backgroundColor: Colors.palette.beige, padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 12 },
   modalTitle: { color: Colors.palette.taupeDeep, fontSize: 18, fontWeight: '800', textAlign: 'center' },
   input: { backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: Colors.palette.taupeDeep, borderWidth: 1, borderColor: '#EBE3D8' },
   privacyRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },

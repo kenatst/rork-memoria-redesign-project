@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   bar: {
-    backgroundColor: 'rgba(250,247,242,0.85)',
+    backgroundColor: 'rgba(242,235,225,0.90)',
     borderTopWidth: 0,
     height: 68,
     shadowColor: '#000',
