@@ -55,7 +55,7 @@ export default function GroupsScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.light.background }]} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
 
       <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -272,13 +272,13 @@ export default function GroupsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   safeArea: { flex: 1, paddingTop: 0 },
   header: { paddingHorizontal: 20, paddingTop: 8 },
   headerBlur: { borderRadius: 16, overflow: 'hidden' },
-  webBlur: { backgroundColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px)' as any },
-  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  webBlur: { backgroundColor: 'transparent' },
+  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8' },
+  headerTitle: { color: Colors.palette.taupeDeep, fontSize: 20, fontWeight: '800' },
   createBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFD700', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   createText: { color: '#000', fontSize: 12, fontWeight: '800' },
   scroll: { flex: 1 },
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   createGroupGradient: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   createGroupTitle: { color: '#000', fontSize: 14, fontWeight: '800' },
   createGroupSubtitle: { color: '#1a1a1a', fontSize: 12, fontWeight: '600', marginTop: 2 },
-  card: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
+  card: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8' },
   cover: { width: '100%', height: 140 },
   overlay: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 },
   row: { position: 'absolute', left: 12, right: 12, top: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -300,21 +300,21 @@ const styles = StyleSheet.create({
   badges: { flexDirection: 'row', gap: 8 },
   roleBadge: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10 },
   metaRow: { position: 'absolute', left: 12, right: 12, bottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  meta: { color: '#E8EAF0', fontSize: 12 },
+  meta: { color: Colors.palette.taupe, fontSize: 12 },
   pinBtn: { backgroundColor: 'rgba(255,215,0,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
   pinText: { color: '#FFD700', fontSize: 12, fontWeight: '800' },
   noteBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFD700', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 },
   noteText: { color: '#000', fontSize: 12, fontWeight: '800' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   keyboardView: { flex: 1, justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0B0B0D', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 16, maxHeight: '80%' },
+  modalCard: { backgroundColor: Colors.light.background, padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 16, maxHeight: '80%' },
   modalTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  input: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#FFFFFF' },
+  input: { backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: Colors.palette.taupeDeep, borderWidth: 1, borderColor: '#EBE3D8' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   cancelBtn: { backgroundColor: 'rgba(255,255,255,0.06)' },
-  createConfirmBtn: { backgroundColor: '#FFD700' },
-  cancelText: { color: '#FFFFFF', fontWeight: '700' },
+  createConfirmBtn: { backgroundColor: Colors.palette.accentGold },
+  cancelText: { color: Colors.palette.taupeDeep, fontWeight: '700' },
   createConfirmText: { color: '#000', fontWeight: '800' },
   disabledBtn: { opacity: 0.6 },
   disabledText: { opacity: 0.7 },

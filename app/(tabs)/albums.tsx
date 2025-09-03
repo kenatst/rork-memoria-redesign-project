@@ -443,7 +443,7 @@ export default function AlbumsScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#000000', '#0B0B0D', '#131417']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.light.background }]} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>        
 
@@ -739,7 +739,7 @@ function CardInner({ album, Icon, PIcon, color, glow, viewMode, formatDate, onTo
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
+  container: { flex: 1, backgroundColor: Colors.light.background },
   safeArea: { flex: 1 },
   content: { flex: 1 },
   header: { 
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, 
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)'
+    borderBottomColor: 'rgba(0,0,0,0.05)'
   },
   headerTitle: {
     fontSize: 28,
@@ -764,9 +764,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,215,0,0.1)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EBE3D8'
   },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 56, height: 56, borderRadius: 28 },
@@ -811,7 +813,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)'
+    backgroundColor: 'rgba(0,0,0,0.05)'
   },
   filterChipActive: {
     backgroundColor: 'rgba(255,215,0,0.2)'
@@ -869,7 +871,9 @@ const styles = StyleSheet.create({
   albumPressable: {
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#131417'
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBE3D8'
   },
   albumImageContainer: {
     position: 'relative'
@@ -926,8 +930,8 @@ const styles = StyleSheet.create({
   flashListContent: { paddingBottom: 20 },
   albumsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   albumsList: { gap: 12 },
-  albumCard: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
-  albumListItem: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
+  albumCard: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8' },
+  albumListItem: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8' },
 
   albumBlur: { borderRadius: 16 },
   albumCardContent: { borderRadius: 16 },
@@ -967,9 +971,9 @@ const styles = StyleSheet.create({
   albumListMeta: { color: Colors.palette.taupe, fontSize: 13 },
   albumListDate: { color: Colors.palette.taupe, fontSize: 12 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0B0B0D', padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 12 },
-  modalTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  input: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#FFFFFF' },
+  modalCard: { backgroundColor: Colors.light.background, padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 12 },
+  modalTitle: { color: Colors.palette.taupeDeep, fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  input: { backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: Colors.palette.taupeDeep, borderWidth: 1, borderColor: '#EBE3D8' },
   privacyRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
   privacyChip: { flex: 1, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center' },
   privacyChipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
@@ -977,9 +981,9 @@ const styles = StyleSheet.create({
   privacyTextActive: { color: '#FFD700' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  cancelBtn: { backgroundColor: 'rgba(255,255,255,0.06)' },
-  createBtn: { backgroundColor: '#FFD700' },
-  cancelText: { color: Colors.palette.taupe, fontWeight: '700' },
+  cancelBtn: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBE3D8' },
+  createBtn: { backgroundColor: Colors.palette.accentGold },
+  cancelText: { color: Colors.palette.taupeDeep, fontWeight: '700' },
   createText: { color: '#000000', fontWeight: '800' },
   gridItem: { marginBottom: 16 },
   listItem: { marginBottom: 12 },
