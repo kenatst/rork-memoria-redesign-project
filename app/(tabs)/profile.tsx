@@ -1,16 +1,15 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Text, ScrollView, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, Share, Linking } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, StyleSheet, Text, ScrollView, Pressable, Alert, TextInput, KeyboardAvoidingView, Platform, Share, Image, FlatList, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { User2, Settings, Camera, Heart, Share2, Download, Trash2, Edit3, Save, X } from 'lucide-react-native';
+import { User2, Settings, Edit3, Save, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/providers/AppStateProvider';
 import ImagePickerComponent from '@/components/ImagePicker';
 import * as Haptics from 'expo-haptics';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import { useRouter } from 'expo-router';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -19,14 +18,16 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState<string>(displayName);
   const [editAvatar, setEditAvatar] = useState<string | undefined>(profileAvatar);
 
-
   const handleHapticFeedback = useCallback(() => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } else {
+      console.log('[haptics] selection');
     }
   }, []);
 
   const handleSaveProfile = useCallback(() => {
+    console.log('[profile] save profile');
     handleHapticFeedback();
     updateProfile(editName, editAvatar);
     setIsEditing(false);
@@ -34,127 +35,75 @@ export default function ProfileScreen() {
   }, [editName, editAvatar, updateProfile, handleHapticFeedback]);
 
   const handleCancelEdit = useCallback(() => {
+    console.log('[profile] cancel edit');
     handleHapticFeedback();
     setEditName(displayName);
     setEditAvatar(profileAvatar);
     setIsEditing(false);
   }, [displayName, profileAvatar, handleHapticFeedback]);
 
-
-
-  const handleShareProfile = useCallback(async () => {
-    handleHapticFeedback();
-    
-    const profileUrl = `https://memoria.app/profile/${displayName.toLowerCase().replace(/\s+/g, '-')}`;
-    const shareContent = {
-      message: `Découvrez mon profil Memoria ! J'ai ${albums.length} albums et ${photos.length} photos partagées. ${profileUrl}`,
-      url: profileUrl,
-      title: `Profil de ${displayName} sur Memoria`
-    };
-
-    try {
-      if (Platform.OS === 'web') {
-        if (navigator.share) {
-          await navigator.share(shareContent);
-        } else {
-          // Fallback for web
-          await navigator.clipboard.writeText(shareContent.message);
-          Alert.alert('Lien copié', 'Le lien de votre profil a été copié dans le presse-papiers');
-        }
-      } else {
-        // Native sharing with haptic feedback
-        await Share.share({
-          message: shareContent.message,
-          url: shareContent.url,
-          title: shareContent.title
-        });
-        
-        // Additional haptic feedback on successful share
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-    } catch (error) {
-      console.error('Share error:', error);
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-      Alert.alert('Erreur', 'Impossible de partager le profil');
-    }
-  }, [displayName, albums.length, photos.length, handleHapticFeedback]);
-
   const handleOpenSettings = useCallback(() => {
+    console.log('[profile] open settings');
     handleHapticFeedback();
     router.push('/notification-settings');
   }, [router, handleHapticFeedback]);
 
-  const totalPhotos = albums?.reduce((sum, album) => sum + (album.photos?.length || 0), 0) || 0;
-  const totalLikes = albums?.reduce((sum, album) => sum + (album.likes?.length || 0), 0) || 0;
+  const stats = useMemo(() => {
+    const totalPhotos = albums?.reduce((sum, album) => sum + (album.photos?.length || 0), 0) || 0;
+    const totalAlbums = albums.length;
+    const totalGroups = groups.length;
+    return { totalPhotos, totalAlbums, totalGroups };
+  }, [albums, groups]);
+
+  const latestPhotos = useMemo(() => {
+    const sorted = [...photos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return sorted.slice(0, 7);
+  }, [photos]);
+
+  const gridItemSize = useMemo(() => {
+    const horizontalPadding = 20 * 2; // container paddings
+    const gap = 10; // between tiles
+    return (screenWidth - horizontalPadding - gap) / 2;
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#000000', '#0B0B0D', '#131417']}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+    <View style={styles.container} testID="profile-screen">
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-          <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-            
-            {/* Header */}
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} testID="profile-scroll">
             <View style={styles.header}>
-              <View style={styles.headerContent}>
-                <Text style={styles.headerTitle}>Profil</Text>
-                <Pressable 
-                  style={styles.editButton} 
-                  onPress={() => {
-                    handleHapticFeedback();
-                    setIsEditing(!isEditing);
-                  }}
-                >
-                  {isEditing ? (
-                    <X color={Colors.palette.accentGold} size={24} />
-                  ) : (
-                    <Edit3 color={Colors.palette.accentGold} size={24} />
-                  )}
-                </Pressable>
-              </View>
+              <Text style={styles.headerTitle}>Profil</Text>
+              <Pressable testID="settings-button" accessibilityRole="button" style={styles.iconButton} onPress={handleOpenSettings}>
+                <Settings color={Colors.palette.taupe} size={22} />
+              </Pressable>
             </View>
 
-            {/* Profile Card */}
-            <View style={styles.profileCard}>
-              <LinearGradient
-                colors={['#1a1a1a', '#2d2d2d']}
-                style={styles.profileGradient}
-              >
-                <View style={styles.profileHeader}>
-                  <View style={styles.avatarContainer}>
+            <View style={styles.card} testID="profile-card">
+              <LinearGradient colors={["#FFFFFF", "#F5EFE6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardGradient}>
+                <View style={styles.profileTop}>
+                  <View style={styles.avatarWrap}>
                     {isEditing ? (
                       <ImagePickerComponent
                         currentImage={editAvatar}
                         onImageSelected={setEditAvatar}
                         onRemove={() => setEditAvatar(undefined)}
-                        size={100}
+                        size={88}
                         placeholder="Avatar"
                       />
                     ) : (
                       <View style={styles.avatar}>
                         {editAvatar ? (
-                          <ImagePickerComponent
-                            currentImage={editAvatar}
-                            onImageSelected={() => {}}
-                            size={100}
-                          />
+                          <Image source={{ uri: editAvatar }} style={styles.avatarImage} />
                         ) : (
                           <View style={styles.defaultAvatar}>
-                            <User2 color={Colors.palette.accentGold} size={40} />
+                            <User2 color={Colors.palette.accentGold} size={36} />
                           </View>
                         )}
                       </View>
                     )}
                   </View>
-                  
-                  <View style={styles.profileInfo}>
+
+                  <View style={styles.nameBlock}>
                     {isEditing ? (
                       <TextInput
                         style={styles.nameInput}
@@ -165,23 +114,39 @@ export default function ProfileScreen() {
                         maxLength={30}
                       />
                     ) : (
-                      <Text style={styles.profileName}>{displayName}</Text>
+                      <Text style={styles.nameText}>{displayName}</Text>
                     )}
-                    <Text style={styles.profileSubtitle}>Membre Memoria</Text>
-                    <View style={styles.pointsBadge}>
-                      <Text style={styles.pointsText}>{points} points</Text>
-                    </View>
+                    <Text style={styles.subtitle}>Créatrice de souvenirs authentiques</Text>
+                  </View>
+
+                  <Pressable testID="edit-toggle" style={styles.smallIconBtn} onPress={() => { handleHapticFeedback(); setIsEditing(!isEditing); }}>
+                    {isEditing ? <X color={Colors.palette.taupe} size={20} /> : <Edit3 color={Colors.palette.taupe} size={20} />}
+                  </Pressable>
+                </View>
+
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{stats.totalPhotos}</Text>
+                    <Text style={styles.statLabel}>Photos</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{stats.totalAlbums}</Text>
+                    <Text style={styles.statLabel}>Albums</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{stats.totalGroups}</Text>
+                    <Text style={styles.statLabel}>Groupes</Text>
                   </View>
                 </View>
 
                 {isEditing && (
                   <View style={styles.editActions}>
-                    <Pressable style={styles.cancelButton} onPress={handleCancelEdit}>
+                    <Pressable style={styles.cancelBtn} onPress={handleCancelEdit} testID="cancel-edit">
                       <Text style={styles.cancelText}>Annuler</Text>
                     </Pressable>
-                    <Pressable style={styles.saveButton} onPress={handleSaveProfile}>
-                      <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.saveGradient}>
-                        <Save color="#000000" size={16} />
+                    <Pressable style={styles.saveBtn} onPress={handleSaveProfile} testID="save-profile">
+                      <LinearGradient colors={["#D6C08F", "#BEA36A"]} style={styles.saveGradient}>
+                        <Save color="#2C2C2C" size={16} />
                         <Text style={styles.saveText}>Sauvegarder</Text>
                       </LinearGradient>
                     </Pressable>
@@ -190,65 +155,29 @@ export default function ProfileScreen() {
               </LinearGradient>
             </View>
 
-            {/* Stats */}
-            <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{albums.length}</Text>
-                <Text style={styles.statLabel}>Albums</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{totalPhotos}</Text>
-                <Text style={styles.statLabel}>Photos</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{groups.length}</Text>
-                <Text style={styles.statLabel}>Groupes</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{totalLikes}</Text>
-                <Text style={styles.statLabel}>Likes</Text>
-              </View>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Mes derniers souvenirs</Text>
+              <Pressable onPress={() => router.push('/albums')} testID="see-more">
+                <Text style={styles.seeMore}>Voir plus</Text>
+              </Pressable>
             </View>
 
-            {/* Actions */}
-            <View style={styles.actionsContainer}>
-
-
-              <Pressable style={styles.actionCard} onPress={handleShareProfile}>
-                <LinearGradient colors={['#131417', '#2A2D34']} style={styles.actionGradient}>
-                  <Share2 color={Colors.palette.taupeDeep} size={24} />
-                  <Text style={styles.actionTitle}>Partager mon profil</Text>
-                  <Text style={styles.actionSubtitle}>Inviter des amis</Text>
-                </LinearGradient>
-              </Pressable>
-
-              <Pressable style={styles.actionCard} onPress={handleOpenSettings}>
-                <LinearGradient colors={['#131417', '#2A2D34']} style={styles.actionGradient}>
-                  <Settings color={Colors.palette.taupe} size={24} />
-                  <Text style={styles.actionTitle}>Paramètres</Text>
-                  <Text style={styles.actionSubtitle}>Confidentialité et sécurité</Text>
-                </LinearGradient>
-              </Pressable>
-
-              <Pressable style={styles.actionCard} onPress={() => {
-                handleHapticFeedback();
-                Alert.alert(
-                  'Supprimer le compte',
-                  'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
-                  [
-                    { text: 'Annuler', style: 'cancel' },
-                    { text: 'Supprimer', style: 'destructive', onPress: () => {
-                      Alert.alert('Fonctionnalité', 'Suppression de compte bientôt disponible');
-                    }}
-                  ]
-                );
-              }}>
-                <LinearGradient colors={['#2A1A1A', '#3A2A2A']} style={styles.actionGradient}>
-                  <Trash2 color="#FF4444" size={24} />
-                  <Text style={[styles.actionTitle, { color: '#FF4444' }]}>Supprimer le compte</Text>
-                  <Text style={styles.actionSubtitle}>Action irréversible</Text>
-                </LinearGradient>
-              </Pressable>
+            <View style={styles.gridWrap}>
+              <FlatList
+                testID="latest-grid"
+                numColumns={2}
+                data={latestPhotos}
+                keyExtractor={(item) => item.id}
+                columnWrapperStyle={styles.gridRow}
+                scrollEnabled={false}
+                renderItem={({ item, index }) => (
+                  <View style={[styles.tile, { width: gridItemSize, height: gridItemSize }]}
+                    testID={`tile-${index}`}>
+                    <Image source={{ uri: item.uri }} style={styles.tileImage} resizeMode="cover" />
+                  </View>
+                )}
+                ListEmptyComponent={<Text style={styles.emptyText}>Aucune photo récente</Text>}
+              />
             </View>
 
           </ScrollView>
@@ -261,11 +190,10 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.light.background,
   },
   safeArea: {
     flex: 1,
-    paddingTop: 0,
   },
   keyboardView: {
     flex: 1,
@@ -278,175 +206,186 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  headerContent: {
+    paddingVertical: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 24,
+    fontWeight: '800',
     color: Colors.palette.taupeDeep,
   },
-  editButton: {
+  iconButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,215,0,0.1)',
+    backgroundColor: '#F1ECE3',
   },
-  profileCard: {
+  card: {
     marginHorizontal: 20,
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 2,
   },
-  profileGradient: {
-    padding: 24,
+  cardGradient: {
+    padding: 20,
   },
-  profileHeader: {
+  profileTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
   },
-  avatarContainer: {
-    position: 'relative',
+  avatarWrap: {
+    marginRight: 16,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     overflow: 'hidden',
+    backgroundColor: '#EFE7DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
   },
   defaultAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,215,0,0.1)',
-    justifyContent: 'center',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#EFE7DB',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255,215,0,0.3)',
+    borderColor: '#E5DCCB',
   },
-  profileInfo: {
+  nameBlock: {
     flex: 1,
+    paddingRight: 8,
   },
-  profileName: {
-    fontSize: 24,
+  nameText: {
+    fontSize: 22,
     fontWeight: '800',
     color: Colors.palette.taupeDeep,
-    marginBottom: 4,
   },
-  nameInput: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.palette.taupeDeep,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 4,
-  },
-  profileSubtitle: {
-    fontSize: 14,
+  subtitle: {
+    marginTop: 6,
     color: Colors.palette.taupe,
-    marginBottom: 12,
   },
-  pointsBadge: {
-    backgroundColor: 'rgba(255,215,0,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+  smallIconBtn: {
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: '#F1ECE3',
+    marginLeft: 8,
   },
-  pointsText: {
-    color: Colors.palette.accentGold,
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 18,
+    gap: 12 as unknown as number,
+  },
+  statItem: {
+    flex: 1,
+    backgroundColor: '#F7F1E7',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.palette.taupeDeep,
+  },
+  statLabel: {
+    marginTop: 2,
+    color: Colors.palette.taupe,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   editActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    gap: 12 as unknown as number,
+    marginTop: 16,
   },
-  cancelButton: {
+  cancelBtn: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#EEE7DB',
   },
   cancelText: {
     color: Colors.palette.taupe,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  saveButton: {
+  saveBtn: {
     borderRadius: 12,
     overflow: 'hidden',
   },
   saveGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 8 as unknown as number,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   saveText: {
-    color: '#000000',
-    fontWeight: '700',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 24,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
+    color: '#2C2C2C',
     fontWeight: '800',
-    color: Colors.palette.accentGold,
-    marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.palette.taupe,
-    fontWeight: '600',
-  },
-  actionsContainer: {
-    marginHorizontal: 20,
-    gap: 12,
-  },
-  actionCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  actionGradient: {
-    padding: 20,
+  sectionHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'space-between',
   },
-  actionTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
     color: Colors.palette.taupeDeep,
   },
-  actionSubtitle: {
-    fontSize: 12,
+  seeMore: {
     color: Colors.palette.taupe,
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
+    fontWeight: '700',
+  },
+  gridWrap: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  tile: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#EDE6DA',
+  },
+  tileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  emptyText: {
+    color: Colors.palette.taupe,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  nameInput: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.palette.taupeDeep,
+    backgroundColor: '#F4EEE4',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
 });
