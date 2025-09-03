@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
   privacyBadge: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
 
   countBadge: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 14, paddingHorizontal: 8, height: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  countText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 }
+  countText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
 
   albumMeta: { flexDirection: 'row', alignItems: 'center' },
 

@@ -12,6 +12,7 @@ import type { Group as PersistedGroup } from '@/providers/AppStateProvider';
 import { useToast } from '@/providers/ToastProvider';
 import { useAccessibility } from '@/components/AccessibilityProvider';
 import * as Haptics from 'expo-haptics';
+import { Dimensions } from 'react-native';
 
 type UIGroup = {
   id: string;
@@ -33,6 +34,8 @@ export default function GroupsScreen() {
   const [newName, setNewName] = useState<string>('');
   const [newDescription, setNewDescription] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'family' | 'friends' | 'couple'>('all');
+  const screenWidth = Dimensions.get('window').width;
 
   useEffect(() => {
     const mockGroups: UIGroup[] = (persistedGroups as PersistedGroup[]).map((group: PersistedGroup) => ({
@@ -104,6 +107,29 @@ export default function GroupsScreen() {
       </Animated.View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.filtersRow}>
+          {(['all','family','friends','couple'] as const).map((key) => {
+            const active = activeFilter === key;
+            return (
+              <Pressable key={key} style={[styles.filterChip, active && styles.filterChipActive]} onPress={() => setActiveFilter(key)} testID={`group-chip-${key}`}>
+                <Text style={[styles.filterText, active && styles.filterTextActive]}>
+                  {key === 'all' ? 'Tous' : key === 'family' ? 'Famille' : key === 'friends' ? 'Amis' : 'Couple'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Pressable style={styles.createGroupCard} onPress={() => setShowCreate(true)} testID="inline-create-group">
+          <LinearGradient colors={['#A89365', '#DCC39A']} style={styles.createGroupGradient}>
+            <Plus color="#000" size={20} />
+            <View style={{ alignItems: 'flex-start' }}>
+              <Text style={styles.createGroupTitle}>Créer un groupe</Text>
+              <Text style={styles.createGroupSubtitle}>Invitez vos proches</Text>
+            </View>
+          </LinearGradient>
+        </Pressable>
+
         {groups.map((g: UIGroup) => (
           <Pressable 
             key={g.id} 
@@ -257,6 +283,15 @@ const styles = StyleSheet.create({
   createText: { color: '#000', fontSize: 12, fontWeight: '800' },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 16, paddingBottom: 140 },
+  filtersRow: { flexDirection: 'row', gap: 10, paddingBottom: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.08)' },
+  filterChipActive: { backgroundColor: 'rgba(255,215,0,0.2)' },
+  filterText: { color: Colors.palette.taupe, fontWeight: '700' },
+  filterTextActive: { color: '#FFD700' },
+  createGroupCard: { borderRadius: 16, overflow: 'hidden' },
+  createGroupGradient: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  createGroupTitle: { color: '#000', fontSize: 14, fontWeight: '800' },
+  createGroupSubtitle: { color: '#1a1a1a', fontSize: 12, fontWeight: '600', marginTop: 2 },
   card: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#131417' },
   cover: { width: '100%', height: 140 },
   overlay: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 },
