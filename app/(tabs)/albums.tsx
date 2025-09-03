@@ -4,7 +4,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
-import { Camera, Users, Calendar, Heart, Plus, Grid3X3, List, Sparkles, Lock, Globe, Search } from 'lucide-react-native';
+import { Camera, Users, Calendar, Heart, Plus, Grid3X3, List, Sparkles, Lock, Globe, Search, SlidersHorizontal, ChevronLeft } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/providers/AuthProvider';
 import { useAppState } from '@/providers/AppStateProvider';
@@ -199,13 +199,18 @@ export default function AlbumsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Animated.View style={[styles.content, { opacity: mainFadeAnim }]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Albums</Text>
+          <View style={styles.headerLeft}>
+            <Pressable style={styles.backBtn} accessibilityRole="button" testID="albums-back-mock">
+              <ChevronLeft color={Colors.palette.taupeDeep} size={22} />
+            </Pressable>
+            <Text style={styles.headerTitle}>Albums</Text>
+          </View>
           <View style={styles.headerActions}>
             <Pressable style={styles.headerButton} onPress={() => { handleHaptic('light'); setShowAdvancedSearch(true); }} testID="advanced-search">
               <Search color={Colors.palette.taupeDeep} size={20} />
             </Pressable>
-            <Pressable style={styles.headerButton} onPress={() => setViewMode(p => p === 'grid' ? 'list' : 'grid')} testID="toggle-view">
-              {viewMode === 'grid' ? <Grid3X3 color={Colors.palette.taupeDeep} size={20} /> : <List color={Colors.palette.taupeDeep} size={20} />}
+            <Pressable style={styles.headerButton} onPress={() => { handleHaptic('light'); }} testID="filter-button">
+              <SlidersHorizontal color={Colors.palette.taupeDeep} size={20} />
             </Pressable>
           </View>
         </View>
@@ -334,9 +339,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 8
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: Colors.palette.taupeDeep },
-  headerActions: { flexDirection: 'row', gap: 12 },
-  headerButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EBE3D8' },
+  headerActions: { flexDirection: 'row', gap: 10 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.palette.beige, borderWidth: 1, borderColor: '#EBE3D8' },
+  headerButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.palette.beige, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EBE3D8' },
 
   createAlbumSection: { paddingHorizontal: 20, paddingVertical: 16 },
   createCard: { borderRadius: 16, overflow: 'hidden' },
